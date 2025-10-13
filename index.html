@@ -3,174 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Controle de Estoque - Supabase</title>
+    <title>Controle de Estoque - Supabase</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
-    
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
-        * {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .dark { 
-            color-scheme: dark;
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .gradient-bg-green {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        
-        .btn-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            transition: all 0.3s ease;
-        }
-        
-        .btn-gradient:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .dark .glass-effect {
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .online-indicator {
-            animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
-        
-        @keyframes ping {
-            75%, 100% { transform: scale(1.5); opacity: 0; }
-        }
-        
-        .toast-notification {
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .loading-spinner {
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900">
+<body class="bg-gray-50">
     <div id="app"></div>
 
     <script>
-        // 🔥 CONFIGURAÇÃO DO SUPABASE - GRATUITO PARA SEMPRE!
-        // Crie conta em: https://supabase.com
+        // 🔧 CONFIGURAÇÃO - SUBSTITUA COM SEUS DADOS!
         const SUPABASE_URL = 'https://seu-projeto.supabase.co';
-        const SUPABASE_ANON_KEY = 'sua-chave-anon-publica-aqui';
+        const SUPABASE_ANON_KEY = 'sua-chave-anon-aqui';
         
-        // Inicializar Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const icons = {
-            package: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
-            plus: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
-            search: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
-            edit: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
-            trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
-            user: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
-            logout: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>',
-            cloud: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>',
-            database: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>'
-        };
-
         let state = {
-            items: [],
-            searchTerm: '',
-            filterStatus: 'todos',
-            filterCategory: 'todas',
-            showModal: false,
-            editingItem: null,
-            darkMode: false,
-            formData: {
-                codigo: '', nome: '', descricao: '', quantidade: '', status: 'venda',
-                localizacao: '', observacoes: '', categoria: '', tags: '', preco: ''
-            },
-            // Estados para autenticação
             user: null,
+            items: [],
             loading: true,
             showLogin: true,
+            showModal: false,
             loginForm: { email: '', password: '' },
-            registerForm: { email: '', password: '', confirmPassword: '', nome: '' }
+            registerForm: { email: '', password: '', confirmPassword: '', nome: '' },
+            formData: {
+                codigo: '', nome: '', descricao: '', quantidade: '', status: 'venda',
+                localizacao: '', observacoes: '', categoria: '', preco: ''
+            }
         };
 
-        const categories = ['Eletrônicos', 'Eletrodomésticos', 'Informática', 'Telefonia', 'Áudio e Vídeo', 'Games', 'Acessórios', 'Outros'];
-
-        const statusOptions = [
-            { value: 'venda', label: 'Disponível para Venda', color: 'bg-gradient-to-r from-green-400 to-green-600 text-white', icon: '✓' },
-            { value: 'assistencia', label: 'Assistência Técnica', color: 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white', icon: '🔧' },
-            { value: 'mostruario', label: 'Mostruário', color: 'bg-gradient-to-r from-blue-400 to-blue-600 text-white', icon: '👁️' },
-            { value: 'uso_loja', label: 'Uso da Loja', color: 'bg-gradient-to-r from-purple-400 to-purple-600 text-white', icon: '🏪' },
-            { value: 'separado', label: 'Separado p/ Entrega', color: 'bg-gradient-to-r from-orange-400 to-red-500 text-white', icon: '📦' }
-        ];
-
-        // 🔐 SISTEMA DE AUTENTICAÇÃO SUPABASE
+        // 🔐 AUTENTICAÇÃO
         async function initAuth() {
-            // Verificar se usuário já está logado
             const { data: { session } } = await supabase.auth.getSession();
             state.user = session?.user || null;
-            
-            if (state.user) {
-                loadItems();
-                setupRealtimeSubscription();
-            }
-            
             state.loading = false;
             render();
             
-            // Escutar mudanças de autenticação
             supabase.auth.onAuthStateChange((event, session) => {
                 state.user = session?.user || null;
                 if (event === 'SIGNED_IN') {
                     loadItems();
-                    setupRealtimeSubscription();
-                    showNotification('✅ Login realizado com sucesso!', 'success');
+                    showNotification('✅ Login realizado!', 'success');
                 } else if (event === 'SIGNED_OUT') {
                     state.items = [];
                     state.showLogin = true;
@@ -185,77 +57,55 @@
                 showNotification('❌ Preencha email e senha', 'error');
                 return;
             }
-
             try {
                 state.loading = true;
                 render();
-                
-                const { error } = await supabase.auth.signInWithPassword({
-                    email: state.loginForm.email,
-                    password: state.loginForm.password
-                });
-                
+                const { error } = await supabase.auth.signInWithPassword(state.loginForm);
                 if (error) throw error;
-                
                 state.loginForm = { email: '', password: '' };
             } catch (error) {
                 state.loading = false;
                 render();
-                showNotification(`❌ Erro no login: ${error.message}`, 'error');
+                showNotification(`❌ Erro: ${error.message}`, 'error');
             }
         }
 
         // 📝 CADASTRO
         async function handleRegister() {
-            if (!state.registerForm.email || !state.registerForm.password || !state.registerForm.nome) {
+            if (!state.registerForm.email || !state.registerForm.password) {
                 showNotification('❌ Preencha todos os campos', 'error');
                 return;
             }
-
             if (state.registerForm.password !== state.registerForm.confirmPassword) {
                 showNotification('❌ Senhas não coincidem', 'error');
                 return;
             }
-
-            if (state.registerForm.password.length < 6) {
-                showNotification('❌ Senha deve ter pelo menos 6 caracteres', 'error');
-                return;
-            }
-
             try {
                 state.loading = true;
                 render();
-                
                 const { error } = await supabase.auth.signUp({
                     email: state.registerForm.email,
                     password: state.registerForm.password,
                     options: {
                         data: {
-                            nome: state.registerForm.nome,
-                            created_at: new Date()
+                            nome: state.registerForm.nome
                         }
                     }
                 });
-                
                 if (error) throw error;
-                
                 state.registerForm = { email: '', password: '', confirmPassword: '', nome: '' };
                 showNotification('✅ Cadastro realizado! Verifique seu email.', 'success');
             } catch (error) {
                 state.loading = false;
                 render();
-                showNotification(`❌ Erro no cadastro: ${error.message}`, 'error');
+                showNotification(`❌ Erro: ${error.message}`, 'error');
             }
         }
 
         // 🚪 LOGOUT
         async function handleLogout() {
-            try {
-                await supabase.auth.signOut();
-                showNotification('👋 Logout realizado', 'info');
-            } catch (error) {
-                showNotification(`❌ Erro no logout: ${error.message}`, 'error');
-            }
+            await supabase.auth.signOut();
+            showNotification('👋 Logout realizado', 'info');
         }
 
         // 📦 CARREGAR ITENS
@@ -267,67 +117,43 @@
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
-                
                 state.items = data || [];
                 render();
             } catch (error) {
-                console.error('Erro ao carregar itens:', error);
-                showNotification('❌ Erro ao carregar estoque', 'error');
+                showNotification('❌ Erro ao carregar itens: ' + error.message, 'error');
             }
         }
 
-        // 🔄 TEMPO REAL
-        function setupRealtimeSubscription() {
-            const subscription = supabase
-                .channel('public:items')
-                .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'items' }, 
-                    (payload) => {
-                        console.log('Mudança em tempo real:', payload);
-                        loadItems(); // Recarregar itens quando houver mudança
-                        showNotification('🔄 Estoque atualizado em tempo real!', 'info');
-                    }
-                )
-                .subscribe();
-        }
-
         // 💾 SALVAR ITEM
-        async function saveItem(itemData, isEdit = false) {
+        async function saveItem() {
+            if (!state.formData.codigo || !state.formData.nome || !state.formData.quantidade) {
+                showNotification('❌ Preencha código, nome e quantidade', 'error');
+                return;
+            }
+
             try {
-                if (isEdit) {
-                    const { error } = await supabase
-                        .from('items')
-                        .update({
-                            ...itemData,
-                            updated_at: new Date()
-                        })
-                        .eq('id', itemData.id);
-                    
-                    if (error) throw error;
-                } else {
-                    const { error } = await supabase
-                        .from('items')
-                        .insert([{
-                            ...itemData,
-                            user_id: state.user.id,
-                            user_email: state.user.email,
-                            created_at: new Date(),
-                            updated_at: new Date()
-                        }]);
-                    
-                    if (error) throw error;
-                }
+                const { error } = await supabase
+                    .from('items')
+                    .insert([{
+                        ...state.formData,
+                        user_id: state.user.id,
+                        user_email: state.user.email
+                    }]);
                 
-                return true;
+                if (error) throw error;
+                
+                closeModal();
+                loadItems();
+                showNotification('✅ Item adicionado!', 'success');
             } catch (error) {
-                console.error('Erro ao salvar item:', error);
-                showNotification('❌ Erro ao salvar item', 'error');
-                return false;
+                showNotification('❌ Erro ao salvar: ' + error.message, 'error');
             }
         }
 
         // 🗑️ EXCLUIR ITEM
         async function deleteItem(itemId) {
+            if (!confirm('Tem certeza que deseja excluir este item?')) return;
+            
             try {
                 const { error } = await supabase
                     .from('items')
@@ -335,111 +161,37 @@
                     .eq('id', itemId);
                 
                 if (error) throw error;
-                return true;
-            } catch (error) {
-                console.error('Erro ao excluir item:', error);
-                showNotification('❌ Erro ao excluir item', 'error');
-                return false;
-            }
-        }
-
-        // 🔄 FUNÇÕES PRINCIPAIS
-        async function handleSubmit() {
-            if (!state.formData.codigo || !state.formData.nome || !state.formData.quantidade) {
-                showNotification('❌ Preencha os campos obrigatórios', 'error');
-                return;
-            }
-
-            const success = await saveItem(state.formData, !!state.editingItem);
-            
-            if (success) {
-                closeModal();
-                showNotification(
-                    state.editingItem ? '✅ Item atualizado!' : '✅ Item adicionado!',
-                    'success'
-                );
-            }
-        }
-
-        async function handleDelete(itemId) {
-            if (confirm('Tem certeza que deseja excluir este item?')) {
-                const success = await deleteItem(itemId);
-                if (success) {
-                    showNotification('✅ Item excluído!', 'success');
+                
                 loadItems();
-                render();
                 showNotification('✅ Item excluído!', 'success');
-                }
+            } catch (error) {
+                showNotification('❌ Erro ao excluir: ' + error.message, 'error');
             }
         }
 
-        // 📤 EXPORTAR EXCEL
-        function exportToExcel() {
-            const exportData = state.items.map(item => ({
-                'Código': item.codigo,
-                'Nome': item.nome,
-                'Descrição': item.descricao,
-                'Quantidade': item.quantidade,
-                'Status': getStatusInfo(item.status).label,
-                'Categoria': item.categoria,
-                'Preço': item.preco,
-                'Localização': item.localizacao,
-                'Criado por': item.user_email,
-                'Data Entrada': formatDate(item.created_at)
-            }));
+        function showNotification(message, type = 'info') {
+            // Criar notificação simples
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${
+                type === 'error' ? 'bg-red-500' : 
+                type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            } text-white px-6 py-3 rounded-lg shadow-lg z-50`;
             
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
-            XLSX.writeFile(wb, `estoque_${new Date().toISOString().split('T')[0]}.xlsx`);
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 4000);
         }
 
-        // 🎯 FUNÇÕES AUXILIARES
-        function getStatusInfo(status) {
-            return statusOptions.find(opt => opt.value === status);
-        }
-
-        function getTotalByStatus(status) {
-            return state.items.filter(item => item.status === status).length;
-        }
-
-        function formatDate(dateString) {
-            if (!dateString) return '-';
-            return new Date(dateString).toLocaleString('pt-BR');
-        }
-
-        function getFilteredItems() {
-            return state.items.filter(item => {
-                const matchesSearch = 
-                    item.nome.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                    item.codigo.toLowerCase().includes(state.searchTerm.toLowerCase());
-                const matchesFilter = state.filterStatus === 'todos' || item.status === state.filterStatus;
-                const matchesCategory = state.filterCategory === 'todas' || item.categoria === state.filterCategory;
-                return matchesSearch && matchesFilter && matchesCategory;
-            });
-        }
-
-        function toggleDarkMode() {
-            state.darkMode = !state.darkMode;
-            document.documentElement.classList.toggle('dark');
-            render();
-        }
-
-        function openModal(item = null) {
+        function openModal() {
             if (!state.user) {
                 showNotification('❌ Faça login para adicionar itens', 'error');
                 return;
-            }
-
-            if (item) {
-                state.editingItem = item;
-                state.formData = {...item};
-            } else {
-                state.editingItem = null;
-                state.formData = {
-                    codigo: '', nome: '', descricao: '', quantidade: '', status: 'venda',
-                    localizacao: '', observacoes: '', categoria: '', tags: '', preco: ''
-                };
             }
             state.showModal = true;
             render();
@@ -447,49 +199,21 @@
 
         function closeModal() {
             state.showModal = false;
-            state.editingItem = null;
+            state.formData = {
+                codigo: '', nome: '', descricao: '', quantidade: '', status: 'venda',
+                localizacao: '', observacoes: '', categoria: '', preco: ''
+            };
             render();
-        }
-
-        function showNotification(message, type = 'info') {
-            const toast = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-red-500' : 
-                           type === 'success' ? 'bg-green-500' : 'bg-blue-500';
-            
-            toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-xl shadow-2xl z-50 toast-notification max-w-sm`;
-            toast.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <span class="text-lg">${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
-                    <span class="text-sm font-medium">${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-            `;
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 5000);
         }
 
         // 🎯 RENDERIZAÇÃO
         function render() {
-            const filteredItems = getFilteredItems();
-            const isDark = state.darkMode;
-
             if (state.loading) {
                 document.getElementById('app').innerHTML = `
                     <div class="min-h-screen flex items-center justify-center">
                         <div class="text-center">
-                            <div class="loading-spinner w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="${isDark ? 'text-gray-300' : 'text-gray-600'}">Carregando...</p>
+                            <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
+                            <p class="text-gray-600">Carregando...</p>
                         </div>
                     </div>
                 `;
@@ -498,38 +222,30 @@
 
             if (!state.user) {
                 document.getElementById('app').innerHTML = `
-                    <div class="min-h-screen flex items-center justify-center p-4">
-                        <div class="glass-effect rounded-3xl shadow-2xl p-8 max-w-md w-full">
+                    <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-purple-50">
+                        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
                             <div class="text-center mb-8">
-                                <div class="p-4 rounded-2xl gradient-bg shadow-lg inline-block mb-4">
-                                    <div class="text-white">${icons.package}</div>
+                                <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <span class="text-white text-2xl">📦</span>
                                 </div>
-                                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                                    Controle de Estoque
-                                </h1>
-                                <p class="${isDark ? 'text-gray-400' : 'text-gray-600'}">Sistema em nuvem gratuito</p>
+                                <h1 class="text-3xl font-bold text-gray-800 mb-2">Controle de Estoque</h1>
+                                <p class="text-gray-600">Sistema em nuvem gratuito</p>
                             </div>
 
                             ${state.showLogin ? `
-                                <!-- Login Form -->
+                                <!-- LOGIN -->
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2">Email</label>
-                                        <input type="email" 
-                                            value="${state.loginForm.email}"
+                                        <input type="email" placeholder="Email" value="${state.loginForm.email}"
                                             oninput="state.loginForm.email = this.value"
-                                            class="w-full px-4 py-3 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="seu@email.com">
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2">Senha</label>
-                                        <input type="password" 
-                                            value="${state.loginForm.password}"
+                                        <input type="password" placeholder="Senha" value="${state.loginForm.password}"
                                             oninput="state.loginForm.password = this.value"
-                                            class="w-full px-4 py-3 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="Sua senha">
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                     </div>
-                                    <button onclick="handleLogin()" class="w-full btn-gradient text-white py-3 rounded-xl font-semibold shadow-lg hover:scale-105 transition-transform">
+                                    <button onclick="handleLogin()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors">
                                         Entrar
                                     </button>
                                     <div class="text-center">
@@ -539,41 +255,29 @@
                                     </div>
                                 </div>
                             ` : `
-                                <!-- Register Form -->
+                                <!-- CADASTRO -->
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2">Nome Completo</label>
-                                        <input type="text" 
-                                            value="${state.registerForm.nome}"
+                                        <input type="text" placeholder="Nome completo" value="${state.registerForm.nome}"
                                             oninput="state.registerForm.nome = this.value"
-                                            class="w-full px-4 py-3 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="Seu nome">
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2">Email</label>
-                                        <input type="email" 
-                                            value="${state.registerForm.email}"
+                                        <input type="email" placeholder="Email" value="${state.registerForm.email}"
                                             oninput="state.registerForm.email = this.value"
-                                            class="w-full px-4 py-3 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="seu@email.com">
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2">Senha</label>
-                                        <input type="password" 
-                                            value="${state.registerForm.password}"
+                                        <input type="password" placeholder="Senha (mín. 6 caracteres)" value="${state.registerForm.password}"
                                             oninput="state.registerForm.password = this.value"
-                                            class="w-full px-4 py-3 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="Mínimo 6 caracteres">
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2">Confirmar Senha</label>
-                                        <input type="password" 
-                                            value="${state.registerForm.confirmPassword}"
+                                        <input type="password" placeholder="Confirmar senha" value="${state.registerForm.confirmPassword}"
                                             oninput="state.registerForm.confirmPassword = this.value"
-                                            class="w-full px-4 py-3 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="Digite novamente">
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                     </div>
-                                    <button onclick="handleRegister()" class="w-full btn-gradient text-white py-3 rounded-xl font-semibold shadow-lg hover:scale-105 transition-transform">
+                                    <button onclick="handleRegister()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors">
                                         Cadastrar
                                     </button>
                                     <div class="text-center">
@@ -589,244 +293,125 @@
                 return;
             }
 
-            // USUÁRIO LOGADO - MOSTRAR SISTEMA
+            // USUÁRIO LOGADO
             document.getElementById('app').innerHTML = `
-                <div class="min-h-screen p-4 md:p-8 animate-fade-in">
-                    <div class="max-w-7xl mx-auto">
-                        <!-- Header -->
-                        <div class="glass-effect rounded-3xl shadow-2xl p-6 md:p-8 mb-8 card-hover">
-                            <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div class="min-h-screen p-4 bg-gray-50">
+                    <div class="max-w-6xl mx-auto">
+                        <!-- HEADER -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div class="flex items-center gap-4">
-                                    <div class="p-4 rounded-2xl gradient-bg shadow-lg">
-                                        <div class="text-white">${icons.package}</div>
+                                    <div class="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
+                                        <span class="text-white text-xl">📦</span>
                                     </div>
                                     <div>
-                                        <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                                            Controle de Estoque
-                                        </h1>
-                                        <p class="${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mt-1">Supabase • ${state.user.email}</p>
+                                        <h1 class="text-2xl font-bold text-gray-800">Controle de Estoque</h1>
+                                        <p class="text-gray-600">${state.user.email}</p>
                                     </div>
-                                </div>
-                                
-                                <!-- User Info -->
-                                <div class="flex flex-col items-end gap-2">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex items-center gap-2 text-green-600">
-                                            <div class="relative">
-                                                <div class="w-3 h-3 bg-green-500 rounded-full online-indicator"></div>
-                                            </div>
-                                            <span class="text-sm font-medium">Online</span>
-                                        </div>
-                                        <div class="flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}">
-                                            ${icons.database}
-                                            <span class="text-sm">Supabase</span>
-                                        </div>
-                                        <button onclick="handleLogout()" class="bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl hover:shadow-lg transition-all flex items-center gap-2 text-sm">
-                                            ${icons.logout} Sair
-                                        </button>
-                                    </div>
-                                    <div class="text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">
-                                        ${state.items.length} itens no estoque
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cards de Estatísticas -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                            ${statusOptions.map(opt => `
-                                <div class="glass-effect rounded-2xl p-6 card-hover cursor-pointer group">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <div class="text-3xl">${opt.icon}</div>
-                                        <div class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'} group-hover:scale-110 transition-transform">
-                                            ${getTotalByStatus(opt.value)}
-                                        </div>
-                                    </div>
-                                    <div class="text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-2">${opt.label}</div>
-                                    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div class="${opt.color.split(' ')[0]} h-full rounded-full transition-all duration-500" style="width: ${state.items.length > 0 ? (getTotalByStatus(opt.value) / state.items.length * 100) : 0}%"></div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-
-                        <!-- Filtros e Busca -->
-                        <div class="glass-effect rounded-2xl p-6 mb-6 shadow-xl">
-                            <div class="flex flex-col lg:flex-row gap-4">
-                                <div class="flex-1 relative group">
-                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500">${icons.search}</div>
-                                    <input type="text" placeholder="🔍 Buscar itens por código ou nome..."
-                                        value="${state.searchTerm}"
-                                        oninput="state.searchTerm = this.value; render()"
-                                        class="w-full pl-12 pr-4 py-3.5 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all text-sm font-medium">
                                 </div>
                                 <div class="flex gap-3">
-                                    <select onchange="state.filterStatus = this.value; render()" class="px-4 py-3.5 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium text-sm cursor-pointer">
-                                        <option value="todos">📊 Todos Status</option>
-                                        ${statusOptions.map(opt => `<option value="${opt.value}" ${state.filterStatus === opt.value ? 'selected' : ''}>${opt.icon} ${opt.label}</option>`).join('')}
-                                    </select>
-                                    <select onchange="state.filterCategory = this.value; render()" class="px-4 py-3.5 border-2 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium text-sm cursor-pointer">
-                                        <option value="todas">🏷️ Todas Categorias</option>
-                                        ${categories.map(cat => `<option value="${cat}" ${state.filterCategory === cat ? 'selected' : ''}>${cat}</option>`).join('')}
-                                    </select>
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                        ${state.items.length} itens
+                                    </span>
+                                    <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors">
+                                        Sair
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Tabela -->
-                        <div class="glass-effect rounded-2xl overflow-hidden shadow-2xl">
-                            <div class="overflow-x-auto">
-                                <table class="w-full">
-                                    <thead>
-                                        <tr class="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Código</th>
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Nome</th>
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Categoria</th>
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Qtd</th>
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Preço</th>
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
-                                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="${isDark ? 'divide-gray-700' : 'divide-gray-100'} divide-y">
-                                        ${filteredItems.length === 0 ? `
+                        <!-- BOTÃO ADICIONAR -->
+                        <div class="mb-6">
+                            <button onclick="openModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                                + Adicionar Produto
+                            </button>
+                        </div>
+
+                        <!-- LISTA DE ITENS -->
+                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                            ${state.items.length === 0 ? `
+                                <div class="text-center py-12">
+                                    <div class="text-6xl mb-4">📦</div>
+                                    <h3 class="text-xl font-semibold text-gray-600 mb-2">Nenhum item cadastrado</h3>
+                                    <p class="text-gray-500">Comece adicionando seu primeiro produto!</p>
+                                </div>
+                            ` : `
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50">
                                             <tr>
-                                                <td colspan="7" class="px-6 py-16 text-center">
-                                                    <div class="flex flex-col items-center justify-center">
-                                                        <div class="text-6xl mb-4">📦</div>
-                                                        <p class="text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-2">Nenhum item encontrado</p>
-                                                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">Adicione seu primeiro produto!</p>
-                                                    </div>
-                                                </td>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                             </tr>
-                                        ` : filteredItems.map(item => {
-                                            const statusInfo = getStatusInfo(item.status);
-                                            return `
-                                                <tr class="table-row-hover">
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200">
+                                            ${state.items.map(item => `
+                                                <tr class="hover:bg-gray-50">
                                                     <td class="px-6 py-4">
-                                                        <div class="text-sm font-bold ${isDark ? 'text-purple-400' : 'text-purple-600'}">${item.codigo}</div>
-                                                        <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">Por: ${item.user_email}</div>
+                                                        <div class="text-sm font-medium text-gray-900">${item.codigo}</div>
                                                     </td>
                                                     <td class="px-6 py-4">
-                                                        <div class="text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">${item.nome}</div>
-                                                        <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">${item.descricao || ''}</div>
+                                                        <div class="text-sm font-medium text-gray-900">${item.nome}</div>
+                                                        <div class="text-sm text-gray-500">${item.categoria || 'Sem categoria'}</div>
                                                     </td>
                                                     <td class="px-6 py-4">
-                                                        <span class="px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}">${item.categoria || '-'}</span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <span class="px-3 py-1 rounded-lg text-sm font-bold ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}">${item.quantidade}</span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-bold ${isDark ? 'text-green-400' : 'text-green-600'}">${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}</div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <span class="${statusInfo.color} px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                                                            <span>${statusInfo.icon}</span>
-                                                            <span>${statusInfo.label}</span>
+                                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                                            ${item.quantidade}
                                                         </span>
                                                     </td>
                                                     <td class="px-6 py-4">
-                                                        <div class="flex gap-1">
-                                                            <button onclick='openModal(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="p-1.5 rounded-lg ${isDark ? 'bg-blue-900 text-blue-300 hover:bg-blue-800' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'} transition-all" title="Editar">
-                                                                ${icons.edit}
-                                                            </button>
-                                                            <button onclick="handleDelete('${item.id}')" class="p-1.5 rounded-lg ${isDark ? 'bg-red-900 text-red-300 hover:bg-red-800' : 'bg-red-100 text-red-600 hover:bg-red-200'} transition-all" title="Excluir">
-                                                                ${icons.trash}
-                                                            </button>
-                                                        </div>
+                                                        <div class="text-sm text-gray-900">${item.preco ? 'R$ ' + item.preco : '-'}</div>
+                                                    </td>
+                                                    <td class="px-6 py-4">
+                                                        <button onclick="deleteItem('${item.id}')" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                                            Excluir
+                                                        </button>
                                                     </td>
                                                 </tr>
-                                            `;
-                                        }).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Botões de Ação -->
-                        <div class="flex flex-wrap gap-3 justify-center mt-6">
-                            <button onclick="exportToExcel()" class="gradient-bg-green text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 text-sm font-medium">
-                                ${icons.cloud} Exportar Excel
-                            </button>
-                            <button onclick="openModal()" class="btn-gradient text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
-                                ${icons.plus} Adicionar Produto
-                            </button>
-                            <button onclick="toggleDarkMode()" class="${isDark ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600'} text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 text-sm font-medium">
-                                ${isDark ? icons.sun : icons.moon} ${isDark ? 'Claro' : 'Escuro'}
-                            </button>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `}
                         </div>
                     </div>
                 </div>
 
-                <!-- Modal -->
+                <!-- MODAL -->
                 ${state.showModal ? `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-                        <div class="glass-effect rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                            <div class="gradient-bg px-6 py-4 flex items-center justify-between">
-                                <h2 class="text-xl font-bold text-white">
-                                    ${state.editingItem ? 'Editar Produto' : 'Novo Produto'}
-                                </h2>
-                                <button onclick="closeModal()" class="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded-lg">
-                                    ${icons.x}
-                                </button>
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+                            <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
+                                <h2 class="text-xl font-bold">Adicionar Produto</h2>
                             </div>
-                            <div class="p-6">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Código *</label>
-                                        <input type="text" value="${state.formData.codigo}" 
-                                            oninput="state.formData.codigo = this.value"
-                                            class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Nome *</label>
-                                        <input type="text" value="${state.formData.nome}"
-                                            oninput="state.formData.nome = this.value"
-                                            class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                    </div>
+                            <div class="p-6 space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+                                    <input type="text" value="${state.formData.codigo}" 
+                                        oninput="state.formData.codigo = this.value"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Quantidade *</label>
-                                        <input type="number" value="${state.formData.quantidade}"
-                                            oninput="state.formData.quantidade = this.value"
-                                            class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Preço</label>
-                                        <input type="number" step="0.01" value="${state.formData.preco}"
-                                            oninput="state.formData.preco = this.value"
-                                            class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                    </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                                    <input type="text" value="${state.formData.nome}"
+                                        oninput="state.formData.nome = this.value"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                 </div>
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Descrição</label>
-                                    <input type="text" value="${state.formData.descricao}"
-                                        oninput="state.formData.descricao = this.value"
-                                        class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Categoria</label>
-                                        <select onchange="state.formData.categoria = this.value" class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                            <option value="">Selecione...</option>
-                                            ${categories.map(cat => `<option value="${cat}" ${state.formData.categoria === cat ? 'selected' : ''}>${cat}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1">Status</label>
-                                        <select onchange="state.formData.status = this.value" class="w-full px-3 py-2 border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} rounded-lg">
-                                            ${statusOptions.map(opt => `<option value="${opt.value}" ${state.formData.status === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
-                                        </select>
-                                    </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
+                                    <input type="number" value="${state.formData.quantidade}"
+                                        oninput="state.formData.quantidade = this.value"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                 </div>
                                 <div class="flex gap-3 justify-end pt-4">
                                     <button onclick="closeModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                                         Cancelar
                                     </button>
-                                    <button onclick="handleSubmit()" class="btn-gradient text-white px-6 py-2 rounded-lg font-medium">
-                                        ${state.editingItem ? 'Salvar' : 'Adicionar'}
+                                    <button onclick="saveItem()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium">
+                                        Salvar
                                     </button>
                                 </div>
                             </div>
@@ -836,7 +421,7 @@
             `;
         }
 
-        // 🚀 INICIALIZAR
+        // 🚀 INICIAR
         initAuth();
     </script>
 </body>
