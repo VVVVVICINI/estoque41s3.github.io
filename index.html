@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
     <style>
+        /* Seus estilos existentes permanecem iguais */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
         * {
@@ -177,6 +178,89 @@
             { value: 'separado', label: 'Separado p/ Entrega', color: 'bg-gradient-to-r from-orange-400 to-red-500 text-white', icon: '📦' }
         ];
 
+        // Funções para compartilhar estoque via URL
+        function compartilharEstoque() {
+            const dadosCompartilhados = {
+                items: state.items,
+                timestamp: new Date().toISOString()
+            };
+            
+            const dadosCodificados = btoa(JSON.stringify(dadosCompartilhados));
+            const urlCompartilhada = window.location.origin + window.location.pathname + '?estoque=' + encodeURIComponent(dadosCodificados);
+            
+            // Copiar para área de transferência
+            navigator.clipboard.writeText(urlCompartilhada).then(() => {
+                alert('✅ Link de compartilhamento copiado! Cole e envie para outras pessoas.');
+            }).catch(() => {
+                // Fallback para navegadores mais antigos
+                prompt('📋 Copie este link para compartilhar:', urlCompartilhada);
+            });
+        }
+
+        function carregarEstoqueCompartilhado() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const estoqueCompartilhado = urlParams.get('estoque');
+            
+            if (estoqueCompartilhado) {
+                try {
+                    const dadosDecodificados = JSON.parse(atob(estoqueCompartilhado));
+                    
+                    if (confirm('📦 Deseja carregar o estoque compartilhado? Isso substituirá seu estoque atual.')) {
+                        state.items = dadosDecodificados.items;
+                        saveData();
+                        render();
+                        
+                        // Limpar parâmetro da URL sem recarregar a página
+                        window.history.replaceState({}, '', window.location.pathname);
+                        
+                        alert(`✅ Estoque carregado com sucesso! ${state.items.length} itens importados.`);
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar estoque compartilhado:', error);
+                    alert('❌ Erro ao carregar estoque compartilhado. O link pode estar corrompido.');
+                }
+            }
+        }
+
+        // Função para exportar dados como arquivo
+        function exportarParaArquivo() {
+            const dados = {
+                items: state.items,
+                exportDate: new Date().toISOString(),
+                totalItems: state.items.length
+            };
+            
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `estoque_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Função para importar de arquivo
+        function importarDeArquivo(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const dados = JSON.parse(event.target.result);
+                        if (confirm(`📦 Deseja importar ${dados.items.length} itens do arquivo?`)) {
+                            state.items = dados.items;
+                            saveData();
+                            render();
+                            alert('✅ Estoque importado com sucesso!');
+                        }
+                    } catch (error) {
+                        alert('❌ Erro ao importar arquivo. Verifique se é um arquivo válido.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
         function loadData() {
             const saved = localStorage.getItem('inventoryItems');
             const savedDarkMode = localStorage.getItem('darkMode');
@@ -185,6 +269,9 @@
                 state.darkMode = JSON.parse(savedDarkMode);
                 if (state.darkMode) document.documentElement.classList.add('dark');
             }
+            
+            // ✅ Carregar estoque compartilhado automaticamente
+            carregarEstoqueCompartilhado();
         }
 
         function saveData() {
@@ -402,6 +489,19 @@
                                         ${icons.upload} Importar
                                     </button>
                                     <input type="file" id="importFile" accept=".xlsx,.xls,.csv" onchange="importFromFile(event)" class="hidden">
+                                    
+                                    <!-- Botões de Compartilhamento -->
+                                    <button onclick="compartilharEstoque()" class="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 text-sm font-medium">
+                                        ${icons.upload} Compartilhar
+                                    </button>
+                                    <button onclick="exportarParaArquivo()" class="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 text-sm font-medium">
+                                        ${icons.download} Exportar
+                                    </button>
+                                    <button onclick="document.getElementById('importBackup').click()" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 text-sm font-medium">
+                                        ${icons.upload} Importar
+                                    </button>
+                                    <input type="file" id="importBackup" accept=".json" onchange="importarDeArquivo(event)" class="hidden">
+                                    
                                     <button onclick="printList()" class="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 text-sm font-medium">
                                         ${icons.printer} Imprimir
                                     </button>
@@ -412,6 +512,7 @@
                             </div>
                         </div>
 
+                        <!-- Resto do código permanece igual -->
                         <!-- Cards de Estatísticas -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                             ${statusOptions.map(opt => `
