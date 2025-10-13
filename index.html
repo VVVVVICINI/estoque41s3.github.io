@@ -6,6 +6,9 @@
     <title>Controle de Estoque - 41º S3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .loading-spinner {
             animation: spin 1s linear infinite;
@@ -21,9 +24,30 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .dark-mode {
+            background: #1f2937;
+            color: #f9fafb;
+        }
+        .dark-card {
+            background: #374151;
+            color: #f9fafb;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .print-table th, .print-table td {
+                border: 1px solid #000;
+                padding: 8px;
+            }
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 transition-colors duration-300" id="body">
     <div id="app"></div>
 
     <script>
@@ -40,6 +64,7 @@
             loading: true,
             showLogin: true,
             showModal: false,
+            showEditModal: false,
             loginLoading: false,
             registerLoading: false,
             loginForm: { email: '', password: '' },
@@ -50,13 +75,30 @@
                 quantidade: '1', 
                 categoria: '', 
                 preco: '',
-                status: 'venda'
+                status: 'venda',
+                localizacao: '',
+                observacoes: '',
+                tags: '',
+                data_entrada: new Date().toISOString().split('T')[0],
+                foto: null
             },
+            editingItem: null,
             searchTerm: '',
-            filterCategory: 'todas'
+            filterCategory: 'todas',
+            filterStatus: 'todos',
+            darkMode: false,
+            showBarcodeModal: false,
+            barcodeItem: null
         };
 
         const categories = ['Eletrônicos', 'Eletrodomésticos', 'Informática', 'Telefonia', 'Áudio e Vídeo', 'Games', 'Acessórios', 'Outros'];
+        const statusOptions = [
+            { value: 'venda', label: 'Disponível para Venda', color: 'green', emoji: '🟢' },
+            { value: 'assistencia', label: 'Assistência Técnica', color: 'yellow', emoji: '🟡' },
+            { value: 'mostruario', label: 'Mostruário', color: 'blue', emoji: '🔵' },
+            { value: 'uso_loja', label: 'Uso da Loja', color: 'purple', emoji: '🟣' },
+            { value: 'separado', label: 'Separado p/ Entrega/Recolhimento', color: 'orange', emoji: '🟠' }
+        ];
 
         // 🔐 SISTEMA DE AUTENTICAÇÃO
         async function initAuth() {
@@ -245,7 +287,7 @@
             }
         }
 
-        // 💾 SALVAR ITEM - AGORA RECARREGA A PÁGINA
+        // 💾 SALVAR ITEM
         async function saveItem() {
             if (!state.currentItem.codigo || !state.currentItem.nome) {
                 showNotification('❌ Preencha código e nome do produto', 'error');
@@ -254,28 +296,51 @@
             
             try {
                 console.log('💾 Salvando item...');
+                
+                // Upload da foto se existir
+                let foto_url = null;
+                if (state.currentItem.foto) {
+                    const fileExt = state.currentItem.foto.name.split('.').pop();
+                    const fileName = `${state.currentItem.codigo}_${Date.now()}.${fileExt}`;
+                    
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('product-images')
+                        .upload(fileName, state.currentItem.foto);
+                    
+                    if (uploadError) throw uploadError;
+                    
+                    const { data: urlData } = supabase.storage
+                        .from('product-images')
+                        .getPublicUrl(fileName);
+                    
+                    foto_url = urlData.publicUrl;
+                }
+                
+                const itemData = {
+                    ...state.currentItem,
+                    user_id: state.user.id,
+                    user_email: state.user.email,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    foto_url: foto_url
+                };
+                
+                delete itemData.foto; // Remover o arquivo do objeto
+                
                 const { data, error } = await supabase
                     .from('items')
-                    .insert([{
-                        ...state.currentItem,
-                        user_id: state.user.id,
-                        user_email: state.user.email,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }]);
+                    .insert([itemData]);
                 
                 if (error) {
                     console.error('❌ Erro ao salvar item:', error);
                     throw error;
                 }
                 
-                console.log('✅ Item salvo com sucesso - RECARREGANDO PÁGINA');
-                showNotification('✅ Produto adicionado! Recarregando...', 'success');
+                console.log('✅ Item salvo com sucesso');
+                showNotification('✅ Produto adicionado com sucesso!', 'success');
                 
-                // 🔄 RECARREGAR A PÁGINA COMPLETAMENTE
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                await loadItems();
+                closeModal();
                 
             } catch (error) {
                 console.error('❌ Erro completo ao salvar:', error);
@@ -283,7 +348,67 @@
             }
         }
 
-        // 🗑️ EXCLUIR ITEM - TAMBÉM RECARREGA
+        // ✏️ EDITAR ITEM
+        async function updateItem() {
+            if (!state.editingItem.codigo || !state.editingItem.nome) {
+                showNotification('❌ Preencha código e nome do produto', 'error');
+                return;
+            }
+            
+            try {
+                console.log('✏️ Atualizando item...');
+                
+                // Upload da nova foto se existir
+                let foto_url = state.editingItem.foto_url;
+                if (state.editingItem.foto) {
+                    const fileExt = state.editingItem.foto.name.split('.').pop();
+                    const fileName = `${state.editingItem.codigo}_${Date.now()}.${fileExt}`;
+                    
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('product-images')
+                        .upload(fileName, state.editingItem.foto);
+                    
+                    if (uploadError) throw uploadError;
+                    
+                    const { data: urlData } = supabase.storage
+                        .from('product-images')
+                        .getPublicUrl(fileName);
+                    
+                    foto_url = urlData.publicUrl;
+                }
+                
+                const itemData = {
+                    ...state.editingItem,
+                    updated_at: new Date().toISOString(),
+                    foto_url: foto_url
+                };
+                
+                delete itemData.foto; // Remover o arquivo do objeto
+                delete itemData.id; // Não atualizar o ID
+                
+                const { data, error } = await supabase
+                    .from('items')
+                    .update(itemData)
+                    .eq('id', state.editingItem.id);
+                
+                if (error) {
+                    console.error('❌ Erro ao atualizar item:', error);
+                    throw error;
+                }
+                
+                console.log('✅ Item atualizado com sucesso');
+                showNotification('✅ Produto atualizado com sucesso!', 'success');
+                
+                await loadItems();
+                closeEditModal();
+                
+            } catch (error) {
+                console.error('❌ Erro completo ao atualizar:', error);
+                showNotification('❌ Erro ao atualizar: ' + error.message, 'error');
+            }
+        }
+
+        // 🗑️ EXCLUIR ITEM
         async function deleteItem(id) {
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
             
@@ -296,18 +421,265 @@
                 
                 if (error) throw error;
                 
-                console.log('✅ Item excluído - RECARREGANDO PÁGINA');
-                showNotification('✅ Produto excluído! Recarregando...', 'success');
+                console.log('✅ Item excluído');
+                showNotification('✅ Produto excluído!', 'success');
                 
-                // 🔄 RECARREGAR A PÁGINA COMPLETAMENTE
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                await loadItems();
                 
             } catch (error) {
                 console.error('❌ Erro ao excluir:', error);
                 showNotification('❌ Erro ao excluir', 'error');
             }
+        }
+
+        // 📤 EXPORTAR PARA EXCEL
+        function exportToExcel() {
+            const filteredItems = getFilteredItems();
+            const data = filteredItems.map(item => ({
+                'Código': item.codigo,
+                'Nome': item.nome,
+                'Categoria': item.categoria,
+                'Quantidade': item.quantidade,
+                'Preço': item.preco ? `R$ ${parseFloat(item.preco).toFixed(2)}` : '',
+                'Status': statusOptions.find(s => s.value === item.status)?.label || item.status,
+                'Localização': item.localizacao || '',
+                'Data Entrada': item.data_entrada || '',
+                'Última Atualização': item.updated_at ? new Date(item.updated_at).toLocaleDateString('pt-BR') : '',
+                'Observações': item.observacoes || '',
+                'Tags': item.tags || ''
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Estoque");
+            XLSX.writeFile(wb, `estoque_${new Date().toISOString().split('T')[0]}.xlsx`);
+            
+            showNotification('📊 Planilha exportada com sucesso!', 'success');
+        }
+
+        // 📥 IMPORTAR DO EXCEL/CSV
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    // Processar dados importados
+                    processImportedData(jsonData);
+                    
+                    // Limpar input
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('Erro ao importar arquivo:', error);
+                    showNotification('❌ Erro ao importar arquivo', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 🔄 PROCESSAR DADOS IMPORTADOS
+        async function processImportedData(data) {
+            try {
+                let importedCount = 0;
+                
+                for (const item of data) {
+                    // Mapear colunas do Excel para o formato do sistema
+                    const mappedItem = {
+                        codigo: item.Código || item.codigo || '',
+                        nome: item.Nome || item.nome || '',
+                        categoria: item.Categoria || item.categoria || '',
+                        quantidade: item.Quantidade || item.quantidade || '1',
+                        preco: item.Preço ? parseFloat(item.Preço.toString().replace('R$', '').replace(',', '.').trim()) : 
+                              item.preco ? parseFloat(item.preco) : '',
+                        status: mapStatus(item.Status || item.status) || 'venda',
+                        localizacao: item.Localização || item.localizacao || '',
+                        data_entrada: item['Data Entrada'] || item.data_entrada || new Date().toISOString().split('T')[0],
+                        observacoes: item.Observações || item.observacoes || '',
+                        tags: item.Tags || item.tags || '',
+                        user_id: state.user.id,
+                        user_email: state.user.email,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    // Verificar se item já existe
+                    const { data: existingItem } = await supabase
+                        .from('items')
+                        .select('id')
+                        .eq('codigo', mappedItem.codigo)
+                        .single();
+                    
+                    if (existingItem) {
+                        // Atualizar item existente
+                        await supabase
+                            .from('items')
+                            .update(mappedItem)
+                            .eq('id', existingItem.id);
+                    } else {
+                        // Inserir novo item
+                        await supabase
+                            .from('items')
+                            .insert([mappedItem]);
+                    }
+                    
+                    importedCount++;
+                }
+                
+                showNotification(`✅ ${importedCount} itens importados com sucesso!`, 'success');
+                await loadItems();
+                
+            } catch (error) {
+                console.error('Erro ao processar dados importados:', error);
+                showNotification('❌ Erro ao importar dados', 'error');
+            }
+        }
+
+        // 🗺️ MAPEAR STATUS
+        function mapStatus(statusStr) {
+            if (!statusStr) return 'venda';
+            
+            const statusMap = {
+                'disponível para venda': 'venda',
+                'assistência técnica': 'assistencia',
+                'mostruário': 'mostruario',
+                'uso da loja': 'uso_loja',
+                'separado p/ entrega/recolhimento': 'separado'
+            };
+            
+            return statusMap[statusStr.toLowerCase()] || 'venda';
+        }
+
+        // 🖨️ IMPRIMIR LISTA
+        function printList() {
+            const filteredItems = getFilteredItems();
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Lista de Estoque - ${new Date().toLocaleDateString('pt-BR')}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { text-align: center; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                        .status-badge { padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Lista de Estoque - ${new Date().toLocaleDateString('pt-BR')}</h1>
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nome</th>
+                                <th>Categoria</th>
+                                <th>Quantidade</th>
+                                <th>Preço</th>
+                                <th>Status</th>
+                                <th>Localização</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredItems.map(item => {
+                                const statusInfo = statusOptions.find(s => s.value === item.status);
+                                return `
+                                    <tr>
+                                        <td>${item.codigo}</td>
+                                        <td>${item.nome}</td>
+                                        <td>${item.categoria || '-'}</td>
+                                        <td>${item.quantidade}</td>
+                                        <td>${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}</td>
+                                        <td>
+                                            <span class="status-badge" style="background-color: ${getStatusColor(statusInfo.color)}; color: white;">
+                                                ${statusInfo.emoji} ${statusInfo.label}
+                                            </span>
+                                        </td>
+                                        <td>${item.localizacao || '-'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 20px; text-align: center;">
+                        Total de itens: ${filteredItems.length}
+                    </p>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // 🏷️ IMPRIMIR ETIQUETAS
+        function printLabels() {
+            const filteredItems = getFilteredItems();
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Etiquetas de Estoque - ${new Date().toLocaleDateString('pt-BR')}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 10px; }
+                        .labels-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+                        .label { border: 1px solid #000; padding: 10px; page-break-inside: avoid; }
+                        .label-header { text-align: center; font-weight: bold; margin-bottom: 5px; }
+                        .barcode { text-align: center; margin: 5px 0; }
+                        .label-info { font-size: 12px; }
+                        @media print {
+                            .label { border: 1px solid #000 !important; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1 style="text-align: center; margin-bottom: 20px;">Etiquetas de Estoque</h1>
+                    <div class="labels-container">
+                        ${filteredItems.map(item => `
+                            <div class="label">
+                                <div class="label-header">${item.codigo}</div>
+                                <div class="barcode">
+                                    <svg id="barcode-${item.id}"></svg>
+                                </div>
+                                <div class="label-info">
+                                    <div><strong>${item.nome}</strong></div>
+                                    <div>Qtd: ${item.quantidade}</div>
+                                    ${item.preco ? `<div>R$ ${parseFloat(item.preco).toFixed(2)}</div>` : ''}
+                                    ${item.localizacao ? `<div>Local: ${item.localizacao}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+                    <script>
+                        window.onload = function() {
+                            ${filteredItems.map(item => `
+                                JsBarcode("#barcode-${item.id}", "${item.codigo}", {
+                                    format: "CODE128",
+                                    lineColor: "#000",
+                                    width: 1,
+                                    height: 40,
+                                    displayValue: false
+                                });
+                            `).join('')}
+                        };
+                    </script>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.print();
         }
 
         // 🎯 FUNÇÕES AUXILIARES
@@ -351,18 +723,120 @@
                 quantidade: '1', 
                 categoria: '', 
                 preco: '',
-                status: 'venda'
+                status: 'venda',
+                localizacao: '',
+                observacoes: '',
+                tags: '',
+                data_entrada: new Date().toISOString().split('T')[0],
+                foto: null
             };
+            render();
+        }
+
+        function openEditModal(item) {
+            state.editingItem = { ...item, foto: null };
+            state.showEditModal = true;
+            render();
+        }
+
+        function closeEditModal() {
+            state.showEditModal = false;
+            state.editingItem = null;
+            render();
+        }
+
+        function openBarcodeModal(item) {
+            state.barcodeItem = item;
+            state.showBarcodeModal = true;
+            render();
+            
+            // Gerar código de barras após renderizar
+            setTimeout(() => {
+                if (document.getElementById('barcode-display')) {
+                    JsBarcode("#barcode-display", item.codigo, {
+                        format: "CODE128",
+                        lineColor: "#000",
+                        width: 2,
+                        height: 100,
+                        displayValue: true
+                    });
+                }
+                
+                // Gerar QR Code
+                if (document.getElementById('qrcode-display')) {
+                    const qrCanvas = document.getElementById('qrcode-display');
+                    const ctx = qrCanvas.getContext('2d');
+                    
+                    // Limpar canvas
+                    ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+                    
+                    // Gerar QR Code simples (em produção, use uma biblioteca dedicada)
+                    ctx.fillStyle = '#000';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(`Código: ${item.codigo}`, 10, 20);
+                    ctx.fillText(`Produto: ${item.nome}`, 10, 40);
+                    if (item.preco) {
+                        ctx.fillText(`Preço: R$ ${parseFloat(item.preco).toFixed(2)}`, 10, 60);
+                    }
+                }
+            }, 100);
+        }
+
+        function closeBarcodeModal() {
+            state.showBarcodeModal = false;
+            state.barcodeItem = null;
             render();
         }
 
         function getFilteredItems() {
             return state.items.filter(item => {
                 const matchesSearch = item.nome.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                                     item.codigo.toLowerCase().includes(state.searchTerm.toLowerCase());
+                                     item.codigo.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+                                     (item.tags && item.tags.toLowerCase().includes(state.searchTerm.toLowerCase()));
                 const matchesCategory = state.filterCategory === 'todas' || item.categoria === state.filterCategory;
-                return matchesSearch && matchesCategory;
+                const matchesStatus = state.filterStatus === 'todos' || item.status === state.filterStatus;
+                return matchesSearch && matchesCategory && matchesStatus;
             });
+        }
+
+        function getStatusColor(statusColor) {
+            const colorMap = {
+                'green': '#10b981',
+                'yellow': '#f59e0b',
+                'blue': '#3b82f6',
+                'purple': '#8b5cf6',
+                'orange': '#f97316'
+            };
+            return colorMap[statusColor] || '#6b7280';
+        }
+
+        function getStatusCount(status) {
+            return state.items.filter(item => item.status === status).length;
+        }
+
+        function toggleDarkMode() {
+            state.darkMode = !state.darkMode;
+            const body = document.getElementById('body');
+            if (state.darkMode) {
+                body.classList.add('dark-mode');
+                body.classList.remove('bg-gradient-to-br', 'from-blue-50', 'via-purple-50', 'to-pink-50');
+            } else {
+                body.classList.remove('dark-mode');
+                body.classList.add('bg-gradient-to-br', 'from-blue-50', 'via-purple-50', 'to-pink-50');
+            }
+            render();
+        }
+
+        function handleFileUpload(event, isEdit = false) {
+            const file = event.target.files[0];
+            if (file) {
+                if (isEdit) {
+                    state.editingItem.foto = file;
+                } else {
+                    state.currentItem.foto = file;
+                }
+                render();
+            }
         }
 
         // 🎨 RENDERIZAR
@@ -419,18 +893,18 @@
                                         ${state.loginLoading ? 'disabled' : ''}>
                                 </div>
                                 <button onclick="login()" 
-                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                                     ${state.loginLoading ? 'disabled' : ''}>
-                                    ${state.loginLoading ? `
-                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                        <span>Conectando...</span>
-                                    ` : 'Entrar no Sistema'}
+                                    ${state.loginLoading ? 
+                                        '<div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full mx-auto"></div>' : 
+                                        'Entrar'}
                                 </button>
-                                <div class="text-center">
-                                    <button onclick="state.showLogin = false; render()" class="text-purple-600 hover:text-purple-700 text-sm font-medium">
-                                        Primeira vez? Criar conta
+                                <p class="text-center text-gray-600">
+                                    Não tem conta? 
+                                    <button onclick="state.showLogin = false; render()" class="text-purple-600 hover:text-purple-700 font-semibold">
+                                        Cadastre-se
                                     </button>
-                                </div>
+                                </p>
                             </div>
                         ` : `
                             <!-- CADASTRO -->
@@ -443,32 +917,32 @@
                                         ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
-                                    <input type="email" placeholder="Seu melhor email" 
+                                    <input type="email" placeholder="Seu email" 
                                         value="${state.registerForm.email}"
                                         oninput="state.registerForm.email = this.value"
                                         class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
                                         ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
-                                    <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
+                                    <input type="password" placeholder="Sua senha (mín. 6 caracteres)" 
                                         value="${state.registerForm.password}"
                                         oninput="state.registerForm.password = this.value"
                                         class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
                                         ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <button onclick="register()" 
-                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                                     ${state.registerLoading ? 'disabled' : ''}>
-                                    ${state.registerLoading ? `
-                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                        <span>Criando conta...</span>
-                                    ` : 'Criar Minha Conta'}
+                                    ${state.registerLoading ? 
+                                        '<div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full mx-auto"></div>' : 
+                                        'Cadastrar'}
                                 </button>
-                                <div class="text-center">
-                                    <button onclick="state.showLogin = true; render()" class="text-purple-600 hover:text-purple-700 text-sm font-medium">
-                                        Já tem conta? Fazer login
+                                <p class="text-center text-gray-600">
+                                    Já tem conta? 
+                                    <button onclick="state.showLogin = true; render()" class="text-purple-600 hover:text-purple-700 font-semibold">
+                                        Fazer login
                                     </button>
-                                </div>
+                                </p>
                             </div>
                         `}
                     </div>
@@ -480,123 +954,216 @@
             const filteredItems = getFilteredItems();
             
             document.getElementById('app').innerHTML = `
-                <div class="min-h-screen p-4 fade-in">
-                    <div class="max-w-7xl mx-auto">
-                        <!-- CABEÇALHO -->
-                        <div class="bg-white rounded-3xl shadow-2xl p-6 mb-8">
-                            <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div class="min-h-screen transition-colors duration-300 ${state.darkMode ? 'dark-mode' : ''}">
+                    <!-- HEADER -->
+                    <header class="bg-white shadow-lg ${state.darkMode ? 'dark-card' : ''}">
+                        <div class="max-w-7xl mx-auto px-4 py-6">
+                            <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-4">
-                                    <div class="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-lg">
-                                        <span class="text-white text-2xl">📦</span>
+                                    <div class="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center">
+                                        <span class="text-white text-xl">📦</span>
                                     </div>
                                     <div>
-                                        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                        <h1 class="text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}">
                                             Controle de Estoque
                                         </h1>
-                                        <p class="text-gray-600 text-sm">41º S3 • ${state.user.email}</p>
+                                        <p class="${state.darkMode ? 'text-gray-300' : 'text-gray-600'}">41º S3 - Sistema em Tempo Real</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
-                                    <div class="text-right">
-                                        <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="text-sm text-gray-600">produtos</div>
-                                    </div>
-                                    <button onclick="logout()" class="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
-                                        Sair
+                                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg ${state.darkMode ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'} hover:opacity-80 transition-all">
+                                        ${state.darkMode ? '☀️' : '🌙'}
                                     </button>
+                                    <div class="text-right">
+                                        <p class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">${state.user.email}</p>
+                                        <button onclick="logout()" class="text-sm ${state.darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors">
+                                            Sair
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </header>
+
+                    <!-- DASHBOARD -->
+                    <div class="max-w-7xl mx-auto px-4 py-8">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+                            ${statusOptions.map(status => `
+                                <div class="bg-white rounded-2xl shadow-lg p-6 text-center transform hover:scale-105 transition-all ${state.darkMode ? 'dark-card' : ''}">
+                                    <div class="text-3xl mb-2">${status.emoji}</div>
+                                    <h3 class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} mb-1">${status.label}</h3>
+                                    <p class="text-2xl font-bold" style="color: ${getStatusColor(status.color)}">${getStatusCount(status.value)}</p>
+                                </div>
+                            `).join('')}
                         </div>
 
                         <!-- BARRA DE AÇÕES -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="flex flex-col lg:flex-row gap-4 items-center">
-                                <div class="flex-1">
-                                    <div class="relative">
-                                        <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-500">
-                                            🔍
-                                        </div>
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8 ${state.darkMode ? 'dark-card' : ''}">
+                            <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                                <div class="flex flex-col sm:flex-row gap-4 flex-1 w-full">
+                                    <!-- BUSCA -->
+                                    <div class="flex-1">
                                         <input type="text" 
-                                            placeholder="Buscar produtos..."
+                                            placeholder="🔍 Buscar por código, nome ou tags..."
                                             value="${state.searchTerm}"
                                             oninput="state.searchTerm = this.value; render()"
-                                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+                                    
+                                    <!-- FILTROS -->
+                                    <div class="flex gap-4">
+                                        <select onchange="state.filterCategory = this.value; render()" 
+                                            class="px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            <option value="todas">Todas Categorias</option>
+                                            ${categories.map(cat => `
+                                                <option value="${cat}" ${state.filterCategory === cat ? 'selected' : ''}>${cat}</option>
+                                            `).join('')}
+                                        </select>
+                                        
+                                        <select onchange="state.filterStatus = this.value; render()" 
+                                            class="px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            <option value="todos">Todos Status</option>
+                                            ${statusOptions.map(status => `
+                                                <option value="${status.value}" ${state.filterStatus === status.value ? 'selected' : ''}>
+                                                    ${status.emoji} ${status.label}
+                                                </option>
+                                            `).join('')}
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="flex gap-4">
-                                    <select onchange="state.filterCategory = this.value; render()" 
-                                        class="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium">
-                                        <option value="todas">📊 Todas Categorias</option>
-                                        ${categories.map(cat => `
-                                            <option value="${cat}" ${state.filterCategory === cat ? 'selected' : ''}>${cat}</option>
-                                        `).join('')}
-                                    </select>
-                                    <button onclick="openModal()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
-                                        <span>+</span>
-                                        <span>Novo Produto</span>
+                                
+                                <!-- BOTÕES DE AÇÃO -->
+                                <div class="flex gap-2 no-print">
+                                    <button onclick="openModal()" 
+                                        class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
+                                        <span>+</span> Adicionar Item
                                     </button>
+                                    
+                                    <div class="relative group">
+                                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
+                                            📊 Exportar/Importar
+                                        </button>
+                                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl ${state.darkMode ? 'dark-card' : ''} opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                                            <button onclick="exportToExcel()" class="w-full text-left px-4 py-3 hover:bg-gray-100 ${state.darkMode ? 'hover:bg-gray-600' : ''} rounded-t-xl flex items-center gap-2">
+                                                📤 Exportar Excel
+                                            </button>
+                                            <label class="w-full text-left px-4 py-3 hover:bg-gray-100 ${state.darkMode ? 'hover:bg-gray-600' : ''} rounded-b-xl flex items-center gap-2 cursor-pointer">
+                                                📥 Importar Excel
+                                                <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="relative group">
+                                        <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
+                                            🖨️ Imprimir
+                                        </button>
+                                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl ${state.darkMode ? 'dark-card' : ''} opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                                            <button onclick="printList()" class="w-full text-left px-4 py-3 hover:bg-gray-100 ${state.darkMode ? 'hover:bg-gray-600' : ''} rounded-t-xl flex items-center gap-2">
+                                                📋 Lista Completa
+                                            </button>
+                                            <button onclick="printLabels()" class="w-full text-left px-4 py-3 hover:bg-gray-100 ${state.darkMode ? 'hover:bg-gray-600' : ''} rounded-b-xl flex items-center gap-2">
+                                                🏷️ Etiquetas
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- LISTA DE PRODUTOS -->
-                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <!-- LISTA DE ITENS -->
+                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden ${state.darkMode ? 'dark-card' : ''}">
                             ${filteredItems.length === 0 ? `
                                 <div class="text-center py-16">
-                                    <div class="text-8xl mb-6">📦</div>
-                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">${state.items.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}</h3>
-                                    <p class="text-gray-500 mb-6">${state.items.length === 0 ? 'Comece adicionando seu primeiro produto!' : 'Tente alterar os filtros de busca'}</p>
+                                    <div class="text-6xl mb-4">📦</div>
+                                    <h3 class="text-xl font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} mb-2">
+                                        Nenhum produto encontrado
+                                    </h3>
+                                    <p class="${state.darkMode ? 'text-gray-300' : 'text-gray-600'} mb-6">
+                                        ${state.items.length === 0 ? 'Comece adicionando seu primeiro produto!' : 'Tente ajustar os filtros ou termos de busca.'}
+                                    </p>
                                     ${state.items.length === 0 && `
-                                        <button onclick="openModal()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
-                                            Adicionar Primeiro Produto
+                                        <button onclick="openModal()" 
+                                            class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                            + Adicionar Primeiro Produto
                                         </button>
                                     `}
                                 </div>
                             ` : `
                                 <div class="overflow-x-auto">
                                     <table class="w-full">
-                                        <thead class="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                                        <thead class="${state.darkMode ? 'bg-gray-700' : 'bg-gray-50'}">
                                             <tr>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Código</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Produto</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Categoria</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Quantidade</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Preço</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Ações</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Produto</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Código</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Categoria</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Qtd</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Preço</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Status</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Localização</th>
+                                                <th class="px-6 py-4 text-left text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} no-print">Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y divide-gray-200">
-                                            ${filteredItems.map(item => `
-                                                <tr class="hover:bg-gray-50 transition-colors">
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
-                                                        <div class="text-xs text-gray-500">${item.descricao || ''}</div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                                                            ${item.categoria || 'Geral'}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
-                                                            ${item.quantidade}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-bold text-green-600">
-                                                            ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <button onclick="deleteItem('${item.id}')" class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors">
-                                                            Excluir
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
+                                        <tbody class="divide-y ${state.darkMode ? 'divide-gray-600' : 'divide-gray-200'}">
+                                            ${filteredItems.map(item => {
+                                                const statusInfo = statusOptions.find(s => s.value === item.status);
+                                                return `
+                                                    <tr class="hover:${state.darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-colors">
+                                                        <td class="px-6 py-4">
+                                                            <div class="flex items-center gap-4">
+                                                                ${item.foto_url ? `
+                                                                    <img src="${item.foto_url}" alt="${item.nome}" 
+                                                                        class="w-12 h-12 rounded-lg object-cover border ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                                                ` : `
+                                                                    <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                                                                        <span class="text-white text-sm">📷</span>
+                                                                    </div>
+                                                                `}
+                                                                <div>
+                                                                    <div class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">${item.nome}</div>
+                                                                    ${item.tags ? `
+                                                                        <div class="text-sm ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}">
+                                                                            ${item.tags.split(',').map(tag => `<span class="inline-block bg-${state.darkMode ? 'gray-600' : 'gray-200'} px-2 py-1 rounded-full text-xs mr-1">${tag.trim()}</span>`).join('')}
+                                                                        </div>
+                                                                    ` : ''}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="px-6 py-4 ${state.darkMode ? 'text-white' : 'text-gray-900'} font-mono">${item.codigo}</td>
+                                                        <td class="px-6 py-4 ${state.darkMode ? 'text-white' : 'text-gray-900'}">${item.categoria || '-'}</td>
+                                                        <td class="px-6 py-4 ${state.darkMode ? 'text-white' : 'text-gray-900'}">${item.quantidade}</td>
+                                                        <td class="px-6 py-4 ${state.darkMode ? 'text-white' : 'text-gray-900'}">
+                                                            ${item.preco ? `R$ ${parseFloat(item.preco).toFixed(2)}` : '-'}
+                                                        </td>
+                                                        <td class="px-6 py-4">
+                                                            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium text-white" 
+                                                                  style="background-color: ${getStatusColor(statusInfo.color)}">
+                                                                ${statusInfo.emoji} ${statusInfo.label}
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-6 py-4 ${state.darkMode ? 'text-white' : 'text-gray-900'}">${item.localizacao || '-'}</td>
+                                                        <td class="px-6 py-4 no-print">
+                                                            <div class="flex items-center gap-2">
+                                                                <button onclick="openBarcodeModal(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
+                                                                    class="p-2 ${state.darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors"
+                                                                    title="Código de Barras">
+                                                                    📊
+                                                                </button>
+                                                                <button onclick="openEditModal(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
+                                                                    class="p-2 ${state.darkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-800'} transition-colors"
+                                                                    title="Editar">
+                                                                    ✏️
+                                                                </button>
+                                                                <button onclick="deleteItem('${item.id}')" 
+                                                                    class="p-2 ${state.darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'} transition-colors"
+                                                                    title="Excluir">
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
                                         </tbody>
                                     </table>
                                 </div>
@@ -605,68 +1172,338 @@
                     </div>
                 </div>
 
-                <!-- MODAL -->
+                <!-- MODAL ADICIONAR ITEM -->
                 ${state.showModal ? `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
-                                <h2 class="text-xl font-bold">Adicionar Novo Produto</h2>
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 fade-in">
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${state.darkMode ? 'dark-card' : ''}">
+                            <div class="p-6 border-b ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                <h2 class="text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Adicionar Novo Produto</h2>
                             </div>
-                            <div class="p-6 space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-6 space-y-6">
+                                <!-- FOTO DO PRODUTO -->
+                                <div>
+                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Foto do Produto</label>
+                                    <div class="flex items-center gap-4">
+                                        <label class="flex flex-col items-center justify-center w-24 h-24 border-2 ${state.darkMode ? 'border-gray-600' : 'border-gray-300'} border-dashed rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                                <span class="text-2xl">📷</span>
+                                                <p class="text-xs ${state.darkMode ? 'text-gray-300' : 'text-gray-500'} mt-1">Adicionar</p>
+                                            </div>
+                                            <input type="file" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+                                        </label>
+                                        ${state.currentItem.foto ? `
+                                            <div class="text-sm ${state.darkMode ? 'text-green-300' : 'text-green-600'}">
+                                                ✅ ${state.currentItem.foto.name}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- CÓDIGO -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Código do Produto *</label>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Código *</label>
                                         <input type="text" 
                                             value="${state.currentItem.codigo}"
                                             oninput="state.currentItem.codigo = this.value"
-                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="EX001">
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                            placeholder="Código do produto">
                                     </div>
+
+                                    <!-- NOME -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Quantidade *</label>
-                                        <input type="number" 
-                                            value="${state.currentItem.quantidade}"
-                                            oninput="state.currentItem.quantidade = this.value"
-                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="0">
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Nome do Produto *</label>
+                                        <input type="text" 
+                                            value="${state.currentItem.nome}"
+                                            oninput="state.currentItem.nome = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                            placeholder="Nome completo do produto">
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Produto *</label>
-                                    <input type="text" 
-                                        value="${state.currentItem.nome}"
-                                        oninput="state.currentItem.nome = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                        placeholder="Nome completo do produto">
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                    <!-- CATEGORIA -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Categoria</label>
                                         <select onchange="state.currentItem.categoria = this.value"
-                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
-                                            <option value="">Selecione...</option>
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            <option value="">Selecione uma categoria</option>
                                             ${categories.map(cat => `
                                                 <option value="${cat}" ${state.currentItem.categoria === cat ? 'selected' : ''}>${cat}</option>
                                             `).join('')}
                                         </select>
                                     </div>
+
+                                    <!-- QUANTIDADE -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Preço (R$)</label>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Quantidade</label>
+                                        <input type="number" 
+                                            value="${state.currentItem.quantidade}"
+                                            oninput="state.currentItem.quantidade = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                            min="1">
+                                    </div>
+
+                                    <!-- PREÇO -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Preço (R$)</label>
                                         <input type="number" step="0.01"
                                             value="${state.currentItem.preco}"
                                             oninput="state.currentItem.preco = this.value"
-                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="0.00">
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                            placeholder="0,00">
+                                    </div>
+
+                                    <!-- STATUS -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Status</label>
+                                        <select onchange="state.currentItem.status = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            ${statusOptions.map(status => `
+                                                <option value="${status.value}" ${state.currentItem.status === status.value ? 'selected' : ''}>
+                                                    ${status.emoji} ${status.label}
+                                                </option>
+                                            `).join('')}
+                                        </select>
+                                    </div>
+
+                                    <!-- DATA ENTRADA -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Data de Entrada</label>
+                                        <input type="date" 
+                                            value="${state.currentItem.data_entrada}"
+                                            oninput="state.currentItem.data_entrada = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+
+                                    <!-- LOCALIZAÇÃO -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Localização</label>
+                                        <input type="text" 
+                                            value="${state.currentItem.localizacao}"
+                                            oninput="state.currentItem.localizacao = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                            placeholder="Ex: Prateleira A1">
                                     </div>
                                 </div>
-                                <div class="flex gap-3 justify-end pt-6">
-                                    <button onclick="closeModal()" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-all">
-                                        Cancelar
-                                    </button>
-                                    <button onclick="saveItem()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
-                                        Salvar Produto
-                                    </button>
+
+                                <!-- TAGS -->
+                                <div>
+                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Tags (separadas por vírgula)</label>
+                                    <input type="text" 
+                                        value="${state.currentItem.tags}"
+                                        oninput="state.currentItem.tags = this.value"
+                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        placeholder="Ex: eletrônico, smartphone, samsung">
                                 </div>
+
+                                <!-- OBSERVAÇÕES -->
+                                <div>
+                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Observações</label>
+                                    <textarea 
+                                        oninput="state.currentItem.observacoes = this.value"
+                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        rows="3"
+                                        placeholder="Observações adicionais sobre o produto">${state.currentItem.observacoes}</textarea>
+                                </div>
+                            </div>
+                            <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end gap-4">
+                                <button onclick="closeModal()" 
+                                    class="px-6 py-3 border-2 ${state.darkMode ? 'border-gray-600 text-white hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-xl font-semibold transition-all">
+                                    Cancelar
+                                </button>
+                                <button onclick="saveItem()" 
+                                    class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    Salvar Produto
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- MODAL EDITAR ITEM -->
+                ${state.showEditModal && state.editingItem ? `
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 fade-in">
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${state.darkMode ? 'dark-card' : ''}">
+                            <div class="p-6 border-b ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                <h2 class="text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Editar Produto</h2>
+                            </div>
+                            <div class="p-6 space-y-6">
+                                <!-- FOTO DO PRODUTO -->
+                                <div>
+                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Foto do Produto</label>
+                                    <div class="flex items-center gap-4">
+                                        ${state.editingItem.foto_url ? `
+                                            <img src="${state.editingItem.foto_url}" alt="${state.editingItem.nome}" 
+                                                class="w-24 h-24 rounded-lg object-cover border ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                        ` : `
+                                            <div class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                                                <span class="text-white text-2xl">📷</span>
+                                            </div>
+                                        `}
+                                        <label class="flex flex-col items-center justify-center w-24 h-24 border-2 ${state.darkMode ? 'border-gray-600' : 'border-gray-300'} border-dashed rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                                <span class="text-2xl">📷</span>
+                                                <p class="text-xs ${state.darkMode ? 'text-gray-300' : 'text-gray-500'} mt-1">Alterar</p>
+                                            </div>
+                                            <input type="file" class="hidden" accept="image/*" onchange="handleFileUpload(event, true)">
+                                        </label>
+                                        ${state.editingItem.foto ? `
+                                            <div class="text-sm ${state.darkMode ? 'text-green-300' : 'text-green-600'}">
+                                                ✅ Nova foto selecionada
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- CÓDIGO -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Código *</label>
+                                        <input type="text" 
+                                            value="${state.editingItem.codigo}"
+                                            oninput="state.editingItem.codigo = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+
+                                    <!-- NOME -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Nome do Produto *</label>
+                                        <input type="text" 
+                                            value="${state.editingItem.nome}"
+                                            oninput="state.editingItem.nome = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+
+                                    <!-- CATEGORIA -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Categoria</label>
+                                        <select onchange="state.editingItem.categoria = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            <option value="">Selecione uma categoria</option>
+                                            ${categories.map(cat => `
+                                                <option value="${cat}" ${state.editingItem.categoria === cat ? 'selected' : ''}>${cat}</option>
+                                            `).join('')}
+                                        </select>
+                                    </div>
+
+                                    <!-- QUANTIDADE -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Quantidade</label>
+                                        <input type="number" 
+                                            value="${state.editingItem.quantidade}"
+                                            oninput="state.editingItem.quantidade = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                            min="1">
+                                    </div>
+
+                                    <!-- PREÇO -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Preço (R$)</label>
+                                        <input type="number" step="0.01"
+                                            value="${state.editingItem.preco}"
+                                            oninput="state.editingItem.preco = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+
+                                    <!-- STATUS -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Status</label>
+                                        <select onchange="state.editingItem.status = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            ${statusOptions.map(status => `
+                                                <option value="${status.value}" ${state.editingItem.status === status.value ? 'selected' : ''}>
+                                                    ${status.emoji} ${status.label}
+                                                </option>
+                                            `).join('')}
+                                        </select>
+                                    </div>
+
+                                    <!-- DATA ENTRADA -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Data de Entrada</label>
+                                        <input type="date" 
+                                            value="${state.editingItem.data_entrada}"
+                                            oninput="state.editingItem.data_entrada = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+
+                                    <!-- LOCALIZAÇÃO -->
+                                    <div>
+                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Localização</label>
+                                        <input type="text" 
+                                            value="${state.editingItem.localizacao}"
+                                            oninput="state.editingItem.localizacao = this.value"
+                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                    </div>
+                                </div>
+
+                                <!-- TAGS -->
+                                <div>
+                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Tags (separadas por vírgula)</label>
+                                    <input type="text" 
+                                        value="${state.editingItem.tags}"
+                                        oninput="state.editingItem.tags = this.value"
+                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                </div>
+
+                                <!-- OBSERVAÇÕES -->
+                                <div>
+                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Observações</label>
+                                    <textarea 
+                                        oninput="state.editingItem.observacoes = this.value"
+                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        rows="3">${state.editingItem.observacoes}</textarea>
+                                </div>
+                            </div>
+                            <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end gap-4">
+                                <button onclick="closeEditModal()" 
+                                    class="px-6 py-3 border-2 ${state.darkMode ? 'border-gray-600 text-white hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-xl font-semibold transition-all">
+                                    Cancelar
+                                </button>
+                                <button onclick="updateItem()" 
+                                    class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    Atualizar Produto
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- MODAL CÓDIGO DE BARRAS -->
+                ${state.showBarcodeModal && state.barcodeItem ? `
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 fade-in">
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full ${state.darkMode ? 'dark-card' : ''}">
+                            <div class="p-6 border-b ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                <h2 class="text-2xl font-bold ${state.darkMode ? 'text-white' : 'text-gray-900'}">Código do Produto</h2>
+                            </div>
+                            <div class="p-6 text-center">
+                                <div class="mb-6">
+                                    <h3 class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} mb-2">${state.barcodeItem.nome}</h3>
+                                    <p class="${state.darkMode ? 'text-gray-300' : 'text-gray-600'}">Código: ${state.barcodeItem.codigo}</p>
+                                </div>
+                                
+                                <div class="space-y-6">
+                                    <!-- CÓDIGO DE BARRAS -->
+                                    <div>
+                                        <h4 class="font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-3">Código de Barras</h4>
+                                        <div class="bg-white p-4 rounded-lg border ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                            <svg id="barcode-display"></svg>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- QR CODE -->
+                                    <div>
+                                        <h4 class="font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-3">QR Code</h4>
+                                        <div class="bg-white p-4 rounded-lg border ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
+                                            <canvas id="qrcode-display" width="200" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end">
+                                <button onclick="closeBarcodeModal()" 
+                                    class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    Fechar
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -674,7 +1511,7 @@
             `;
         }
 
-        // 🚀 INICIAR APLICAÇÃO
+        // 🚀 INICIALIZAR APLICAÇÃO
         console.log('🚀 Iniciando aplicação...');
         initAuth();
     </script>
