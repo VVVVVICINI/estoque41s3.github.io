@@ -27,11 +27,10 @@
     <div id="app"></div>
 
     <script>
-        // ✅ CONFIGURAÇÃO DO SUPABASE - SUAS CREDENCIAIS
+        // ✅ CONFIGURAÇÃO DO SUPABASE
         const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
         
-        // Inicializar Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Estado da aplicação
@@ -41,6 +40,8 @@
             loading: true,
             showLogin: true,
             showModal: false,
+            loginLoading: false,
+            registerLoading: false,
             loginForm: { email: '', password: '' },
             registerForm: { email: '', password: '', nome: '' },
             currentItem: { 
@@ -60,49 +61,58 @@
         // 🔐 SISTEMA DE AUTENTICAÇÃO
         async function initAuth() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                console.log('🔍 Verificando sessão...');
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Erro na sessão:', error);
+                    state.loading = false;
+                    render();
+                    return;
+                }
+                
                 state.user = session?.user || null;
+                console.log('👤 Estado do usuário:', state.user ? 'Logado' : 'Deslogado');
                 
                 if (state.user) {
+                    console.log('📦 Carregando itens...');
                     await loadItems();
-                    setupRealtime();
                 }
                 
                 state.loading = false;
                 render();
                 
                 // Escutar mudanças de autenticação
-                supabase.auth.onAuthStateChange((event, session) => {
+                supabase.auth.onAuthStateChange(async (event, session) => {
+                    console.log('🔄 Mudança de autenticação:', event);
+                    
                     state.user = session?.user || null;
+                    
                     if (event === 'SIGNED_IN') {
-                        loadItems();
-                        setupRealtime();
+                        console.log('✅ Usuário logado');
+                        await loadItems();
                         showNotification('✅ Login realizado com sucesso!', 'success');
-                    }
-                    if (event === 'SIGNED_OUT') {
+                        state.loginLoading = false;
+                    } 
+                    else if (event === 'SIGNED_OUT') {
+                        console.log('🚪 Usuário deslogado');
                         state.items = [];
                         state.showLogin = true;
                     }
+                    else if (event === 'USER_UPDATED') {
+                        console.log('📧 Email confirmado');
+                        showNotification('✅ Email confirmado com sucesso!', 'success');
+                    }
+                    
                     render();
                 });
             } catch (error) {
-                console.error('Erro na autenticação:', error);
+                console.error('❌ Erro na inicialização:', error);
                 state.loading = false;
+                state.loginLoading = false;
+                state.registerLoading = false;
                 render();
             }
-        }
-
-        // 🔄 TEMPO REAL
-        function setupRealtime() {
-            supabase
-                .channel('items')
-                .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'items' }, 
-                    () => {
-                        loadItems();
-                    }
-                )
-                .subscribe();
         }
 
         // 📧 LOGIN
@@ -113,21 +123,35 @@
             }
             
             try {
-                state.loading = true;
+                console.log('🔐 Tentando login...');
+                state.loginLoading = true;
                 render();
                 
-                const { error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabase.auth.signInWithPassword({
                     email: state.loginForm.email,
                     password: state.loginForm.password
                 });
+
+                if (error) {
+                    console.error('❌ Erro no login:', error);
+                    throw error;
+                }
                 
-                if (error) throw error;
-                
+                console.log('✅ Login bem-sucedido');
                 state.loginForm = { email: '', password: '' };
+                
             } catch (error) {
-                state.loading = false;
+                console.error('❌ Erro completo no login:', error);
+                state.loginLoading = false;
                 render();
-                showNotification('❌ Email ou senha incorretos', 'error');
+                
+                if (error.message?.includes('Invalid login credentials')) {
+                    showNotification('❌ Email ou senha incorretos', 'error');
+                } else if (error.message?.includes('Email not confirmed')) {
+                    showNotification('❌ Confirme seu email antes de fazer login', 'error');
+                } else {
+                    showNotification('❌ Erro ao fazer login: ' + error.message, 'error');
+                }
             }
         }
 
@@ -144,29 +168,42 @@
             }
             
             try {
-                state.loading = true;
+                console.log('📝 Tentando cadastro...');
+                state.registerLoading = true;
                 render();
                 
-                const { error } = await supabase.auth.signUp({
+                const { data, error } = await supabase.auth.signUp({
                     email: state.registerForm.email,
                     password: state.registerForm.password,
                     options: { 
                         data: { 
-                            nome: state.registerForm.nome,
-                            created_at: new Date().toISOString()
-                        } 
+                            nome: state.registerForm.nome
+                        },
+                        emailRedirectTo: 'https://vvvvvicini.github.io/estoque41s3.github.io/'
                     }
                 });
+
+                if (error) {
+                    console.error('❌ Erro no cadastro:', error);
+                    throw error;
+                }
                 
-                if (error) throw error;
-                
+                console.log('✅ Cadastro bem-sucedido:', data);
                 state.registerForm = { email: '', password: '', nome: '' };
-                showNotification('✅ Cadastro realizado! Faça login.', 'success');
-                state.showLogin = true;
-                state.loading = false;
+                state.registerLoading = false;
+                
+                if (data.user?.identities?.length === 0) {
+                    showNotification('❌ Este email já está cadastrado', 'error');
+                } else {
+                    showNotification('✅ Cadastro realizado! Verifique seu email para confirmar.', 'success');
+                    state.showLogin = true;
+                }
+                
                 render();
+                
             } catch (error) {
-                state.loading = false;
+                console.error('❌ Erro completo no cadastro:', error);
+                state.registerLoading = false;
                 render();
                 showNotification('❌ Erro: ' + error.message, 'error');
             }
@@ -174,27 +211,41 @@
 
         // 🚪 LOGOUT
         async function logout() {
-            await supabase.auth.signOut();
-            showNotification('👋 Até logo!', 'info');
+            try {
+                console.log('🚪 Fazendo logout...');
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                showNotification('👋 Até logo!', 'info');
+            } catch (error) {
+                console.error('❌ Erro no logout:', error);
+                showNotification('❌ Erro ao sair', 'error');
+            }
         }
 
         // 📦 CARREGAR ITENS
         async function loadItems() {
             try {
+                console.log('📦 Carregando itens...');
                 const { data, error } = await supabase
                     .from('items')
                     .select('*')
                     .order('created_at', { ascending: false });
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Erro ao carregar itens:', error);
+                    throw error;
+                }
+                
                 state.items = data || [];
+                console.log(`✅ ${state.items.length} itens carregados`);
                 render();
             } catch (error) {
-                console.error('Erro ao carregar itens:', error);
+                console.error('❌ Erro completo ao carregar itens:', error);
+                showNotification('❌ Erro ao carregar produtos', 'error');
             }
         }
 
-        // 💾 SALVAR ITEM
+        // 💾 SALVAR ITEM - AGORA RECARREGA A PÁGINA
         async function saveItem() {
             if (!state.currentItem.codigo || !state.currentItem.nome) {
                 showNotification('❌ Preencha código e nome do produto', 'error');
@@ -202,7 +253,8 @@
             }
             
             try {
-                const { error } = await supabase
+                console.log('💾 Salvando item...');
+                const { data, error } = await supabase
                     .from('items')
                     .insert([{
                         ...state.currentItem,
@@ -212,20 +264,31 @@
                         updated_at: new Date().toISOString()
                     }]);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Erro ao salvar item:', error);
+                    throw error;
+                }
                 
-                closeModal();
-                showNotification('✅ Produto adicionado com sucesso!', 'success');
+                console.log('✅ Item salvo com sucesso - RECARREGANDO PÁGINA');
+                showNotification('✅ Produto adicionado! Recarregando...', 'success');
+                
+                // 🔄 RECARREGAR A PÁGINA COMPLETAMENTE
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
             } catch (error) {
+                console.error('❌ Erro completo ao salvar:', error);
                 showNotification('❌ Erro ao salvar: ' + error.message, 'error');
             }
         }
 
-        // 🗑️ EXCLUIR ITEM
+        // 🗑️ EXCLUIR ITEM - TAMBÉM RECARREGA
         async function deleteItem(id) {
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
             
             try {
+                console.log('🗑️ Excluindo item...');
                 const { error } = await supabase
                     .from('items')
                     .delete()
@@ -233,15 +296,22 @@
                 
                 if (error) throw error;
                 
-                showNotification('✅ Produto excluído!', 'success');
+                console.log('✅ Item excluído - RECARREGANDO PÁGINA');
+                showNotification('✅ Produto excluído! Recarregando...', 'success');
+                
+                // 🔄 RECARREGAR A PÁGINA COMPLETAMENTE
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
             } catch (error) {
+                console.error('❌ Erro ao excluir:', error);
                 showNotification('❌ Erro ao excluir', 'error');
             }
         }
 
         // 🎯 FUNÇÕES AUXILIARES
         function showNotification(message, type = 'info') {
-            // Criar notificação
             const notification = document.createElement('div');
             const bgColor = type === 'error' ? 'bg-red-500' : 
                            type === 'success' ? 'bg-green-500' : 'bg-blue-500';
@@ -265,7 +335,7 @@
                 if (notification.parentElement) {
                     notification.remove();
                 }
-            }, 4000);
+            }, 5000);
         }
 
         function openModal() {
@@ -302,7 +372,7 @@
                     <div class="flex items-center justify-center min-h-screen">
                         <div class="text-center">
                             <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="text-gray-600">Conectando ao sistema...</p>
+                            <p class="text-gray-600">Inicializando sistema...</p>
                         </div>
                     </div>
                 `;
@@ -338,16 +408,23 @@
                                     <input type="email" placeholder="Seu email" 
                                         value="${state.loginForm.email}"
                                         oninput="state.loginForm.email = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        ${state.loginLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Sua senha" 
                                         value="${state.loginForm.password}"
                                         oninput="state.loginForm.password = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        ${state.loginLoading ? 'disabled' : ''}>
                                 </div>
-                                <button onclick="login()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
-                                    Entrar no Sistema
+                                <button onclick="login()" 
+                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                                    ${state.loginLoading ? 'disabled' : ''}>
+                                    ${state.loginLoading ? `
+                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                        <span>Conectando...</span>
+                                    ` : 'Entrar no Sistema'}
                                 </button>
                                 <div class="text-center">
                                     <button onclick="state.showLogin = false; render()" class="text-purple-600 hover:text-purple-700 text-sm font-medium">
@@ -362,22 +439,30 @@
                                     <input type="text" placeholder="Seu nome completo" 
                                         value="${state.registerForm.nome}"
                                         oninput="state.registerForm.nome = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
                                     <input type="email" placeholder="Seu melhor email" 
                                         value="${state.registerForm.email}"
                                         oninput="state.registerForm.email = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
                                         value="${state.registerForm.password}"
                                         oninput="state.registerForm.password = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
-                                <button onclick="register()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
-                                    Criar Minha Conta
+                                <button onclick="register()" 
+                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                                    ${state.registerLoading ? 'disabled' : ''}>
+                                    ${state.registerLoading ? `
+                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                        <span>Criando conta...</span>
+                                    ` : 'Criar Minha Conta'}
                                 </button>
                                 <div class="text-center">
                                     <button onclick="state.showLogin = true; render()" class="text-purple-600 hover:text-purple-700 text-sm font-medium">
@@ -590,6 +675,7 @@
         }
 
         // 🚀 INICIAR APLICAÇÃO
+        console.log('🚀 Iniciando aplicação...');
         initAuth();
     </script>
 </body>
