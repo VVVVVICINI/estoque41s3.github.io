@@ -32,12 +32,6 @@
             color: #f9fafb;
             border-color: #4b5563;
         }
-        .modal-overlay {
-            display: none;
-        }
-        .modal-overlay.active {
-            display: flex;
-        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 transition-colors duration-300" id="body">
@@ -56,7 +50,7 @@
             items: [],
             loading: true,
             showLogin: true,
-            activeModal: null, // 'add', 'edit', 'barcode', null
+            activeModal: null, // 'add', 'edit', 'barcode', 'import', null
             loginLoading: false,
             registerLoading: false,
             loginForm: { email: '', password: '' },
@@ -78,7 +72,8 @@
             searchTerm: '',
             filterCategory: 'todas',
             filterStatus: 'todos',
-            darkMode: false
+            darkMode: false,
+            importLoading: false
         };
 
         const categories = ['Eletrônicos', 'Eletrodomésticos', 'Informática', 'Telefonia', 'Áudio e Vídeo', 'Games', 'Acessórios', 'Outros'];
@@ -349,6 +344,186 @@
             showNotification('📊 Planilha exportada com sucesso!', 'success');
         }
 
+        // 📥 BAIXAR MODELO DE PLANILHA
+        function downloadTemplate() {
+            const templateData = [
+                {
+                    'Código': 'COD001',
+                    'Produto': 'Smartphone Samsung Galaxy',
+                    'Quantidade': '5',
+                    'Localização': 'Prateleira A1',
+                    'Categoria': 'Telefonia',
+                    'Preço': '1500.00',
+                    'Status': 'Disponível para Venda',
+                    'Observações': 'Modelo 2024',
+                    'Tags': 'samsung,celular,android'
+                },
+                {
+                    'Código': 'COD002',
+                    'Produto': 'Notebook Dell Inspiron',
+                    'Quantidade': '3',
+                    'Localização': 'Prateleira B2',
+                    'Categoria': 'Informática',
+                    'Preço': '2500.00',
+                    'Status': 'Disponível para Venda',
+                    'Observações': '8GB RAM, 256GB SSD',
+                    'Tags': 'dell,notebook,windows'
+                }
+            ];
+            
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Modelo Importação");
+            XLSX.writeFile(wb, 'modelo_importacao_estoque.xlsx');
+            
+            showNotification('📋 Modelo baixado com sucesso!', 'success');
+        }
+
+        // 📥 IMPORTAR DO EXCEL
+        async function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                state.importLoading = true;
+                render();
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        
+                        processImportedData(jsonData);
+                        
+                    } catch (error) {
+                        console.error('Erro ao importar arquivo:', error);
+                        showNotification('❌ Erro ao importar arquivo', 'error');
+                        state.importLoading = false;
+                        render();
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                
+            } catch (error) {
+                state.importLoading = false;
+                render();
+                showNotification('❌ Erro ao processar arquivo', 'error');
+            }
+        }
+
+        // 🔄 PROCESSAR DADOS IMPORTADOS
+        async function processImportedData(data) {
+            try {
+                let importedCount = 0;
+                let errorCount = 0;
+                const errors = [];
+                
+                for (const [index, item] of data.entries()) {
+                    try {
+                        // Mapear colunas do Excel para o formato do sistema
+                        const mappedItem = {
+                            codigo: item.Código || item.codigo || `IMP${Date.now()}${index}`,
+                            nome: item.Produto || item.produto || item.Nome || item.nome || 'Produto sem nome',
+                            quantidade: item.Quantidade || item.quantidade || '1',
+                            localizacao: item.Localização || item.localizacao || item.Local || item.local || '',
+                            categoria: item.Categoria || item.categoria || '',
+                            preco: item.Preço || item.preco || item.Preco || '',
+                            status: mapStatus(item.Status || item.status) || 'venda',
+                            observacoes: item.Observações || item.observacoes || item.Observacoes || '',
+                            tags: item.Tags || item.tags || '',
+                            data_entrada: new Date().toISOString().split('T')[0],
+                            user_id: state.user.id,
+                            user_email: state.user.email,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        };
+                        
+                        // Limpar e formatar dados
+                        if (mappedItem.preco) {
+                            // Remover "R$" e converter para número
+                            mappedItem.preco = parseFloat(mappedItem.preco.toString().replace('R$', '').replace(',', '.').trim()) || '';
+                        }
+                        
+                        if (mappedItem.quantidade) {
+                            mappedItem.quantidade = parseInt(mappedItem.quantidade) || 1;
+                        }
+                        
+                        // Verificar se item já existe
+                        const { data: existingItem } = await supabase
+                            .from('items')
+                            .select('id')
+                            .eq('codigo', mappedItem.codigo)
+                            .single();
+                        
+                        if (existingItem) {
+                            // Atualizar item existente
+                            await supabase
+                                .from('items')
+                                .update(mappedItem)
+                                .eq('id', existingItem.id);
+                        } else {
+                            // Inserir novo item
+                            await supabase
+                                .from('items')
+                                .insert([mappedItem]);
+                        }
+                        
+                        importedCount++;
+                        
+                    } catch (itemError) {
+                        errorCount++;
+                        errors.push(`Linha ${index + 2}: ${itemError.message}`);
+                        console.error(`Erro no item ${index}:`, itemError);
+                    }
+                }
+                
+                state.importLoading = false;
+                render();
+                
+                if (errorCount > 0) {
+                    showNotification(`⚠️ ${importedCount} itens importados, ${errorCount} com erro. Verifique o console.`, 'warning');
+                    console.log('Erros detalhados:', errors);
+                } else {
+                    showNotification(`✅ ${importedCount} itens importados com sucesso!`, 'success');
+                }
+                
+                await loadItems();
+                
+            } catch (error) {
+                state.importLoading = false;
+                render();
+                console.error('Erro ao processar dados importados:', error);
+                showNotification('❌ Erro ao importar dados: ' + error.message, 'error');
+            }
+        }
+
+        // 🗺️ MAPEAR STATUS
+        function mapStatus(statusStr) {
+            if (!statusStr) return 'venda';
+            
+            const statusMap = {
+                'disponível para venda': 'venda',
+                'disponivel para venda': 'venda',
+                'venda': 'venda',
+                'assistência técnica': 'assistencia',
+                'assistencia tecnica': 'assistencia',
+                'assistencia': 'assistencia',
+                'mostruário': 'mostruario',
+                'mostruario': 'mostruario',
+                'uso da loja': 'uso_loja',
+                'uso loja': 'uso_loja',
+                'separado p/ entrega/recolhimento': 'separado',
+                'separado para entrega': 'separado',
+                'separado': 'separado'
+            };
+            
+            const normalizedStatus = statusStr.toString().toLowerCase().trim();
+            return statusMap[normalizedStatus] || 'venda';
+        }
+
         // 🖨️ IMPRIMIR LISTA
         function printList() {
             const filteredItems = getFilteredItems();
@@ -413,12 +588,13 @@
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             const bgColor = type === 'error' ? 'bg-red-500' : 
-                           type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+                           type === 'success' ? 'bg-green-500' : 
+                           type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
             
             notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 fade-in max-w-sm`;
             notification.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <span class="text-lg">${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
+                    <span class="text-lg">${type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
                     <span class="text-sm font-medium">${message}</span>
                     <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
                         ✕
@@ -460,6 +636,7 @@
             };
             state.editingItem = null;
             state.barcodeItem = null;
+            state.importLoading = false;
             render();
         }
 
@@ -698,12 +875,18 @@
                                 </div>
                             </div>
                             
-                            <!-- BOTÕES DE EXPORTAR/IMPRIMIR -->
-                            <div class="flex gap-4 mt-4 no-print">
+                            <!-- BOTÕES DE EXPORTAR/IMPORTAR/IMPRIMIR -->
+                            <div class="flex gap-4 mt-4 no-print flex-wrap">
                                 <button onclick="exportToExcel()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
                                     📊 Exportar Excel
                                 </button>
-                                <button onclick="printList()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                                <button onclick="openModal('import')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                                    📥 Importar Planilha
+                                </button>
+                                <button onclick="downloadTemplate()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                                    📋 Baixar Modelo
+                                </button>
+                                <button onclick="printList()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
                                     🖨️ Imprimir Lista
                                 </button>
                             </div>
@@ -733,6 +916,7 @@
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Quantidade</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Preço</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Status</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Localização</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase no-print">Ações</th>
                                             </tr>
                                         </thead>
@@ -772,6 +956,9 @@
                                                             <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-white" style="background-color: ${getStatusColor(statusInfo.color)}">
                                                                 ${statusInfo.emoji} ${statusInfo.label}
                                                             </span>
+                                                        </td>
+                                                        <td class="px-6 py-4">
+                                                            <div class="text-sm ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}">${item.localizacao || '-'}</div>
                                                         </td>
                                                         <td class="px-6 py-4 no-print">
                                                             <div class="flex items-center gap-2">
@@ -950,6 +1137,75 @@
                             </div>
                             <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end">
                                 <button onclick="closeModal()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (state.activeModal === 'import') {
+                return `
+                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
+                        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full ${state.darkMode ? 'dark-card' : ''}">
+                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
+                                <h2 class="text-xl font-bold">Importar Planilha</h2>
+                            </div>
+                            <div class="p-6 space-y-6">
+                                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 ${state.darkMode ? 'bg-blue-900 border-blue-700' : ''}">
+                                    <h3 class="font-semibold text-blue-800 ${state.darkMode ? 'text-blue-200' : ''} mb-2">📋 Formato da Planilha</h3>
+                                    <p class="text-sm text-blue-700 ${state.darkMode ? 'text-blue-300' : ''} mb-3">
+                                        Sua planilha deve conter estas colunas (pode usar nomes em português):
+                                    </p>
+                                    <ul class="text-sm text-blue-700 ${state.darkMode ? 'text-blue-300' : ''} space-y-1 list-disc list-inside">
+                                        <li><strong>Código</strong> - Código único do produto (obrigatório)</li>
+                                        <li><strong>Produto/Nome</strong> - Nome do produto (obrigatório)</li>
+                                        <li><strong>Quantidade</strong> - Quantidade em estoque</li>
+                                        <li><strong>Localização/Local</strong> - Onde o produto está armazenado</li>
+                                        <li><strong>Categoria</strong> - Categoria do produto</li>
+                                        <li><strong>Preço</strong> - Preço do produto (com ou sem "R$")</li>
+                                        <li><strong>Status</strong> - Status do produto</li>
+                                        <li><strong>Observações</strong> - Observações adicionais</li>
+                                        <li><strong>Tags</strong> - Tags separadas por vírgula</li>
+                                    </ul>
+                                </div>
+
+                                <div class="flex gap-4">
+                                    <button onclick="downloadTemplate()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                                        📋 Baixar Modelo
+                                    </button>
+                                </div>
+
+                                <div class="border-2 border-dashed ${state.darkMode ? 'border-gray-600' : 'border-gray-300'} rounded-xl p-8 text-center">
+                                    <div class="text-4xl mb-4">📤</div>
+                                    <h3 class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} mb-2">Selecione sua planilha</h3>
+                                    <p class="text-sm ${state.darkMode ? 'text-gray-400' : 'text-gray-600'} mb-4">
+                                        Formatos suportados: .xlsx, .xls, .csv
+                                    </p>
+                                    <label class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer transition-all inline-block">
+                                        ${state.importLoading ? `
+                                            <div class="flex items-center gap-2">
+                                                <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                                <span>Processando...</span>
+                                            </div>
+                                        ` : 'Selecionar Arquivo'}
+                                        <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
+                                    </label>
+                                </div>
+
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 ${state.darkMode ? 'bg-yellow-900 border-yellow-700' : ''}">
+                                    <h3 class="font-semibold text-yellow-800 ${state.darkMode ? 'text-yellow-200' : ''} mb-2">⚠️ Importante</h3>
+                                    <ul class="text-sm text-yellow-700 ${state.darkMode ? 'text-yellow-300' : ''} space-y-1 list-disc list-inside">
+                                        <li>Produtos com códigos existentes serão atualizados</li>
+                                        <li>Colunas em branco serão preenchidas com valores padrão</li>
+                                        <li>Status será mapeado automaticamente</li>
+                                        <li>O processo pode levar alguns minutos para muitas linhas</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end">
+                                <button onclick="closeModal()" class="px-6 py-3 border-2 ${state.darkMode ? 'border-gray-600 text-white hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-xl font-medium transition-all">
                                     Fechar
                                 </button>
                             </div>
