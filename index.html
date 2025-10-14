@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self' https://*.supabase.co;">
     <title>Controle de Estoque - 41º S3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <style>
         .loading-spinner {
             animation: spin 1s linear infinite;
@@ -23,18 +25,75 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
         .dark-mode {
-            background: #1f2937;
-            color: #f9fafb;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: #f1f5f9;
         }
         .dark-card {
-            background: #374151;
-            color: #f9fafb;
-            border-color: #4b5563;
+            background: #1e293b;
+            color: #f1f5f9;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .dark-header {
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+        }
+        .dark-input {
+            background: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+        .dark-input:focus {
+            background: #475569;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
+        .dark-table-header {
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+        }
+        .dark-table-row:hover {
+            background: #334155;
+        }
+        .dark-border {
+            border-color: #475569;
+        }
+        .dark-text-muted {
+            color: #94a3b8;
+        }
+        .dark-text-light {
+            color: #cbd5e1;
+        }
+        .theme-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glow-purple {
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+        }
+        .glow-pink {
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+        }
+        .dark-btn-primary {
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+            color: white;
+        }
+        .dark-btn-primary:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #db2777 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.4);
+        }
+        .dark-btn-secondary {
+            background: #334155;
+            color: #f1f5f9;
+            border: 1px solid #475569;
+        }
+        .dark-btn-secondary:hover {
+            background: #475569;
+            border-color: #64748b;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 transition-colors duration-300" id="body">
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 theme-transition" id="body">
     <div id="app"></div>
 
     <script>
@@ -44,13 +103,56 @@
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // 🔒 FUNÇÃO DE SANITIZAÇÃO
+        function sanitize(input) {
+            if (typeof input !== 'string') return input;
+            return DOMPurify.sanitize(input, {
+                ALLOWED_TAGS: [],
+                ALLOWED_ATTR: []
+            });
+        }
+
+        // 🔒 FUNÇÃO DE ESCAPE HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 🔒 VALIDAÇÃO DE DADOS
+        function validateItem(item) {
+            const errors = [];
+            
+            if (!item.codigo || item.codigo.trim().length === 0) {
+                errors.push('Código é obrigatório');
+            }
+            if (!item.nome || item.nome.trim().length === 0) {
+                errors.push('Nome é obrigatório');
+            }
+            if (item.codigo && item.codigo.length > 50) {
+                errors.push('Código deve ter no máximo 50 caracteres');
+            }
+            if (item.nome && item.nome.length > 200) {
+                errors.push('Nome deve ter no máximo 200 caracteres');
+            }
+            if (item.quantidade && (isNaN(item.quantidade) || item.quantidade < 0)) {
+                errors.push('Quantidade deve ser um número positivo');
+            }
+            if (item.preco && (isNaN(item.preco) || item.preco < 0)) {
+                errors.push('Preço deve ser um número positivo');
+            }
+            
+            return errors;
+        }
+
         // Estado da aplicação
         let state = {
             user: null,
             items: [],
             loading: true,
             showLogin: true,
-            activeModal: null, // 'add', 'edit', 'barcode', 'import', null
+            activeModal: null,
             loginLoading: false,
             registerLoading: false,
             loginForm: { email: '', password: '' },
@@ -106,7 +208,6 @@
                 state.loading = false;
                 render();
                 
-                // Escutar mudanças de autenticação
                 supabase.auth.onAuthStateChange(async (event, session) => {
                     state.user = session?.user || null;
                     
@@ -131,10 +232,20 @@
             }
         }
 
-        // 📧 LOGIN
+        // 🔧 LOGIN
         async function login() {
-            if (!state.loginForm.email || !state.loginForm.password) {
+            const email = sanitize(state.loginForm.email.trim());
+            const password = state.loginForm.password;
+            
+            if (!email || !password) {
                 showNotification('❌ Preencha email e senha', 'error');
+                return;
+            }
+            
+            // Validação de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showNotification('❌ Email inválido', 'error');
                 return;
             }
             
@@ -143,8 +254,8 @@
                 render();
                 
                 const { data, error } = await supabase.auth.signInWithPassword({
-                    email: state.loginForm.email,
-                    password: state.loginForm.password
+                    email: email,
+                    password: password
                 });
 
                 if (error) throw error;
@@ -165,13 +276,29 @@
 
         // 📝 CADASTRO
         async function register() {
-            if (!state.registerForm.email || !state.registerForm.password || !state.registerForm.nome) {
+            const email = sanitize(state.registerForm.email.trim());
+            const password = state.registerForm.password;
+            const nome = sanitize(state.registerForm.nome.trim());
+            
+            if (!email || !password || !nome) {
                 showNotification('❌ Preencha todos os campos', 'error');
                 return;
             }
             
-            if (state.registerForm.password.length < 6) {
+            // Validação de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showNotification('❌ Email inválido', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
                 showNotification('❌ Senha deve ter no mínimo 6 caracteres', 'error');
+                return;
+            }
+            
+            if (nome.length < 3) {
+                showNotification('❌ Nome deve ter no mínimo 3 caracteres', 'error');
                 return;
             }
             
@@ -180,11 +307,11 @@
                 render();
                 
                 const { data, error } = await supabase.auth.signUp({
-                    email: state.registerForm.email,
-                    password: state.registerForm.password,
+                    email: email,
+                    password: password,
                     options: { 
                         data: { 
-                            nome: state.registerForm.nome
+                            nome: nome
                         }
                     }
                 });
@@ -240,14 +367,30 @@
 
         // 💾 SALVAR ITEM
         async function saveItem() {
-            if (!state.currentItem.codigo || !state.currentItem.nome) {
-                showNotification('❌ Preencha código e nome do produto', 'error');
+            // Sanitizar dados
+            const itemData = {
+                codigo: sanitize(state.currentItem.codigo.trim()),
+                nome: sanitize(state.currentItem.nome.trim()),
+                quantidade: parseInt(state.currentItem.quantidade) || 1,
+                categoria: sanitize(state.currentItem.categoria),
+                preco: parseFloat(state.currentItem.preco) || null,
+                status: state.currentItem.status,
+                localizacao: sanitize(state.currentItem.localizacao.trim()),
+                observacoes: sanitize(state.currentItem.observacoes.trim()),
+                tags: sanitize(state.currentItem.tags.trim()),
+                data_entrada: state.currentItem.data_entrada
+            };
+            
+            // Validar dados
+            const errors = validateItem(itemData);
+            if (errors.length > 0) {
+                showNotification('❌ ' + errors.join(', '), 'error');
                 return;
             }
             
             try {
-                const itemData = {
-                    ...state.currentItem,
+                const finalData = {
+                    ...itemData,
                     user_id: state.user.id,
                     user_email: state.user.email,
                     created_at: new Date().toISOString(),
@@ -256,7 +399,7 @@
                 
                 const { data, error } = await supabase
                     .from('items')
-                    .insert([itemData]);
+                    .insert([finalData]);
                 
                 if (error) throw error;
                 
@@ -271,22 +414,36 @@
 
         // ✏️ EDITAR ITEM
         async function updateItem() {
-            if (!state.editingItem.codigo || !state.editingItem.nome) {
-                showNotification('❌ Preencha código e nome do produto', 'error');
+            // Sanitizar dados
+            const itemData = {
+                codigo: sanitize(state.editingItem.codigo.trim()),
+                nome: sanitize(state.editingItem.nome.trim()),
+                quantidade: parseInt(state.editingItem.quantidade) || 1,
+                categoria: sanitize(state.editingItem.categoria),
+                preco: parseFloat(state.editingItem.preco) || null,
+                status: state.editingItem.status,
+                localizacao: sanitize(state.editingItem.localizacao.trim()),
+                observacoes: sanitize(state.editingItem.observacoes.trim()),
+                tags: sanitize(state.editingItem.tags.trim()),
+                data_entrada: state.editingItem.data_entrada
+            };
+            
+            // Validar dados
+            const errors = validateItem(itemData);
+            if (errors.length > 0) {
+                showNotification('❌ ' + errors.join(', '), 'error');
                 return;
             }
             
             try {
-                const itemData = {
-                    ...state.editingItem,
+                const finalData = {
+                    ...itemData,
                     updated_at: new Date().toISOString()
                 };
                 
-                delete itemData.id;
-                
                 const { data, error } = await supabase
                     .from('items')
-                    .update(itemData)
+                    .update(finalData)
                     .eq('id', state.editingItem.id);
                 
                 if (error) throw error;
@@ -384,6 +541,12 @@
             const file = event.target.files[0];
             if (!file) return;
             
+            // Validar tamanho do arquivo (máx 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('❌ Arquivo muito grande. Máximo: 5MB', 'error');
+                return;
+            }
+            
             try {
                 state.importLoading = true;
                 render();
@@ -395,6 +558,14 @@
                         const workbook = XLSX.read(data, { type: 'array' });
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        
+                        // Limitar número de linhas
+                        if (jsonData.length > 1000) {
+                            showNotification('❌ Máximo de 1000 linhas por vez', 'error');
+                            state.importLoading = false;
+                            render();
+                            return;
+                        }
                         
                         processImportedData(jsonData);
                         
@@ -423,17 +594,17 @@
                 
                 for (const [index, item] of data.entries()) {
                     try {
-                        // Mapear colunas do Excel para o formato do sistema
+                        // Mapear e sanitizar colunas
                         const mappedItem = {
-                            codigo: item.Código || item.codigo || `IMP${Date.now()}${index}`,
-                            nome: item.Produto || item.produto || item.Nome || item.nome || 'Produto sem nome',
-                            quantidade: item.Quantidade || item.quantidade || '1',
-                            localizacao: item.Localização || item.localizacao || item.Local || item.local || '',
-                            categoria: item.Categoria || item.categoria || '',
-                            preco: item.Preço || item.preco || item.Preco || '',
+                            codigo: sanitize((item.Código || item.codigo || `IMP${Date.now()}${index}`).toString().trim()),
+                            nome: sanitize((item.Produto || item.produto || item.Nome || item.nome || 'Produto sem nome').toString().trim()),
+                            quantidade: parseInt(item.Quantidade || item.quantidade || '1') || 1,
+                            localizacao: sanitize((item.Localização || item.localizacao || item.Local || item.local || '').toString().trim()),
+                            categoria: sanitize((item.Categoria || item.categoria || '').toString().trim()),
+                            preco: parseFloat((item.Preço || item.preco || item.Preco || '').toString().replace('R$', '').replace(',', '.').trim()) || null,
                             status: mapStatus(item.Status || item.status) || 'venda',
-                            observacoes: item.Observações || item.observacoes || item.Observacoes || '',
-                            tags: item.Tags || item.tags || '',
+                            observacoes: sanitize((item.Observações || item.observacoes || item.Observacoes || '').toString().trim()),
+                            tags: sanitize((item.Tags || item.tags || '').toString().trim()),
                             data_entrada: new Date().toISOString().split('T')[0],
                             user_id: state.user.id,
                             user_email: state.user.email,
@@ -441,14 +612,10 @@
                             updated_at: new Date().toISOString()
                         };
                         
-                        // Limpar e formatar dados
-                        if (mappedItem.preco) {
-                            // Remover "R$" e converter para número
-                            mappedItem.preco = parseFloat(mappedItem.preco.toString().replace('R$', '').replace(',', '.').trim()) || '';
-                        }
-                        
-                        if (mappedItem.quantidade) {
-                            mappedItem.quantidade = parseInt(mappedItem.quantidade) || 1;
+                        // Validar dados
+                        const validationErrors = validateItem(mappedItem);
+                        if (validationErrors.length > 0) {
+                            throw new Error(validationErrors.join(', '));
                         }
                         
                         // Verificar se item já existe
@@ -459,13 +626,11 @@
                             .single();
                         
                         if (existingItem) {
-                            // Atualizar item existente
                             await supabase
                                 .from('items')
                                 .update(mappedItem)
                                 .eq('id', existingItem.id);
                         } else {
-                            // Inserir novo item
                             await supabase
                                 .from('items')
                                 .insert([mappedItem]);
@@ -476,7 +641,6 @@
                     } catch (itemError) {
                         errorCount++;
                         errors.push(`Linha ${index + 2}: ${itemError.message}`);
-                        console.error(`Erro no item ${index}:`, itemError);
                     }
                 }
                 
@@ -484,8 +648,7 @@
                 render();
                 
                 if (errorCount > 0) {
-                    showNotification(`⚠️ ${importedCount} itens importados, ${errorCount} com erro. Verifique o console.`, 'warning');
-                    console.log('Erros detalhados:', errors);
+                    showNotification(`⚠️ ${importedCount} itens importados, ${errorCount} com erro.`, 'warning');
                 } else {
                     showNotification(`✅ ${importedCount} itens importados com sucesso!`, 'success');
                 }
@@ -495,7 +658,6 @@
             } catch (error) {
                 state.importLoading = false;
                 render();
-                console.error('Erro ao processar dados importados:', error);
                 showNotification('❌ Erro ao importar dados: ' + error.message, 'error');
             }
         }
@@ -561,13 +723,13 @@
                                 const statusInfo = statusOptions.find(s => s.value === item.status);
                                 return `
                                     <tr>
-                                        <td>${item.codigo}</td>
-                                        <td>${item.nome}</td>
-                                        <td>${item.categoria || '-'}</td>
+                                        <td>${escapeHtml(item.codigo)}</td>
+                                        <td>${escapeHtml(item.nome)}</td>
+                                        <td>${escapeHtml(item.categoria || '-')}</td>
                                         <td>${item.quantidade}</td>
                                         <td>${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}</td>
-                                        <td>${statusInfo?.label || item.status}</td>
-                                        <td>${item.localizacao || '-'}</td>
+                                        <td>${escapeHtml(statusInfo?.label || item.status)}</td>
+                                        <td>${escapeHtml(item.localizacao || '-')}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -591,11 +753,11 @@
                            type === 'success' ? 'bg-green-500' : 
                            type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
             
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 fade-in max-w-sm`;
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 fade-in max-w-sm ${state.darkMode ? 'dark-card glow-purple' : ''}`;
             notification.innerHTML = `
                 <div class="flex items-center gap-3">
                     <span class="text-lg">${type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
-                    <span class="text-sm font-medium">${message}</span>
+                    <span class="text-sm font-medium">${escapeHtml(message)}</span>
                     <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
                         ✕
                     </button>
@@ -642,9 +804,10 @@
 
         function getFilteredItems() {
             return state.items.filter(item => {
-                const matchesSearch = item.nome.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                                     item.codigo.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                                     (item.tags && item.tags.toLowerCase().includes(state.searchTerm.toLowerCase()));
+                const searchLower = state.searchTerm.toLowerCase();
+                const matchesSearch = item.nome.toLowerCase().includes(searchLower) ||
+                                     item.codigo.toLowerCase().includes(searchLower) ||
+                                     (item.tags && item.tags.toLowerCase().includes(searchLower));
                 const matchesCategory = state.filterCategory === 'todas' || item.categoria === state.filterCategory;
                 const matchesStatus = state.filterStatus === 'todos' || item.status === state.filterStatus;
                 return matchesSearch && matchesCategory && matchesStatus;
@@ -686,7 +849,7 @@
                     <div class="flex items-center justify-center min-h-screen">
                         <div class="text-center">
                             <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="text-gray-600">Inicializando sistema...</p>
+                            <p class="${state.darkMode ? 'dark-text-muted' : 'text-gray-600'}">Inicializando sistema...</p>
                         </div>
                     </div>
                 `;
@@ -702,17 +865,18 @@
         }
 
         function renderLogin() {
+            const isDark = state.darkMode;
             document.getElementById('app').innerHTML = `
                 <div class="flex items-center justify-center min-h-screen p-4 fade-in">
-                    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+                    <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl p-8 max-w-md w-full theme-transition">
                         <div class="text-center mb-8">
-                            <div class="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <div class="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4 glow-purple">
                                 <span class="text-white text-3xl">📦</span>
                             </div>
                             <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
                                 Controle de Estoque
                             </h1>
-                            <p class="text-gray-600">41º S3 - Sistema em Tempo Real</p>
+                            <p class="${isDark ? 'dark-text-muted' : 'text-gray-600'}">41º S3 - Sistema em Tempo Real</p>
                         </div>
 
                         ${state.showLogin ? `
@@ -720,20 +884,21 @@
                             <div class="space-y-4">
                                 <div>
                                     <input type="email" placeholder="Seu email" 
-                                        value="${state.loginForm.email}"
+                                        value="${escapeHtml(state.loginForm.email)}"
                                         oninput="state.loginForm.email = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
                                         ${state.loginLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Sua senha" 
-                                        value="${state.loginForm.password}"
+                                        value="${escapeHtml(state.loginForm.password)}"
                                         oninput="state.loginForm.password = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        onkeypress="if(event.key === 'Enter') login()"
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
                                         ${state.loginLoading ? 'disabled' : ''}>
                                 </div>
                                 <button onclick="login()" 
-                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    class="w-full dark-btn-primary py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 theme-transition"
                                     ${state.loginLoading ? 'disabled' : ''}>
                                     ${state.loginLoading ? `
                                         <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
@@ -751,27 +916,27 @@
                             <div class="space-y-4">
                                 <div>
                                     <input type="text" placeholder="Seu nome completo" 
-                                        value="${state.registerForm.nome}"
+                                        value="${escapeHtml(state.registerForm.nome)}"
                                         oninput="state.registerForm.nome = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
                                         ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
                                     <input type="email" placeholder="Seu melhor email" 
-                                        value="${state.registerForm.email}"
+                                        value="${escapeHtml(state.registerForm.email)}"
                                         oninput="state.registerForm.email = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
                                         ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
-                                        value="${state.registerForm.password}"
+                                        value="${escapeHtml(state.registerForm.password)}"
                                         oninput="state.registerForm.password = this.value"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
                                         ${state.registerLoading ? 'disabled' : ''}>
                                 </div>
                                 <button onclick="register()" 
-                                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    class="w-full dark-btn-primary py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 theme-transition"
                                     ${state.registerLoading ? 'disabled' : ''}>
                                     ${state.registerLoading ? `
                                         <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
@@ -792,33 +957,34 @@
 
         function renderApp() {
             const filteredItems = getFilteredItems();
+            const isDark = state.darkMode;
             
             document.getElementById('app').innerHTML = `
                 <div class="min-h-screen p-4 fade-in">
                     <div class="max-w-7xl mx-auto">
                         <!-- CABEÇALHO -->
-                        <div class="bg-white rounded-3xl shadow-2xl p-6 mb-8 ${state.darkMode ? 'dark-card' : ''}">
+                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl p-6 mb-8 theme-transition">
                             <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
                                 <div class="flex items-center gap-4">
-                                    <div class="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-lg">
+                                    <div class="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-lg glow-purple">
                                         <span class="text-white text-2xl">📦</span>
                                     </div>
                                     <div>
                                         <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                                             Controle de Estoque
                                         </h1>
-                                        <p class="${state.darkMode ? 'text-gray-300' : 'text-gray-600'} text-sm">41º S3 • ${state.user.email}</p>
+                                        <p class="${isDark ? 'dark-text-muted' : 'text-gray-600'} text-sm">41º S3 • ${escapeHtml(state.user.email)}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
-                                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg ${state.darkMode ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-700'}">
-                                        ${state.darkMode ? '☀️' : '🌙'}
+                                    <button onclick="toggleDarkMode()" class="p-3 rounded-xl ${isDark ? 'dark-btn-secondary glow-purple' : 'bg-gray-200 text-gray-700'} theme-transition transform hover:scale-105">
+                                        ${isDark ? '☀️ Claro' : '🌙 Escuro'}
                                     </button>
                                     <div class="text-right">
                                         <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="${state.darkMode ? 'text-gray-300' : 'text-gray-600'} text-sm">produtos</div>
+                                        <div class="${isDark ? 'dark-text-muted' : 'text-gray-600'} text-sm">produtos</div>
                                     </div>
-                                    <button onclick="logout()" class="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    <button onclick="logout()" class="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
                                         Sair
                                     </button>
                                 </div>
@@ -828,16 +994,16 @@
                         <!-- DASHBOARD -->
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                             ${statusOptions.map(status => `
-                                <div class="bg-white rounded-2xl shadow-lg p-4 text-center ${state.darkMode ? 'dark-card' : ''}">
+                                <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-2xl shadow-lg p-4 text-center theme-transition transform hover:scale-105 cursor-pointer">
                                     <div class="text-2xl mb-2">${status.emoji}</div>
-                                    <h3 class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} text-sm mb-1">${status.label}</h3>
+                                    <h3 class="font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'} text-sm mb-1">${escapeHtml(status.label)}</h3>
                                     <p class="text-xl font-bold" style="color: ${getStatusColor(status.color)}">${getStatusCount(status.value)}</p>
                                 </div>
                             `).join('')}
                         </div>
 
                         <!-- BARRA DE AÇÕES -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 ${state.darkMode ? 'dark-card' : ''}">
+                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-2xl shadow-lg p-6 mb-6 theme-transition">
                             <div class="flex flex-col lg:flex-row gap-4 items-center">
                                 <div class="flex-1">
                                     <div class="relative">
@@ -846,29 +1012,29 @@
                                         </div>
                                         <input type="text" 
                                             placeholder="Buscar produtos..."
-                                            value="${state.searchTerm}"
+                                            value="${escapeHtml(state.searchTerm)}"
                                             oninput="state.searchTerm = this.value; render()"
-                                            class="w-full pl-12 pr-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            class="w-full pl-12 pr-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
                                     </div>
                                 </div>
-                                <div class="flex gap-4">
+                                <div class="flex gap-4 flex-wrap">
                                     <select onchange="state.filterCategory = this.value; render()" 
-                                        class="px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium">
+                                        class="px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
                                         <option value="todas">📊 Todas Categorias</option>
                                         ${categories.map(cat => `
-                                            <option value="${cat}" ${state.filterCategory === cat ? 'selected' : ''}>${cat}</option>
+                                            <option value="${escapeHtml(cat)}" ${state.filterCategory === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>
                                         `).join('')}
                                     </select>
                                     <select onchange="state.filterStatus = this.value; render()" 
-                                        class="px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium">
+                                        class="px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
                                         <option value="todos">🎯 Todos Status</option>
                                         ${statusOptions.map(status => `
                                             <option value="${status.value}" ${state.filterStatus === status.value ? 'selected' : ''}>
-                                                ${status.emoji} ${status.label}
+                                                ${status.emoji} ${escapeHtml(status.label)}
                                             </option>
                                         `).join('')}
                                     </select>
-                                    <button onclick="openModal('add')" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
+                                    <button onclick="openModal('add')" class="dark-btn-primary px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2 theme-transition whitespace-nowrap">
                                         <span>+</span>
                                         <span>Novo Produto</span>
                                     </button>
@@ -876,39 +1042,39 @@
                             </div>
                             
                             <!-- BOTÕES DE EXPORTAR/IMPORTAR/IMPRIMIR -->
-                            <div class="flex gap-4 mt-4 no-print flex-wrap">
-                                <button onclick="exportToExcel()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                            <div class="flex gap-4 mt-4 flex-wrap">
+                                <button onclick="exportToExcel()" class="${isDark ? 'dark-btn-secondary' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
                                     📊 Exportar Excel
                                 </button>
-                                <button onclick="openModal('import')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                                <button onclick="openModal('import')" class="${isDark ? 'dark-btn-secondary' : 'bg-green-600 hover:bg-green-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
                                     📥 Importar Planilha
                                 </button>
-                                <button onclick="downloadTemplate()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                                <button onclick="downloadTemplate()" class="${isDark ? 'dark-btn-secondary' : 'bg-purple-600 hover:bg-purple-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
                                     📋 Baixar Modelo
                                 </button>
-                                <button onclick="printList()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                                <button onclick="printList()" class="${isDark ? 'dark-btn-secondary' : 'bg-orange-600 hover:bg-orange-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
                                     🖨️ Imprimir Lista
                                 </button>
                             </div>
                         </div>
 
                         <!-- LISTA DE PRODUTOS -->
-                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden ${state.darkMode ? 'dark-card' : ''}">
+                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-2xl shadow-lg overflow-hidden theme-transition">
                             ${filteredItems.length === 0 ? `
                                 <div class="text-center py-16">
-                                    <div class="text-8xl mb-6">📦</div>
-                                    <h3 class="text-2xl font-semibold ${state.darkMode ? 'text-white' : 'text-gray-600'} mb-3">${state.items.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}</h3>
-                                    <p class="${state.darkMode ? 'text-gray-400' : 'text-gray-500'} mb-6">${state.items.length === 0 ? 'Comece adicionando seu primeiro produto!' : 'Tente alterar os filtros de busca'}</p>
-                                    ${state.items.length === 0 && `
-                                        <button onclick="openModal('add')" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    <div class="text-8xl mb-6 ${isDark ? 'text-purple-400' : 'text-purple-600'}">📦</div>
+                                    <h3 class="text-2xl font-semibold ${isDark ? 'dark-text-light' : 'text-gray-600'} mb-3">${state.items.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}</h3>
+                                    <p class="${isDark ? 'dark-text-muted' : 'text-gray-500'} mb-6">${state.items.length === 0 ? 'Comece adicionando seu primeiro produto!' : 'Tente alterar os filtros de busca'}</p>
+                                    ${state.items.length === 0 ? `
+                                        <button onclick="openModal('add')" class="dark-btn-primary px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
                                             Adicionar Primeiro Produto
                                         </button>
-                                    `}
+                                    ` : ''}
                                 </div>
                             ` : `
                                 <div class="overflow-x-auto">
                                     <table class="w-full">
-                                        <thead class="${state.darkMode ? 'bg-gray-700' : 'bg-gradient-to-r from-purple-600 to-pink-600'} text-white">
+                                        <thead class="${isDark ? 'dark-table-header' : 'bg-gradient-to-r from-purple-600 to-pink-600'} text-white">
                                             <tr>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Código</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Produto</th>
@@ -917,57 +1083,58 @@
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Preço</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Status</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold uppercase">Localização</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase no-print">Ações</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y ${state.darkMode ? 'divide-gray-600' : 'divide-gray-200'}">
+                                        <tbody class="${isDark ? 'divide-y divide-gray-600' : 'divide-y divide-gray-200'}">
                                             ${filteredItems.map(item => {
                                                 const statusInfo = statusOptions.find(s => s.value === item.status);
+                                                const itemJson = JSON.stringify(item).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                                                 return `
-                                                    <tr class="hover:${state.darkMode ? 'bg-gray-700' : 'bg-gray-50'} transition-colors">
+                                                    <tr class="${isDark ? 'dark-table-row' : 'hover:bg-gray-50'} transition-colors">
                                                         <td class="px-6 py-4">
-                                                            <div class="text-sm font-bold ${state.darkMode ? 'text-purple-300' : 'text-purple-600'}">${item.codigo}</div>
+                                                            <div class="text-sm font-bold ${isDark ? 'text-purple-300' : 'text-purple-600'}">${escapeHtml(item.codigo)}</div>
                                                         </td>
                                                         <td class="px-6 py-4">
-                                                            <div class="text-sm font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'}">${item.nome}</div>
-                                                            <div class="text-xs ${state.darkMode ? 'text-gray-400' : 'text-gray-500'}">${item.observacoes || ''}</div>
+                                                            <div class="text-sm font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'}">${escapeHtml(item.nome)}</div>
+                                                            ${item.observacoes ? `<div class="text-xs ${isDark ? 'dark-text-muted' : 'text-gray-500'}">${escapeHtml(item.observacoes)}</div>` : ''}
                                                             ${item.tags ? `
-                                                                <div class="text-xs ${state.darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1">
-                                                                    ${item.tags.split(',').map(tag => `<span class="inline-block bg-${state.darkMode ? 'gray-600' : 'gray-200'} px-2 py-1 rounded-full mr-1">${tag.trim()}</span>`).join('')}
+                                                                <div class="text-xs ${isDark ? 'dark-text-muted' : 'text-gray-500'} mt-1">
+                                                                    ${item.tags.split(',').map(tag => `<span class="inline-block ${isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'} px-2 py-1 rounded-full mr-1">${escapeHtml(tag.trim())}</span>`).join('')}
                                                                 </div>
                                                             ` : ''}
                                                         </td>
                                                         <td class="px-6 py-4">
-                                                            <span class="px-3 py-1 ${state.darkMode ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-800'} rounded-full text-xs font-medium">
-                                                                ${item.categoria || 'Geral'}
+                                                            <span class="px-3 py-1 ${isDark ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-800'} rounded-full text-xs font-medium">
+                                                                ${escapeHtml(item.categoria || 'Geral')}
                                                             </span>
                                                         </td>
                                                         <td class="px-6 py-4">
-                                                            <span class="px-3 py-1 ${state.darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'} rounded-full text-sm font-bold">
+                                                            <span class="px-3 py-1 ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'} rounded-full text-sm font-bold">
                                                                 ${item.quantidade}
                                                             </span>
                                                         </td>
                                                         <td class="px-6 py-4">
-                                                            <div class="text-sm font-bold ${state.darkMode ? 'text-green-300' : 'text-green-600'}">
+                                                            <div class="text-sm font-bold ${isDark ? 'text-green-300' : 'text-green-600'}">
                                                                 ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
                                                             </div>
                                                         </td>
                                                         <td class="px-6 py-4">
                                                             <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-white" style="background-color: ${getStatusColor(statusInfo.color)}">
-                                                                ${statusInfo.emoji} ${statusInfo.label}
+                                                                ${statusInfo.emoji} ${escapeHtml(statusInfo.label)}
                                                             </span>
                                                         </td>
                                                         <td class="px-6 py-4">
-                                                            <div class="text-sm ${state.darkMode ? 'text-gray-300' : 'text-gray-600'}">${item.localizacao || '-'}</div>
+                                                            <div class="text-sm ${isDark ? 'dark-text-muted' : 'text-gray-600'}">${escapeHtml(item.localizacao || '-')}</div>
                                                         </td>
-                                                        <td class="px-6 py-4 no-print">
+                                                        <td class="px-6 py-4">
                                                             <div class="flex items-center gap-2">
-                                                                <button onclick="openModal('edit', ${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                                                    class="text-blue-600 hover:text-blue-800 font-medium text-sm ${state.darkMode ? 'bg-blue-900 hover:bg-blue-800' : 'bg-blue-50 hover:bg-blue-100'} px-3 py-1 rounded-lg transition-colors">
+                                                                <button onclick='openModal("edit", JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(item))}")))' 
+                                                                    class="${isDark ? 'bg-blue-900 hover:bg-blue-800 text-blue-200' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'} px-3 py-1 rounded-lg font-medium text-sm transition-colors theme-transition">
                                                                     Editar
                                                                 </button>
                                                                 <button onclick="deleteItem('${item.id}')" 
-                                                                    class="text-red-600 hover:text-red-800 font-medium text-sm ${state.darkMode ? 'bg-red-900 hover:bg-red-800' : 'bg-red-50 hover:bg-red-100'} px-3 py-1 rounded-lg transition-colors">
+                                                                    class="${isDark ? 'bg-red-900 hover:bg-red-800 text-red-200' : 'bg-red-50 hover:bg-red-100 text-red-600'} px-3 py-1 rounded-lg font-medium text-sm transition-colors theme-transition">
                                                                     Excluir
                                                                 </button>
                                                             </div>
@@ -986,132 +1153,126 @@
                 <!-- MODAIS -->
                 ${renderModals()}
             `;
-            
-            // Inicializar código de barras se o modal estiver aberto
-            if (state.activeModal === 'barcode' && state.barcodeItem) {
-                setTimeout(() => {
-                    if (document.getElementById('barcode-display')) {
-                        JsBarcode("#barcode-display", state.barcodeItem.codigo, {
-                            format: "CODE128",
-                            lineColor: "#000",
-                            width: 2,
-                            height: 100,
-                            displayValue: true
-                        });
-                    }
-                }, 100);
-            }
         }
 
         function renderModals() {
             if (!state.activeModal) return '';
+
+            const isDark = state.darkMode;
 
             if (state.activeModal === 'add' || state.activeModal === 'edit') {
                 const isEdit = state.activeModal === 'edit';
                 const item = isEdit ? state.editingItem : state.currentItem;
                 
                 return `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${state.darkMode ? 'dark-card' : ''}">
+                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in" onclick="if(event.target === this) closeModal()">
+                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto theme-transition">
                             <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
                                 <h2 class="text-xl font-bold">${isEdit ? 'Editar' : 'Adicionar Novo'} Produto</h2>
                             </div>
                             <div class="p-6 space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Código do Produto *</label>
+                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Código do Produto *</label>
                                         <input type="text" 
-                                            value="${item.codigo}"
+                                            value="${escapeHtml(item.codigo)}"
                                             oninput="${isEdit ? 'state.editingItem.codigo = this.value' : 'state.currentItem.codigo = this.value'}"
-                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="EX001">
+                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
+                                            placeholder="EX001"
+                                            maxlength="50">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Quantidade *</label>
+                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Quantidade *</label>
                                         <input type="number" 
                                             value="${item.quantidade}"
                                             oninput="${isEdit ? 'state.editingItem.quantidade = this.value' : 'state.currentItem.quantidade = this.value'}"
-                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="0">
+                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
+                                            placeholder="0"
+                                            min="0">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Nome do Produto *</label>
+                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Nome do Produto *</label>
                                     <input type="text" 
-                                        value="${item.nome}"
+                                        value="${escapeHtml(item.nome)}"
                                         oninput="${isEdit ? 'state.editingItem.nome = this.value' : 'state.currentItem.nome = this.value'}"
-                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                        placeholder="Nome completo do produto">
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
+                                        placeholder="Nome completo do produto"
+                                        maxlength="200">
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Categoria</label>
+                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Categoria</label>
                                         <select onchange="${isEdit ? 'state.editingItem.categoria = this.value' : 'state.currentItem.categoria = this.value'}"
-                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
                                             <option value="">Selecione...</option>
                                             ${categories.map(cat => `
-                                                <option value="${cat}" ${item.categoria === cat ? 'selected' : ''}>${cat}</option>
+                                                <option value="${escapeHtml(cat)}" ${item.categoria === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>
                                             `).join('')}
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Preço (R$)</label>
+                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Preço (R$)</label>
                                         <input type="number" step="0.01"
                                             value="${item.preco}"
                                             oninput="${isEdit ? 'state.editingItem.preco = this.value' : 'state.currentItem.preco = this.value'}"
-                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                            placeholder="0.00">
+                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
+                                            placeholder="0.00"
+                                            min="0">
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Status</label>
+                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Status</label>
                                         <select onchange="${isEdit ? 'state.editingItem.status = this.value' : 'state.currentItem.status = this.value'}"
-                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
                                             ${statusOptions.map(status => `
                                                 <option value="${status.value}" ${item.status === status.value ? 'selected' : ''}>
-                                                    ${status.emoji} ${status.label}
+                                                    ${status.emoji} ${escapeHtml(status.label)}
                                                 </option>
                                             `).join('')}
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Data de Entrada</label>
+                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Data de Entrada</label>
                                         <input type="date" 
                                             value="${item.data_entrada}"
                                             oninput="${isEdit ? 'state.editingItem.data_entrada = this.value' : 'state.currentItem.data_entrada = this.value'}"
-                                            class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all">
+                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Localização</label>
+                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Localização</label>
                                     <input type="text" 
-                                        value="${item.localizacao}"
+                                        value="${escapeHtml(item.localizacao)}"
                                         oninput="${isEdit ? 'state.editingItem.localizacao = this.value' : 'state.currentItem.localizacao = this.value'}"
-                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                        placeholder="Ex: Prateleira A1">
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
+                                        placeholder="Ex: Prateleira A1"
+                                        maxlength="100">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Tags (separadas por vírgula)</label>
+                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Tags (separadas por vírgula)</label>
                                     <input type="text" 
-                                        value="${item.tags}"
+                                        value="${escapeHtml(item.tags)}"
                                         oninput="${isEdit ? 'state.editingItem.tags = this.value' : 'state.currentItem.tags = this.value'}"
-                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
-                                        placeholder="Ex: eletrônico, smartphone, samsung">
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
+                                        placeholder="Ex: eletrônico, smartphone, samsung"
+                                        maxlength="200">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium ${state.darkMode ? 'text-white' : 'text-gray-700'} mb-2">Observações</label>
+                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Observações</label>
                                     <textarea 
                                         oninput="${isEdit ? 'state.editingItem.observacoes = this.value' : 'state.currentItem.observacoes = this.value'}"
-                                        class="w-full px-4 py-3 border-2 ${state.darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200'} rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
                                         rows="3"
-                                        placeholder="Observações adicionais sobre o produto">${item.observacoes}</textarea>
+                                        placeholder="Observações adicionais sobre o produto"
+                                        maxlength="500">${escapeHtml(item.observacoes)}</textarea>
                                 </div>
                                 <div class="flex gap-3 justify-end pt-6">
-                                    <button onclick="closeModal()" class="px-6 py-3 border-2 ${state.darkMode ? 'border-gray-600 text-white hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-xl font-medium transition-all">
+                                    <button onclick="closeModal()" class="px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'dark-btn-secondary' : 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50'} theme-transition">
                                         Cancelar
                                     </button>
-                                    <button onclick="${isEdit ? 'updateItem()' : 'saveItem()'}" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
+                                    <button onclick="${isEdit ? 'updateItem()' : 'saveItem()'}" class="dark-btn-primary px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
                                         ${isEdit ? 'Atualizar' : 'Salvar'} Produto
                                     </button>
                                 </div>
@@ -1121,50 +1282,26 @@
                 `;
             }
 
-            if (state.activeModal === 'barcode' && state.barcodeItem) {
-                return `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full ${state.darkMode ? 'dark-card' : ''}">
-                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
-                                <h2 class="text-xl font-bold">Código do Produto</h2>
-                            </div>
-                            <div class="p-6 text-center">
-                                <h3 class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} mb-2">${state.barcodeItem.nome}</h3>
-                                <p class="${state.darkMode ? 'text-gray-300' : 'text-gray-600'} mb-4">Código: ${state.barcodeItem.codigo}</p>
-                                <div class="bg-white p-4 rounded-lg border ${state.darkMode ? 'border-gray-600' : 'border-gray-200'}">
-                                    <svg id="barcode-display"></svg>
-                                </div>
-                            </div>
-                            <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end">
-                                <button onclick="closeModal()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105">
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
             if (state.activeModal === 'import') {
                 return `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full ${state.darkMode ? 'dark-card' : ''}">
+                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in" onclick="if(event.target === this) closeModal()">
+                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl max-w-2xl w-full theme-transition">
                             <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
                                 <h2 class="text-xl font-bold">Importar Planilha</h2>
                             </div>
                             <div class="p-6 space-y-6">
-                                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 ${state.darkMode ? 'bg-blue-900 border-blue-700' : ''}">
-                                    <h3 class="font-semibold text-blue-800 ${state.darkMode ? 'text-blue-200' : ''} mb-2">📋 Formato da Planilha</h3>
-                                    <p class="text-sm text-blue-700 ${state.darkMode ? 'text-blue-300' : ''} mb-3">
-                                        Sua planilha deve conter estas colunas (pode usar nomes em português):
+                                <div class="${isDark ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-200'} border rounded-xl p-4">
+                                    <h3 class="font-semibold ${isDark ? 'text-blue-200' : 'text-blue-800'} mb-2">📋 Formato da Planilha</h3>
+                                    <p class="text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'} mb-3">
+                                        Sua planilha deve conter estas colunas:
                                     </p>
-                                    <ul class="text-sm text-blue-700 ${state.darkMode ? 'text-blue-300' : ''} space-y-1 list-disc list-inside">
+                                    <ul class="text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 list-disc list-inside">
                                         <li><strong>Código</strong> - Código único do produto (obrigatório)</li>
                                         <li><strong>Produto/Nome</strong> - Nome do produto (obrigatório)</li>
                                         <li><strong>Quantidade</strong> - Quantidade em estoque</li>
                                         <li><strong>Localização/Local</strong> - Onde o produto está armazenado</li>
                                         <li><strong>Categoria</strong> - Categoria do produto</li>
-                                        <li><strong>Preço</strong> - Preço do produto (com ou sem "R$")</li>
+                                        <li><strong>Preço</strong> - Preço do produto</li>
                                         <li><strong>Status</strong> - Status do produto</li>
                                         <li><strong>Observações</strong> - Observações adicionais</li>
                                         <li><strong>Tags</strong> - Tags separadas por vírgula</li>
@@ -1172,18 +1309,18 @@
                                 </div>
 
                                 <div class="flex gap-4">
-                                    <button onclick="downloadTemplate()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                                    <button onclick="downloadTemplate()" class="flex-1 dark-btn-primary px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 theme-transition">
                                         📋 Baixar Modelo
                                     </button>
                                 </div>
 
-                                <div class="border-2 border-dashed ${state.darkMode ? 'border-gray-600' : 'border-gray-300'} rounded-xl p-8 text-center">
-                                    <div class="text-4xl mb-4">📤</div>
-                                    <h3 class="font-semibold ${state.darkMode ? 'text-white' : 'text-gray-900'} mb-2">Selecione sua planilha</h3>
-                                    <p class="text-sm ${state.darkMode ? 'text-gray-400' : 'text-gray-600'} mb-4">
-                                        Formatos suportados: .xlsx, .xls, .csv
+                                <div class="border-2 border-dashed ${isDark ? 'dark-border' : 'border-gray-300'} rounded-xl p-8 text-center">
+                                    <div class="text-4xl mb-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}">📤</div>
+                                    <h3 class="font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'} mb-2">Selecione sua planilha</h3>
+                                    <p class="text-sm ${isDark ? 'dark-text-muted' : 'text-gray-600'} mb-4">
+                                        Formatos suportados: .xlsx, .xls, .csv (máx 5MB, 1000 linhas)
                                     </p>
-                                    <label class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer transition-all inline-block">
+                                    <label class="dark-btn-primary px-6 py-3 rounded-xl font-semibold cursor-pointer transition-all inline-block transform hover:scale-105 theme-transition">
                                         ${state.importLoading ? `
                                             <div class="flex items-center gap-2">
                                                 <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
@@ -1194,18 +1331,18 @@
                                     </label>
                                 </div>
 
-                                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 ${state.darkMode ? 'bg-yellow-900 border-yellow-700' : ''}">
-                                    <h3 class="font-semibold text-yellow-800 ${state.darkMode ? 'text-yellow-200' : ''} mb-2">⚠️ Importante</h3>
-                                    <ul class="text-sm text-yellow-700 ${state.darkMode ? 'text-yellow-300' : ''} space-y-1 list-disc list-inside">
+                                <div class="${isDark ? 'bg-yellow-900 border-yellow-700' : 'bg-yellow-50 border-yellow-200'} border rounded-xl p-4">
+                                    <h3 class="font-semibold ${isDark ? 'text-yellow-200' : 'text-yellow-800'} mb-2">⚠️ Importante</h3>
+                                    <ul class="text-sm ${isDark ? 'text-yellow-300' : 'text-yellow-700'} space-y-1 list-disc list-inside">
                                         <li>Produtos com códigos existentes serão atualizados</li>
-                                        <li>Colunas em branco serão preenchidas com valores padrão</li>
+                                        <li>Dados são validados e sanitizados automaticamente</li>
                                         <li>Status será mapeado automaticamente</li>
-                                        <li>O processo pode levar alguns minutos para muitas linhas</li>
+                                        <li>Máximo de 1000 linhas por vez</li>
                                     </ul>
                                 </div>
                             </div>
-                            <div class="p-6 border-t ${state.darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-end">
-                                <button onclick="closeModal()" class="px-6 py-3 border-2 ${state.darkMode ? 'border-gray-600 text-white hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-xl font-medium transition-all">
+                            <div class="p-6 border-t ${isDark ? 'dark-border' : 'border-gray-200'} flex justify-end">
+                                <button onclick="closeModal()" class="px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'dark-btn-secondary' : 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50'} theme-transition">
                                     Fechar
                                 </button>
                             </div>
