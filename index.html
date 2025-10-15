@@ -6,8 +6,6 @@
     <title>Controle de Estoque - 41º S3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         .loading-spinner {
             animation: spin 1s linear infinite;
@@ -16,197 +14,77 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
         
-        /* MODO NOTURNO MELHORADO */
+        /* MODO NOTURNO SIMPLIFICADO */
         .dark-mode {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-            color: #f1f5f9;
+            background: #1a202c;
+            color: #e2e8f0;
         }
         .dark-card {
-            background: #1e293b;
-            color: #f1f5f9;
-            border: 1px solid #334155;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-        .dark-header {
-            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+            background: #2d3748;
+            color: #e2e8f0;
+            border: 1px solid #4a5568;
         }
         .dark-input {
-            background: #334155;
-            border-color: #475569;
-            color: #f1f5f9;
-        }
-        .dark-input:focus {
-            background: #475569;
-            border-color: #7c3aed;
-            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
-        }
-        .dark-table-header {
-            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
-        }
-        .dark-table-row:hover {
-            background: #334155;
-        }
-        .dark-border {
-            border-color: #475569;
-        }
-        .dark-text-muted {
-            color: #94a3b8;
-        }
-        .dark-text-light {
-            color: #cbd5e1;
-        }
-        
-        /* ANIMAÇÕES SUAVES */
-        .theme-transition {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* GLOW EFFECT */
-        .glow-purple {
-            box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
-        }
-        .glow-pink {
-            box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
-        }
-        
-        /* BOTÕES MODO NOTURNO */
-        .dark-btn-primary {
-            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
-            color: white;
-        }
-        .dark-btn-primary:hover {
-            background: linear-gradient(135deg, #6d28d9 0%, #db2777 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.4);
-        }
-        
-        .dark-btn-secondary {
-            background: #334155;
-            color: #f1f5f9;
-            border: 1px solid #475569;
-        }
-        .dark-btn-secondary:hover {
-            background: #475569;
-            border-color: #64748b;
+            background: #4a5568;
+            border-color: #718096;
+            color: #e2e8f0;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 theme-transition" id="body">
+<body class="bg-gray-50" id="body">
     <div id="app"></div>
 
     <script>
-        // ✅ CONFIGURAÇÃO DO SUPABASE
+        // CONFIGURAÇÃO SIMPLIFICADA
         const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Estado da aplicação
+        // ESTADO SIMPLIFICADO
         let state = {
             user: null,
             items: [],
             loading: true,
             showLogin: true,
-            activeModal: null,
-            loginLoading: false,
-            registerLoading: false,
-            loginForm: { email: '', password: '' },
-            registerForm: { email: '', password: '', nome: '' },
-            currentItem: { 
-                codigo: '', 
-                nome: '', 
-                quantidade: '1', 
-                categoria: '', 
-                preco: '',
-                status: 'venda',
-                localizacao: '',
-                observacoes: '',
-                tags: '',
-                data_entrada: new Date().toISOString().split('T')[0]
-            },
-            editingItem: null,
-            barcodeItem: null,
-            searchTerm: '',
-            filterCategory: 'todas',
-            filterStatus: 'todos',
             darkMode: false,
-            importLoading: false
+            loginForm: { email: '', password: '' },
+            registerForm: { email: '', password: '', nome: '' }
         };
 
-        const categories = ['Eletrônicos', 'Eletrodomésticos', 'Informática', 'Telefonia', 'Áudio e Vídeo', 'Games', 'Acessórios', 'Outros'];
-        const statusOptions = [
-            { value: 'venda', label: 'Disponível para Venda', color: 'green', emoji: '🟢' },
-            { value: 'assistencia', label: 'Assistência Técnica', color: 'yellow', emoji: '🟡' },
-            { value: 'mostruario', label: 'Mostruário', color: 'blue', emoji: '🔵' },
-            { value: 'uso_loja', label: 'Uso da Loja', color: 'purple', emoji: '🟣' },
-            { value: 'separado', label: 'Separado p/ Entrega/Recolhimento', color: 'orange', emoji: '🟠' }
-        ];
-
-        // 🔐 SISTEMA DE AUTENTICAÇÃO
+        // FUNÇÃO DE INICIALIZAÇÃO SIMPLIFICADA
         async function initAuth() {
             try {
+                console.log('🔍 Iniciando autenticação...');
                 const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (error) {
                     console.error('Erro na sessão:', error);
-                    state.loading = false;
-                    render();
-                    return;
                 }
                 
                 state.user = session?.user || null;
-                
-                if (state.user) {
-                    await loadItems();
-                }
+                console.log('👤 Usuário:', state.user ? 'Logado' : 'Deslogado');
                 
                 state.loading = false;
                 render();
                 
-                // Escutar mudanças de autenticação
-                supabase.auth.onAuthStateChange(async (event, session) => {
-                    state.user = session?.user || null;
-                    
-                    if (event === 'SIGNED_IN') {
-                        await loadItems();
-                        showNotification('✅ Login realizado com sucesso!', 'success');
-                        state.loginLoading = false;
-                    } 
-                    else if (event === 'SIGNED_OUT') {
-                        state.items = [];
-                        state.showLogin = true;
-                    }
-                    
-                    render();
-                });
             } catch (error) {
                 console.error('❌ Erro na inicialização:', error);
                 state.loading = false;
-                state.loginLoading = false;
-                state.registerLoading = false;
                 render();
             }
         }
 
-        // 📧 LOGIN
+        // FUNÇÃO DE LOGIN SIMPLIFICADA
         async function login() {
             if (!state.loginForm.email || !state.loginForm.password) {
-                showNotification('❌ Preencha email e senha', 'error');
+                alert('❌ Preencha email e senha');
                 return;
             }
             
             try {
-                state.loginLoading = true;
-                render();
-                
+                console.log('🔐 Tentando login...');
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: state.loginForm.email,
                     password: state.loginForm.password
@@ -214,36 +92,25 @@
 
                 if (error) throw error;
                 
+                state.user = data.user;
                 state.loginForm = { email: '', password: '' };
+                console.log('✅ Login bem-sucedido');
                 
             } catch (error) {
-                state.loginLoading = false;
-                render();
-                
-                if (error.message?.includes('Invalid login credentials')) {
-                    showNotification('❌ Email ou senha incorretos', 'error');
-                } else {
-                    showNotification('❌ Erro ao fazer login: ' + error.message, 'error');
-                }
+                console.error('❌ Erro no login:', error);
+                alert('Erro ao fazer login: ' + error.message);
             }
         }
 
-        // 📝 CADASTRO
+        // FUNÇÃO DE CADASTRO SIMPLIFICADA
         async function register() {
             if (!state.registerForm.email || !state.registerForm.password || !state.registerForm.nome) {
-                showNotification('❌ Preencha todos os campos', 'error');
-                return;
-            }
-            
-            if (state.registerForm.password.length < 6) {
-                showNotification('❌ Senha deve ter no mínimo 6 caracteres', 'error');
+                alert('❌ Preencha todos os campos');
                 return;
             }
             
             try {
-                state.registerLoading = true;
-                render();
-                
+                console.log('📝 Tentando cadastro...');
                 const { data, error } = await supabase.auth.signUp({
                     email: state.registerForm.email,
                     password: state.registerForm.password,
@@ -256,496 +123,52 @@
 
                 if (error) throw error;
                 
+                alert('✅ Cadastro realizado! Verifique seu email para confirmar.');
+                state.showLogin = true;
                 state.registerForm = { email: '', password: '', nome: '' };
-                state.registerLoading = false;
-                
-                if (data.user?.identities?.length === 0) {
-                    showNotification('❌ Este email já está cadastrado', 'error');
-                } else {
-                    showNotification('✅ Cadastro realizado! Verifique seu email para confirmar.', 'success');
-                    state.showLogin = true;
-                }
-                
-                render();
                 
             } catch (error) {
-                state.registerLoading = false;
-                render();
-                showNotification('❌ Erro: ' + error.message, 'error');
+                console.error('❌ Erro no cadastro:', error);
+                alert('Erro: ' + error.message);
             }
         }
 
-        // 🚪 LOGOUT
+        // FUNÇÃO DE LOGOUT
         async function logout() {
             try {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
-                showNotification('👋 Até logo!', 'info');
+                await supabase.auth.signOut();
+                state.user = null;
+                state.showLogin = true;
+                console.log('🚪 Usuário deslogado');
             } catch (error) {
-                showNotification('❌ Erro ao sair', 'error');
+                console.error('❌ Erro no logout:', error);
             }
         }
 
-        // 📦 CARREGAR ITENS
-        async function loadItems() {
-            try {
-                const { data, error } = await supabase
-                    .from('items')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                
-                state.items = data || [];
-                render();
-            } catch (error) {
-                showNotification('❌ Erro ao carregar produtos', 'error');
-            }
-        }
-
-        // 💾 SALVAR ITEM
-        async function saveItem() {
-            if (!state.currentItem.codigo || !state.currentItem.nome) {
-                showNotification('❌ Preencha código e nome do produto', 'error');
-                return;
-            }
-            
-            try {
-                const itemData = {
-                    ...state.currentItem,
-                    user_id: state.user.id,
-                    user_email: state.user.email,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                };
-                
-                const { data, error } = await supabase
-                    .from('items')
-                    .insert([itemData]);
-                
-                if (error) throw error;
-                
-                showNotification('✅ Produto adicionado com sucesso!', 'success');
-                await loadItems();
-                closeModal();
-                
-            } catch (error) {
-                showNotification('❌ Erro ao salvar: ' + error.message, 'error');
-            }
-        }
-
-        // ✏️ EDITAR ITEM
-        async function updateItem() {
-            if (!state.editingItem.codigo || !state.editingItem.nome) {
-                showNotification('❌ Preencha código e nome do produto', 'error');
-                return;
-            }
-            
-            try {
-                const itemData = {
-                    ...state.editingItem,
-                    updated_at: new Date().toISOString()
-                };
-                
-                delete itemData.id;
-                
-                const { data, error } = await supabase
-                    .from('items')
-                    .update(itemData)
-                    .eq('id', state.editingItem.id);
-                
-                if (error) throw error;
-                
-                showNotification('✅ Produto atualizado com sucesso!', 'success');
-                await loadItems();
-                closeModal();
-                
-            } catch (error) {
-                showNotification('❌ Erro ao atualizar: ' + error.message, 'error');
-            }
-        }
-
-        // 🗑️ EXCLUIR ITEM
-        async function deleteItem(id) {
-            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-            
-            try {
-                const { error } = await supabase
-                    .from('items')
-                    .delete()
-                    .eq('id', id);
-                
-                if (error) throw error;
-                
-                showNotification('✅ Produto excluído!', 'success');
-                await loadItems();
-                
-            } catch (error) {
-                showNotification('❌ Erro ao excluir', 'error');
-            }
-        }
-
-        // 📤 EXPORTAR PARA EXCEL
-        function exportToExcel() {
-            const filteredItems = getFilteredItems();
-            const data = filteredItems.map(item => ({
-                'Código': item.codigo,
-                'Nome': item.nome,
-                'Categoria': item.categoria,
-                'Quantidade': item.quantidade,
-                'Preço': item.preco ? `R$ ${parseFloat(item.preco).toFixed(2)}` : '',
-                'Status': statusOptions.find(s => s.value === item.status)?.label || item.status,
-                'Localização': item.localizacao || '',
-                'Data Entrada': item.data_entrada || '',
-                'Observações': item.observacoes || '',
-                'Tags': item.tags || ''
-            }));
-            
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Estoque");
-            XLSX.writeFile(wb, `estoque_${new Date().toISOString().split('T')[0]}.xlsx`);
-            
-            showNotification('📊 Planilha exportada com sucesso!', 'success');
-        }
-
-        // 📥 BAIXAR MODELO DE PLANILHA
-        function downloadTemplate() {
-            const templateData = [
-                {
-                    'Código': 'COD001',
-                    'Produto': 'Smartphone Samsung Galaxy',
-                    'Quantidade': '5',
-                    'Localização': 'Prateleira A1',
-                    'Categoria': 'Telefonia',
-                    'Preço': '1500.00',
-                    'Status': 'Disponível para Venda',
-                    'Observações': 'Modelo 2024',
-                    'Tags': 'samsung,celular,android'
-                },
-                {
-                    'Código': 'COD002',
-                    'Produto': 'Notebook Dell Inspiron',
-                    'Quantidade': '3',
-                    'Localização': 'Prateleira B2',
-                    'Categoria': 'Informática',
-                    'Preço': '2500.00',
-                    'Status': 'Disponível para Venda',
-                    'Observações': '8GB RAM, 256GB SSD',
-                    'Tags': 'dell,notebook,windows'
-                }
-            ];
-            
-            const ws = XLSX.utils.json_to_sheet(templateData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Modelo Importação");
-            XLSX.writeFile(wb, 'modelo_importacao_estoque.xlsx');
-            
-            showNotification('📋 Modelo baixado com sucesso!', 'success');
-        }
-
-        // 📥 IMPORTAR DO EXCEL
-        async function importFromExcel(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                state.importLoading = true;
-                render();
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                        
-                        processImportedData(jsonData);
-                        
-                    } catch (error) {
-                        console.error('Erro ao importar arquivo:', error);
-                        showNotification('❌ Erro ao importar arquivo', 'error');
-                        state.importLoading = false;
-                        render();
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-                
-            } catch (error) {
-                state.importLoading = false;
-                render();
-                showNotification('❌ Erro ao processar arquivo', 'error');
-            }
-        }
-
-        // 🔄 PROCESSAR DADOS IMPORTADOS
-        async function processImportedData(data) {
-            try {
-                let importedCount = 0;
-                let errorCount = 0;
-                const errors = [];
-                
-                for (const [index, item] of data.entries()) {
-                    try {
-                        // Mapear colunas do Excel para o formato do sistema
-                        const mappedItem = {
-                            codigo: item.Código || item.codigo || `IMP${Date.now()}${index}`,
-                            nome: item.Produto || item.produto || item.Nome || item.nome || 'Produto sem nome',
-                            quantidade: item.Quantidade || item.quantidade || '1',
-                            localizacao: item.Localização || item.localizacao || item.Local || item.local || '',
-                            categoria: item.Categoria || item.categoria || '',
-                            preco: item.Preço || item.preco || item.Preco || '',
-                            status: mapStatus(item.Status || item.status) || 'venda',
-                            observacoes: item.Observações || item.observacoes || item.Observacoes || '',
-                            tags: item.Tags || item.tags || '',
-                            data_entrada: new Date().toISOString().split('T')[0],
-                            user_id: state.user.id,
-                            user_email: state.user.email,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        };
-                        
-                        // Limpar e formatar dados
-                        if (mappedItem.preco) {
-                            mappedItem.preco = parseFloat(mappedItem.preco.toString().replace('R$', '').replace(',', '.').trim()) || '';
-                        }
-                        
-                        if (mappedItem.quantidade) {
-                            mappedItem.quantidade = parseInt(mappedItem.quantidade) || 1;
-                        }
-                        
-                        // Verificar se item já existe
-                        const { data: existingItem } = await supabase
-                            .from('items')
-                            .select('id')
-                            .eq('codigo', mappedItem.codigo)
-                            .single();
-                        
-                        if (existingItem) {
-                            await supabase
-                                .from('items')
-                                .update(mappedItem)
-                                .eq('id', existingItem.id);
-                        } else {
-                            await supabase
-                                .from('items')
-                                .insert([mappedItem]);
-                        }
-                        
-                        importedCount++;
-                        
-                    } catch (itemError) {
-                        errorCount++;
-                        errors.push(`Linha ${index + 2}: ${itemError.message}`);
-                    }
-                }
-                
-                state.importLoading = false;
-                render();
-                
-                if (errorCount > 0) {
-                    showNotification(`⚠️ ${importedCount} itens importados, ${errorCount} com erro.`, 'warning');
-                } else {
-                    showNotification(`✅ ${importedCount} itens importados com sucesso!`, 'success');
-                }
-                
-                await loadItems();
-                
-            } catch (error) {
-                state.importLoading = false;
-                render();
-                showNotification('❌ Erro ao importar dados: ' + error.message, 'error');
-            }
-        }
-
-        // 🗺️ MAPEAR STATUS
-        function mapStatus(statusStr) {
-            if (!statusStr) return 'venda';
-            
-            const statusMap = {
-                'disponível para venda': 'venda',
-                'disponivel para venda': 'venda',
-                'venda': 'venda',
-                'assistência técnica': 'assistencia',
-                'assistencia tecnica': 'assistencia',
-                'assistencia': 'assistencia',
-                'mostruário': 'mostruario',
-                'mostruario': 'mostruario',
-                'uso da loja': 'uso_loja',
-                'uso loja': 'uso_loja',
-                'separado p/ entrega/recolhimento': 'separado',
-                'separado para entrega': 'separado',
-                'separado': 'separado'
-            };
-            
-            const normalizedStatus = statusStr.toString().toLowerCase().trim();
-            return statusMap[normalizedStatus] || 'venda';
-        }
-
-        // 🖨️ IMPRIMIR LISTA
-        function printList() {
-            const filteredItems = getFilteredItems();
-            const printWindow = window.open('', '_blank');
-            
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Lista de Estoque - ${new Date().toLocaleDateString('pt-BR')}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        h1 { text-align: center; margin-bottom: 20px; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-                        th { background-color: #f0f0f0; }
-                    </style>
-                </head>
-                <body>
-                    <h1>Lista de Estoque - ${new Date().toLocaleDateString('pt-BR')}</h1>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Nome</th>
-                                <th>Categoria</th>
-                                <th>Quantidade</th>
-                                <th>Preço</th>
-                                <th>Status</th>
-                                <th>Localização</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filteredItems.map(item => {
-                                const statusInfo = statusOptions.find(s => s.value === item.status);
-                                return `
-                                    <tr>
-                                        <td>${item.codigo}</td>
-                                        <td>${item.nome}</td>
-                                        <td>${item.categoria || '-'}</td>
-                                        <td>${item.quantidade}</td>
-                                        <td>${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}</td>
-                                        <td>${statusInfo?.label || item.status}</td>
-                                        <td>${item.localizacao || '-'}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                    <p style="margin-top: 20px; text-align: center;">
-                        Total de itens: ${filteredItems.length}
-                    </p>
-                </body>
-                </html>
-            `);
-            
-            printWindow.document.close();
-            printWindow.print();
-        }
-
-        // 🎯 FUNÇÕES AUXILIARES
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-red-500' : 
-                           type === 'success' ? 'bg-green-500' : 
-                           type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
-            
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 fade-in max-w-sm ${state.darkMode ? 'dark-card glow-purple' : ''}`;
-            notification.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <span class="text-lg">${type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
-                    <span class="text-sm font-medium">${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
-                        ✕
-                    </button>
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
-        }
-
-        function openModal(type, item = null) {
-            state.activeModal = type;
-            if (type === 'edit' && item) {
-                state.editingItem = { ...item };
-            } else if (type === 'barcode' && item) {
-                state.barcodeItem = item;
-            }
-            render();
-        }
-
-        function closeModal() {
-            state.activeModal = null;
-            state.currentItem = { 
-                codigo: '', 
-                nome: '', 
-                quantidade: '1', 
-                categoria: '', 
-                preco: '',
-                status: 'venda',
-                localizacao: '',
-                observacoes: '',
-                tags: '',
-                data_entrada: new Date().toISOString().split('T')[0]
-            };
-            state.editingItem = null;
-            state.barcodeItem = null;
-            state.importLoading = false;
-            render();
-        }
-
-        function getFilteredItems() {
-            return state.items.filter(item => {
-                const matchesSearch = item.nome.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                                     item.codigo.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                                     (item.tags && item.tags.toLowerCase().includes(state.searchTerm.toLowerCase()));
-                const matchesCategory = state.filterCategory === 'todas' || item.categoria === state.filterCategory;
-                const matchesStatus = state.filterStatus === 'todos' || item.status === state.filterStatus;
-                return matchesSearch && matchesCategory && matchesStatus;
-            });
-        }
-
-        function getStatusColor(statusColor) {
-            const colorMap = {
-                'green': '#10b981',
-                'yellow': '#f59e0b',
-                'blue': '#3b82f6',
-                'purple': '#8b5cf6',
-                'orange': '#f97316'
-            };
-            return colorMap[statusColor] || '#6b7280';
-        }
-
-        function getStatusCount(status) {
-            return state.items.filter(item => item.status === status).length;
-        }
-
+        // FUNÇÃO PARA ALTERNAR MODO ESCURO
         function toggleDarkMode() {
             state.darkMode = !state.darkMode;
             const body = document.getElementById('body');
             if (state.darkMode) {
                 body.classList.add('dark-mode');
-                body.classList.remove('bg-gradient-to-br', 'from-blue-50', 'via-purple-50', 'to-pink-50');
+                body.classList.remove('bg-gray-50');
             } else {
                 body.classList.remove('dark-mode');
-                body.classList.add('bg-gradient-to-br', 'from-blue-50', 'via-purple-50', 'to-pink-50');
+                body.classList.add('bg-gray-50');
             }
             render();
         }
 
-        // 🎨 RENDERIZAR
+        // RENDERIZAÇÃO SIMPLIFICADA
         function render() {
+            console.log('🎨 Renderizando...', state);
+            
             if (state.loading) {
                 document.getElementById('app').innerHTML = `
                     <div class="flex items-center justify-center min-h-screen">
                         <div class="text-center">
                             <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="${state.darkMode ? 'dark-text-muted' : 'text-gray-600'}">Inicializando sistema...</p>
+                            <p class="text-gray-600">Carregando...</p>
                         </div>
                     </div>
                 `;
@@ -763,526 +186,172 @@
         function renderLogin() {
             const isDark = state.darkMode;
             document.getElementById('app').innerHTML = `
-                <div class="flex items-center justify-center min-h-screen p-4 fade-in">
-                    <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl p-8 max-w-md w-full theme-transition">
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-xl p-8 max-w-md w-full transition-colors">
                         <div class="text-center mb-8">
-                            <div class="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4 glow-purple">
-                                <span class="text-white text-3xl">📦</span>
+                            <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <span class="text-white text-2xl">📦</span>
                             </div>
-                            <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                                Controle de Estoque
-                            </h1>
-                            <p class="${isDark ? 'dark-text-muted' : 'text-gray-600'}">41º S3 - Sistema em Tempo Real</p>
+                            <h1 class="text-2xl font-bold text-purple-600 mb-2">Controle de Estoque</h1>
+                            <p class="${isDark ? 'text-gray-400' : 'text-gray-600'}">41º S3 - Sistema em Tempo Real</p>
                         </div>
 
                         ${state.showLogin ? `
-                            <!-- LOGIN -->
+                            <!-- TELA DE LOGIN -->
                             <div class="space-y-4">
                                 <div>
                                     <input type="email" placeholder="Seu email" 
                                         value="${state.loginForm.email}"
                                         oninput="state.loginForm.email = this.value"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        ${state.loginLoading ? 'disabled' : ''}>
+                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors"
+                                        autocomplete="email">
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Sua senha" 
                                         value="${state.loginForm.password}"
                                         oninput="state.loginForm.password = this.value"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        ${state.loginLoading ? 'disabled' : ''}>
+                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors"
+                                        autocomplete="current-password">
                                 </div>
                                 <button onclick="login()" 
-                                    class="w-full dark-btn-primary py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 theme-transition"
-                                    ${state.loginLoading ? 'disabled' : ''}>
-                                    ${state.loginLoading ? `
-                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                        <span>Conectando...</span>
-                                    ` : 'Entrar no Sistema'}
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors">
+                                    Entrar no Sistema
                                 </button>
                                 <div class="text-center">
-                                    <button onclick="state.showLogin = false; render()" class="text-purple-600 hover:text-purple-700 text-sm font-medium">
+                                    <button onclick="state.showLogin = false; render()" 
+                                        class="text-purple-600 hover:text-purple-700 text-sm font-medium">
                                         Primeira vez? Criar conta
                                     </button>
                                 </div>
                             </div>
                         ` : `
-                            <!-- CADASTRO -->
+                            <!-- TELA DE CADASTRO -->
                             <div class="space-y-4">
                                 <div>
                                     <input type="text" placeholder="Seu nome completo" 
                                         value="${state.registerForm.nome}"
                                         oninput="state.registerForm.nome = this.value"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        ${state.registerLoading ? 'disabled' : ''}>
+                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors"
+                                        autocomplete="name">
                                 </div>
                                 <div>
                                     <input type="email" placeholder="Seu melhor email" 
                                         value="${state.registerForm.email}"
                                         oninput="state.registerForm.email = this.value"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        ${state.registerLoading ? 'disabled' : ''}>
+                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors"
+                                        autocomplete="email">
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
                                         value="${state.registerForm.password}"
                                         oninput="state.registerForm.password = this.value"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        ${state.registerLoading ? 'disabled' : ''}>
+                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors"
+                                        autocomplete="new-password">
                                 </div>
                                 <button onclick="register()" 
-                                    class="w-full dark-btn-primary py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 theme-transition"
-                                    ${state.registerLoading ? 'disabled' : ''}>
-                                    ${state.registerLoading ? `
-                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                        <span>Criando conta...</span>
-                                    ` : 'Criar Minha Conta'}
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors">
+                                    Criar Minha Conta
                                 </button>
                                 <div class="text-center">
-                                    <button onclick="state.showLogin = true; render()" class="text-purple-600 hover:text-purple-700 text-sm font-medium">
+                                    <button onclick="state.showLogin = true; render()" 
+                                        class="text-purple-600 hover:text-purple-700 text-sm font-medium">
                                         Já tem conta? Fazer login
                                     </button>
                                 </div>
                             </div>
                         `}
+
+                        <!-- BOTÃO MODO ESCURO -->
+                        <div class="text-center mt-6">
+                            <button onclick="toggleDarkMode()" 
+                                class="text-sm ${isDark ? 'text-yellow-400' : 'text-gray-600'} hover:text-purple-600 transition-colors">
+                                ${isDark ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
         function renderApp() {
-            const filteredItems = getFilteredItems();
             const isDark = state.darkMode;
-            
             document.getElementById('app').innerHTML = `
-                <div class="min-h-screen p-4 fade-in">
-                    <div class="max-w-7xl mx-auto">
+                <div class="min-h-screen p-4 ${isDark ? 'dark-mode' : 'bg-gray-50'} transition-colors">
+                    <div class="max-w-4xl mx-auto">
                         <!-- CABEÇALHO -->
-                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl p-6 mb-8 theme-transition">
-                            <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
+                        <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-lg p-6 mb-6 transition-colors">
+                            <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-4">
-                                    <div class="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-lg glow-purple">
-                                        <span class="text-white text-2xl">📦</span>
+                                    <div class="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
+                                        <span class="text-white text-xl">📦</span>
                                     </div>
                                     <div>
-                                        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                                            Controle de Estoque
-                                        </h1>
-                                        <p class="${isDark ? 'dark-text-muted' : 'text-gray-600'} text-sm">41º S3 • ${state.user.email}</p>
+                                        <h1 class="text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}">Controle de Estoque</h1>
+                                        <p class="${isDark ? 'text-gray-400' : 'text-gray-600'}">41º S3 • ${state.user.email}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
-                                    <button onclick="toggleDarkMode()" class="p-3 rounded-xl ${isDark ? 'dark-btn-secondary glow-purple' : 'bg-gray-200 text-gray-700'} theme-transition transform hover:scale-105">
-                                        ${isDark ? '☀️ Claro' : '🌙 Escuro'}
+                                    <button onclick="toggleDarkMode()" 
+                                        class="p-2 rounded-lg ${isDark ? 'bg-gray-600 text-yellow-400' : 'bg-gray-200 text-gray-700'} transition-colors">
+                                        ${isDark ? '☀️' : '🌙'}
                                     </button>
-                                    <div class="text-right">
-                                        <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="${isDark ? 'dark-text-muted' : 'text-gray-600'} text-sm">produtos</div>
-                                    </div>
-                                    <button onclick="logout()" class="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
+                                    <button onclick="logout()" 
+                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition-colors">
                                         Sair
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- DASHBOARD -->
-                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                            ${statusOptions.map(status => `
-                                <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-2xl shadow-lg p-4 text-center theme-transition transform hover:scale-105 cursor-pointer">
-                                    <div class="text-2xl mb-2">${status.emoji}</div>
-                                    <h3 class="font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'} text-sm mb-1">${status.label}</h3>
-                                    <p class="text-xl font-bold" style="color: ${getStatusColor(status.color)}">${getStatusCount(status.value)}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-
-                        <!-- BARRA DE AÇÕES -->
-                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-2xl shadow-lg p-6 mb-6 theme-transition">
-                            <div class="flex flex-col lg:flex-row gap-4 items-center">
-                                <div class="flex-1">
-                                    <div class="relative">
-                                        <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-500">
-                                            🔍
-                                        </div>
-                                        <input type="text" 
-                                            placeholder="Buscar produtos..."
-                                            value="${state.searchTerm}"
-                                            oninput="state.searchTerm = this.value; render()"
-                                            class="w-full pl-12 pr-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
+                        <!-- CONTEÚDO PRINCIPAL -->
+                        <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-lg p-6 transition-colors">
+                            <div class="text-center py-12">
+                                <div class="text-6xl mb-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}">🚀</div>
+                                <h2 class="text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4">
+                                    Sistema Carregado com Sucesso!
+                                </h2>
+                                <p class="${isDark ? 'text-gray-400' : 'text-gray-600'} mb-6">
+                                    Bem-vindo ao sistema de controle de estoque.
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                                    <div class="${isDark ? 'bg-gray-700' : 'bg-purple-50'} p-4 rounded-xl text-center">
+                                        <div class="text-2xl mb-2">📊</div>
+                                        <h3 class="font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Dashboard</h3>
+                                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1">Visualize seus dados</p>
+                                    </div>
+                                    <div class="${isDark ? 'bg-gray-700' : 'bg-blue-50'} p-4 rounded-xl text-center">
+                                        <div class="text-2xl mb-2">📦</div>
+                                        <h3 class="font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Produtos</h3>
+                                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1">Gerencie itens</p>
+                                    </div>
+                                    <div class="${isDark ? 'bg-gray-700' : 'bg-green-50'} p-4 rounded-xl text-center">
+                                        <div class="text-2xl mb-2">⚡</div>
+                                        <h3 class="font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Rápido</h3>
+                                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1">Interface ágil</p>
                                     </div>
                                 </div>
-                                <div class="flex gap-4">
-                                    <select onchange="state.filterCategory = this.value; render()" 
-                                        class="px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
-                                        <option value="todas">📊 Todas Categorias</option>
-                                        ${categories.map(cat => `
-                                            <option value="${cat}" ${state.filterCategory === cat ? 'selected' : ''}>${cat}</option>
-                                        `).join('')}
-                                    </select>
-                                    <select onchange="state.filterStatus = this.value; render()" 
-                                        class="px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 font-medium transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
-                                        <option value="todos">🎯 Todos Status</option>
-                                        ${statusOptions.map(status => `
-                                            <option value="${status.value}" ${state.filterStatus === status.value ? 'selected' : ''}>
-                                                ${status.emoji} ${status.label}
-                                            </option>
-                                        `).join('')}
-                                    </select>
-                                    <button onclick="openModal('add')" class="dark-btn-primary px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 flex items-center gap-2 theme-transition">
-                                        <span>+</span>
-                                        <span>Novo Produto</span>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- BOTÕES DE EXPORTAR/IMPORTAR/IMPRIMIR -->
-                            <div class="flex gap-4 mt-4 no-print flex-wrap">
-                                <button onclick="exportToExcel()" class="${isDark ? 'dark-btn-secondary' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
-                                    📊 Exportar Excel
-                                </button>
-                                <button onclick="openModal('import')" class="${isDark ? 'dark-btn-secondary' : 'bg-green-600 hover:bg-green-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
-                                    📥 Importar Planilha
-                                </button>
-                                <button onclick="downloadTemplate()" class="${isDark ? 'dark-btn-secondary' : 'bg-purple-600 hover:bg-purple-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
-                                    📋 Baixar Modelo
-                                </button>
-                                <button onclick="printList()" class="${isDark ? 'dark-btn-secondary' : 'bg-orange-600 hover:bg-orange-700'} text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 theme-transition transform hover:scale-105">
-                                    🖨️ Imprimir Lista
-                                </button>
                             </div>
                         </div>
 
-                        <!-- LISTA DE PRODUTOS -->
-                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-2xl shadow-lg overflow-hidden theme-transition">
-                            ${filteredItems.length === 0 ? `
-                                <div class="text-center py-16">
-                                    <div class="text-8xl mb-6 ${isDark ? 'text-purple-400' : 'text-purple-600'}">📦</div>
-                                    <h3 class="text-2xl font-semibold ${isDark ? 'dark-text-light' : 'text-gray-600'} mb-3">${state.items.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}</h3>
-                                    <p class="${isDark ? 'dark-text-muted' : 'text-gray-500'} mb-6">${state.items.length === 0 ? 'Comece adicionando seu primeiro produto!' : 'Tente alterar os filtros de busca'}</p>
-                                    ${state.items.length === 0 && `
-                                        <button onclick="openModal('add')" class="dark-btn-primary px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
-                                            Adicionar Primeiro Produto
-                                        </button>
-                                    `}
-                                </div>
-                            ` : `
-                                <div class="overflow-x-auto">
-                                    <table class="w-full">
-                                        <thead class="${isDark ? 'dark-table-header' : 'bg-gradient-to-r from-purple-600 to-pink-600'} text-white">
-                                            <tr>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Código</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Produto</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Categoria</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Quantidade</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Preço</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Status</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase">Localização</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold uppercase no-print">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="${isDark ? 'divide-y divide-gray-600' : 'divide-y divide-gray-200'}">
-                                            ${filteredItems.map(item => {
-                                                const statusInfo = statusOptions.find(s => s.value === item.status);
-                                                return `
-                                                    <tr class="${isDark ? 'dark-table-row' : 'hover:bg-gray-50'} transition-colors">
-                                                        <td class="px-6 py-4">
-                                                            <div class="text-sm font-bold ${isDark ? 'text-purple-300' : 'text-purple-600'}">${item.codigo}</div>
-                                                        </td>
-                                                        <td class="px-6 py-4">
-                                                            <div class="text-sm font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'}">${item.nome}</div>
-                                                            <div class="text-xs ${isDark ? 'dark-text-muted' : 'text-gray-500'}">${item.observacoes || ''}</div>
-                                                            ${item.tags ? `
-                                                                <div class="text-xs ${isDark ? 'dark-text-muted' : 'text-gray-500'} mt-1">
-                                                                    ${item.tags.split(',').map(tag => `<span class="inline-block ${isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'} px-2 py-1 rounded-full mr-1">${tag.trim()}</span>`).join('')}
-                                                                </div>
-                                                            ` : ''}
-                                                        </td>
-                                                        <td class="px-6 py-4">
-                                                            <span class="px-3 py-1 ${isDark ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-800'} rounded-full text-xs font-medium">
-                                                                ${item.categoria || 'Geral'}
-                                                            </span>
-                                                        </td>
-                                                        <td class="px-6 py-4">
-                                                            <span class="px-3 py-1 ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'} rounded-full text-sm font-bold">
-                                                                ${item.quantidade}
-                                                            </span>
-                                                        </td>
-                                                        <td class="px-6 py-4">
-                                                            <div class="text-sm font-bold ${isDark ? 'text-green-300' : 'text-green-600'}">
-                                                                ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
-                                                            </div>
-                                                        </td>
-                                                        <td class="px-6 py-4">
-                                                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-white" style="background-color: ${getStatusColor(statusInfo.color)}">
-                                                                ${statusInfo.emoji} ${statusInfo.label}
-                                                            </span>
-                                                        </td>
-                                                        <td class="px-6 py-4">
-                                                            <div class="text-sm ${isDark ? 'dark-text-muted' : 'text-gray-600'}">${item.localizacao || '-'}</div>
-                                                        </td>
-                                                        <td class="px-6 py-4 no-print">
-                                                            <div class="flex items-center gap-2">
-                                                                <button onclick="openModal('edit', ${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                                                    class="${isDark ? 'bg-blue-900 hover:bg-blue-800 text-blue-200' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'} px-3 py-1 rounded-lg font-medium text-sm transition-colors theme-transition">
-                                                                    Editar
-                                                                </button>
-                                                                <button onclick="deleteItem('${item.id}')" 
-                                                                    class="${isDark ? 'bg-red-900 hover:bg-red-800 text-red-200' : 'bg-red-50 hover:bg-red-100 text-red-600'} px-3 py-1 rounded-lg font-medium text-sm transition-colors theme-transition">
-                                                                    Excluir
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                `;
-                                            }).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            `}
+                        <!-- RODAPÉ -->
+                        <div class="text-center mt-8 ${isDark ? 'text-gray-500' : 'text-gray-600'} text-sm">
+                            Sistema de Controle de Estoque - 41º S3
                         </div>
                     </div>
                 </div>
-
-                <!-- MODAIS -->
-                ${renderModals()}
             `;
-            
-            // Inicializar código de barras se o modal estiver aberto
-            if (state.activeModal === 'barcode' && state.barcodeItem) {
-                setTimeout(() => {
-                    if (document.getElementById('barcode-display')) {
-                        JsBarcode("#barcode-display", state.barcodeItem.codigo, {
-                            format: "CODE128",
-                            lineColor: state.darkMode ? "#fff" : "#000",
-                            width: 2,
-                            height: 100,
-                            displayValue: true
-                        });
-                    }
-                }, 100);
-            }
         }
 
-        function renderModals() {
-            if (!state.activeModal) return '';
-
-            const isDark = state.darkMode;
-
-            if (state.activeModal === 'add' || state.activeModal === 'edit') {
-                const isEdit = state.activeModal === 'edit';
-                const item = isEdit ? state.editingItem : state.currentItem;
-                
-                return `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto theme-transition">
-                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
-                                <h2 class="text-xl font-bold">${isEdit ? 'Editar' : 'Adicionar Novo'} Produto</h2>
-                            </div>
-                            <div class="p-6 space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Código do Produto *</label>
-                                        <input type="text" 
-                                            value="${item.codigo}"
-                                            oninput="${isEdit ? 'state.editingItem.codigo = this.value' : 'state.currentItem.codigo = this.value'}"
-                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                            placeholder="EX001">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Quantidade *</label>
-                                        <input type="number" 
-                                            value="${item.quantidade}"
-                                            oninput="${isEdit ? 'state.editingItem.quantidade = this.value' : 'state.currentItem.quantidade = this.value'}"
-                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                            placeholder="0">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Nome do Produto *</label>
-                                    <input type="text" 
-                                        value="${item.nome}"
-                                        oninput="${isEdit ? 'state.editingItem.nome = this.value' : 'state.currentItem.nome = this.value'}"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        placeholder="Nome completo do produto">
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Categoria</label>
-                                        <select onchange="${isEdit ? 'state.editingItem.categoria = this.value' : 'state.currentItem.categoria = this.value'}"
-                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
-                                            <option value="">Selecione...</option>
-                                            ${categories.map(cat => `
-                                                <option value="${cat}" ${item.categoria === cat ? 'selected' : ''}>${cat}</option>
-                                            `).join('')}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Preço (R$)</label>
-                                        <input type="number" step="0.01"
-                                            value="${item.preco}"
-                                            oninput="${isEdit ? 'state.editingItem.preco = this.value' : 'state.currentItem.preco = this.value'}"
-                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                            placeholder="0.00">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Status</label>
-                                        <select onchange="${isEdit ? 'state.editingItem.status = this.value' : 'state.currentItem.status = this.value'}"
-                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
-                                            ${statusOptions.map(status => `
-                                                <option value="${status.value}" ${item.status === status.value ? 'selected' : ''}>
-                                                    ${status.emoji} ${status.label}
-                                                </option>
-                                            `).join('')}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Data de Entrada</label>
-                                        <input type="date" 
-                                            value="${item.data_entrada}"
-                                            oninput="${isEdit ? 'state.editingItem.data_entrada = this.value' : 'state.currentItem.data_entrada = this.value'}"
-                                            class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Localização</label>
-                                    <input type="text" 
-                                        value="${item.localizacao}"
-                                        oninput="${isEdit ? 'state.editingItem.localizacao = this.value' : 'state.currentItem.localizacao = this.value'}"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        placeholder="Ex: Prateleira A1">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Tags (separadas por vírgula)</label>
-                                    <input type="text" 
-                                        value="${item.tags}"
-                                        oninput="${isEdit ? 'state.editingItem.tags = this.value' : 'state.currentItem.tags = this.value'}"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        placeholder="Ex: eletrônico, smartphone, samsung">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium ${isDark ? 'dark-text-light' : 'text-gray-700'} mb-2">Observações</label>
-                                    <textarea 
-                                        oninput="${isEdit ? 'state.editingItem.observacoes = this.value' : 'state.currentItem.observacoes = this.value'}"
-                                        class="w-full px-4 py-3 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-400 transition-all ${isDark ? 'dark-input' : 'border-2 border-gray-200'}"
-                                        rows="3"
-                                        placeholder="Observações adicionais sobre o produto">${item.observacoes}</textarea>
-                                </div>
-                                <div class="flex gap-3 justify-end pt-6">
-                                    <button onclick="closeModal()" class="px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'dark-btn-secondary' : 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50'} theme-transition">
-                                        Cancelar
-                                    </button>
-                                    <button onclick="${isEdit ? 'updateItem()' : 'saveItem()'}" class="dark-btn-primary px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
-                                        ${isEdit ? 'Atualizar' : 'Salvar'} Produto
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            if (state.activeModal === 'barcode' && state.barcodeItem) {
-                return `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl max-w-md w-full theme-transition">
-                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
-                                <h2 class="text-xl font-bold">Código do Produto</h2>
-                            </div>
-                            <div class="p-6 text-center">
-                                <h3 class="font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'} mb-2">${state.barcodeItem.nome}</h3>
-                                <p class="${isDark ? 'dark-text-muted' : 'text-gray-600'} mb-4">Código: ${state.barcodeItem.codigo}</p>
-                                <div class="${isDark ? 'bg-gray-700' : 'bg-white'} p-4 rounded-lg border ${isDark ? 'dark-border' : 'border-gray-200'}">
-                                    <svg id="barcode-display"></svg>
-                                </div>
-                            </div>
-                            <div class="p-6 border-t ${isDark ? 'dark-border' : 'border-gray-200'} flex justify-end">
-                                <button onclick="closeModal()" class="dark-btn-primary px-6 py-3 rounded-xl font-semibold shadow-lg transition-all transform hover:scale-105 theme-transition">
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            if (state.activeModal === 'import') {
-                return `
-                    <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 fade-in">
-                        <div class="${isDark ? 'dark-card glow-purple' : 'bg-white'} rounded-3xl shadow-2xl max-w-2xl w-full theme-transition">
-                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-t-3xl">
-                                <h2 class="text-xl font-bold">Importar Planilha</h2>
-                            </div>
-                            <div class="p-6 space-y-6">
-                                <div class="${isDark ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-200'} border rounded-xl p-4">
-                                    <h3 class="font-semibold ${isDark ? 'text-blue-200' : 'text-blue-800'} mb-2">📋 Formato da Planilha</h3>
-                                    <p class="text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'} mb-3">
-                                        Sua planilha deve conter estas colunas (pode usar nomes em português):
-                                    </p>
-                                    <ul class="text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'} space-y-1 list-disc list-inside">
-                                        <li><strong>Código</strong> - Código único do produto (obrigatório)</li>
-                                        <li><strong>Produto/Nome</strong> - Nome do produto (obrigatório)</li>
-                                        <li><strong>Quantidade</strong> - Quantidade em estoque</li>
-                                        <li><strong>Localização/Local</strong> - Onde o produto está armazenado</li>
-                                        <li><strong>Categoria</strong> - Categoria do produto</li>
-                                        <li><strong>Preço</strong> - Preço do produto (com ou sem "R$")</li>
-                                        <li><strong>Status</strong> - Status do produto</li>
-                                        <li><strong>Observações</strong> - Observações adicionais</li>
-                                        <li><strong>Tags</strong> - Tags separadas por vírgula</li>
-                                    </ul>
-                                </div>
-
-                                <div class="flex gap-4">
-                                    <button onclick="downloadTemplate()" class="flex-1 dark-btn-primary px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 theme-transition">
-                                        📋 Baixar Modelo
-                                    </button>
-                                </div>
-
-                                <div class="border-2 border-dashed ${isDark ? 'dark-border' : 'border-gray-300'} rounded-xl p-8 text-center">
-                                    <div class="text-4xl mb-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}">📤</div>
-                                    <h3 class="font-semibold ${isDark ? 'dark-text-light' : 'text-gray-900'} mb-2">Selecione sua planilha</h3>
-                                    <p class="text-sm ${isDark ? 'dark-text-muted' : 'text-gray-600'} mb-4">
-                                        Formatos suportados: .xlsx, .xls, .csv
-                                    </p>
-                                    <label class="dark-btn-primary px-6 py-3 rounded-xl font-semibold cursor-pointer transition-all inline-block transform hover:scale-105 theme-transition">
-                                        ${state.importLoading ? `
-                                            <div class="flex items-center gap-2">
-                                                <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                                <span>Processando...</span>
-                                            </div>
-                                        ` : 'Selecionar Arquivo'}
-                                        <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
-                                    </label>
-                                </div>
-
-                                <div class="${isDark ? 'bg-yellow-900 border-yellow-700' : 'bg-yellow-50 border-yellow-200'} border rounded-xl p-4">
-                                    <h3 class="font-semibold ${isDark ? 'text-yellow-200' : 'text-yellow-800'} mb-2">⚠️ Importante</h3>
-                                    <ul class="text-sm ${isDark ? 'text-yellow-300' : 'text-yellow-700'} space-y-1 list-disc list-inside">
-                                        <li>Produtos com códigos existentes serão atualizados</li>
-                                        <li>Colunas em branco serão preenchidas com valores padrão</li>
-                                        <li>Status será mapeado automaticamente</li>
-                                        <li>O processo pode levar alguns minutos para muitas linhas</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="p-6 border-t ${isDark ? 'dark-border' : 'border-gray-200'} flex justify-end">
-                                <button onclick="closeModal()" class="px-6 py-3 rounded-xl font-medium transition-all ${isDark ? 'dark-btn-secondary' : 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50'} theme-transition">
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            return '';
-        }
-
-        // 🚀 INICIAR APLICAÇÃO
+        // INICIAR APLICAÇÃO
         console.log('🚀 Iniciando aplicação...');
         initAuth();
+
+        // ESCUTAR MUDANÇAS DE AUTENTICAÇÃO
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('🔄 Mudança de autenticação:', event);
+            state.user = session?.user || null;
+            render();
+        });
     </script>
 </body>
 </html>
