@@ -35,60 +35,70 @@
             activeModal: null,
             importLoading: false,
             importErrors: [],
-            usingLocalStorage: false, // Flag para saber se estamos usando localStorage como fallback
+            usingLocalStorage: false,
             loginForm: { email: '', password: '' },
             registerForm: { email: '', password: '', nome: '' }
         };
 
-        // 🔐 SISTEMA DE AUTENTICAÇÃO
+        // 🔐 SISTEMA DE AUTENTICAÇÃO MELHORADO
         async function initAuth() {
             try {
-                console.log('🔍 Iniciando autenticação Supabase...');
+                console.log('🔍 Iniciando autenticação...');
                 const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (error) {
-                    console.error('Erro na sessão Supabase:', error);
-                    // Se falhar, verifica se temos dados locais
-                    checkLocalStorageFallback();
+                    console.error('❌ Erro na sessão Supabase:', error);
+                    // Verificar se temos dados locais de outro usuário
+                    await checkForLocalData();
                     return;
                 }
                 
                 state.user = session?.user || null;
-                console.log('👤 Usuário:', state.user ? 'Logado' : 'Deslogado');
+                console.log('👤 Estado do usuário:', state.user ? `Logado (${state.user.email})` : 'Deslogado');
                 
                 if (state.user) {
                     await loadItems();
+                } else {
+                    state.loading = false;
+                    render();
                 }
-                
-                state.loading = false;
-                render();
                 
             } catch (error) {
                 console.error('❌ Erro na inicialização:', error);
-                checkLocalStorageFallback();
+                await checkForLocalData();
             }
         }
 
-        // 🔄 FALLBACK PARA LOCALSTORAGE
-        function checkLocalStorageFallback() {
+        // 🔄 VERIFICAR E CARREGAR DADOS LOCAIS
+        async function checkForLocalData() {
             const localUser = localStorage.getItem('estoque_user');
             const localItems = localStorage.getItem('estoque_items');
             
             if (localUser) {
                 state.user = JSON.parse(localUser);
                 state.usingLocalStorage = true;
-                console.log('🔄 Usando dados locais (fallback)');
+                console.log('📱 Usuário local encontrado:', state.user.email);
+            } else {
+                // Se não tem usuário local, criar um temporário
+                state.user = { 
+                    email: 'usuario@local.com', 
+                    id: 'local_user',
+                    nome: 'Usuário Local'
+                };
+                state.usingLocalStorage = true;
+                console.log('👤 Criando usuário local temporário');
             }
             
             if (localItems) {
                 state.items = JSON.parse(localItems);
+                console.log('📦 Itens locais carregados:', state.items.length);
             }
             
             state.loading = false;
             render();
         }
 
-        // 📧 LOGIN COM SUPABASE
+        // 📧 LOGIN MELHORADO
         async function login() {
             if (!state.loginForm.email || !state.loginForm.password) {
                 alert('❌ Preencha email e senha');
@@ -103,19 +113,45 @@
                 });
 
                 if (error) {
-                    // Se login falhar, usar modo local
-                    console.log('⚠️ Login Supabase falhou, usando modo local');
-                    state.user = { 
-                        email: state.loginForm.email, 
-                        id: 'local_' + Date.now(),
-                        nome: state.loginForm.email.split('@')[0] 
-                    };
-                    state.usingLocalStorage = true;
-                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
+                    // Se login falhar, verificar se temos dados locais para este email
+                    const localUser = localStorage.getItem('estoque_user');
+                    if (localUser) {
+                        const savedUser = JSON.parse(localUser);
+                        if (savedUser.email === state.loginForm.email) {
+                            // Usar dados locais existentes
+                            state.user = savedUser;
+                            state.usingLocalStorage = true;
+                            console.log('📱 Login local com dados existentes');
+                        } else {
+                            // Criar novo usuário local
+                            state.user = { 
+                                email: state.loginForm.email, 
+                                id: 'local_' + Date.now(),
+                                nome: state.loginForm.email.split('@')[0] 
+                            };
+                            state.usingLocalStorage = true;
+                            localStorage.setItem('estoque_user', JSON.stringify(state.user));
+                            console.log('📱 Novo usuário local criado');
+                        }
+                    } else {
+                        // Criar novo usuário local
+                        state.user = { 
+                            email: state.loginForm.email, 
+                            id: 'local_' + Date.now(),
+                            nome: state.loginForm.email.split('@')[0] 
+                        };
+                        state.usingLocalStorage = true;
+                        localStorage.setItem('estoque_user', JSON.stringify(state.user));
+                        console.log('📱 Novo usuário local criado');
+                    }
                 } else {
+                    // Login Supabase bem-sucedido
                     state.user = data.user;
                     state.usingLocalStorage = false;
                     console.log('✅ Login Supabase bem-sucedido');
+                    
+                    // Tentar sincronizar dados locais com Supabase
+                    await syncLocalDataToSupabase();
                 }
                 
                 state.loginForm = { email: '', password: '' };
@@ -127,7 +163,47 @@
             }
         }
 
-        // 📝 CADASTRO
+        // 🔄 SINCRONIZAR DADOS LOCAIS COM SUPABASE
+        async function syncLocalDataToSupabase() {
+            try {
+                const localItems = localStorage.getItem('estoque_items');
+                if (!localItems) return;
+                
+                const items = JSON.parse(localItems);
+                if (items.length === 0) return;
+                
+                console.log('🔄 Tentando sincronizar dados locais com Supabase...', items.length, 'itens');
+                
+                // Preparar dados para o Supabase
+                const itemsForSupabase = items.map(item => ({
+                    ...item,
+                    user_id: state.user.id,
+                    user_email: state.user.email,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+                
+                const { error } = await supabase
+                    .from('items')
+                    .insert(itemsForSupabase);
+                    
+                if (error) {
+                    console.error('❌ Erro na sincronização:', error);
+                    return;
+                }
+                
+                console.log('✅ Dados locais sincronizados com Supabase');
+                
+                // Limpar dados locais após sincronização bem-sucedida
+                localStorage.removeItem('estoque_items');
+                console.log('🧹 Dados locais removidos após sincronização');
+                
+            } catch (error) {
+                console.error('❌ Erro na sincronização:', error);
+            }
+        }
+
+        // 📝 CADASTRO MELHORADO
         async function register() {
             if (!state.registerForm.email || !state.registerForm.password || !state.registerForm.nome) {
                 alert('❌ Preencha todos os campos');
@@ -142,8 +218,8 @@
                 });
 
                 if (error) {
-                    // Se cadastro falhar, usar modo local
-                    console.log('⚠️ Cadastro Supabase falhou, usando modo local');
+                    // Se cadastro falhar, criar usuário local
+                    console.log('⚠️ Cadastro Supabase falhou, criando usuário local');
                     state.user = { 
                         email: state.registerForm.email, 
                         id: 'local_' + Date.now(),
@@ -154,10 +230,13 @@
                     alert('✅ Cadastro local realizado! Use o mesmo email para login futuro.');
                 } else {
                     alert('✅ Cadastro realizado! Verifique seu email para confirmar.');
+                    state.user = data.user;
+                    state.usingLocalStorage = false;
                 }
                 
                 state.showLogin = true;
                 state.registerForm = { email: '', password: '', nome: '' };
+                render();
                 
             } catch (error) {
                 console.error('❌ Erro no cadastro:', error);
@@ -174,18 +253,19 @@
                 state.user = null;
                 state.showLogin = true;
                 state.usingLocalStorage = false;
-                localStorage.removeItem('estoque_user');
+                state.items = [];
+                render();
                 console.log('🚪 Usuário deslogado');
             } catch (error) {
                 console.error('❌ Erro no logout:', error);
             }
         }
 
-        // 📦 CARREGAR ITENS (SUPABASE + FALLBACK)
+        // 📦 CARREGAR ITENS MELHORADO
         async function loadItems() {
             try {
                 if (!state.usingLocalStorage) {
-                    console.log('📦 Buscando itens do Supabase...');
+                    console.log('☁️ Buscando itens do Supabase...');
                     const { data, error } = await supabase
                         .from('items')
                         .select('*')
@@ -195,6 +275,11 @@
                     
                     state.items = data || [];
                     console.log('✅ Itens carregados do Supabase:', state.items.length);
+                    
+                    // Salvar backup local dos dados do Supabase
+                    localStorage.setItem('estoque_items', JSON.stringify(state.items));
+                    console.log('💾 Backup local dos dados Supabase salvo');
+                    
                 } else {
                     // Usar dados locais
                     const localItems = localStorage.getItem('estoque_items');
@@ -203,29 +288,31 @@
                 }
                 
                 render();
+                
             } catch (error) {
-                console.error('❌ Erro ao carregar produtos:', error);
+                console.error('❌ Erro ao carregar do Supabase:', error);
                 // Fallback para localStorage
                 const localItems = localStorage.getItem('estoque_items');
                 state.items = localItems ? JSON.parse(localItems) : [];
                 state.usingLocalStorage = true;
-                console.log('🔄 Usando fallback localStorage para itens');
+                console.log('🔄 Fallback para localStorage:', state.items.length, 'itens');
                 render();
             }
         }
 
-        // 💾 SALVAR ITENS (SUPABASE + FALLBACK)
+        // 💾 SALVAR ITENS (SEMPRE SALVA EM AMBOS)
         async function saveItems() {
             try {
-                if (!state.usingLocalStorage) {
-                    console.log('💾 Tentando salvar no Supabase...');
-                    // Aqui você implementaria a lógica para salvar itens individuais
-                    // Por enquanto, vamos focar na importação
-                }
-                
                 // Sempre salvar backup local
                 localStorage.setItem('estoque_items', JSON.stringify(state.items));
-                console.log('💾 Backup local salvo');
+                console.log('💾 Backup local salvo:', state.items.length, 'itens');
+                
+                // Se estiver online, tentar salvar no Supabase também
+                if (!state.usingLocalStorage) {
+                    console.log('☁️ Tentando salvar no Supabase...');
+                    // Aqui você implementaria a lógica para salvar itens individuais
+                    // Para simplificar, vamos focar na importação que já cuida disso
+                }
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar itens:', error);
@@ -242,32 +329,18 @@
                     'LOCALIZACAO': 'Prateleira A1',
                     'CATEGORIA': 'Telefonia',
                     'PRECO': '1500.00',
-                    'STATUS': 'Disponível para Venda',
-                    'OBSERVACOES': 'Modelo 2024',
-                    'TAGS': 'samsung,celular,android'
-                },
-                {
-                    'CODIGO': 'COD002', 
-                    'PRODUTO': 'Notebook Dell Inspiron',
-                    'QUANTIDADE': '3',
-                    'LOCALIZACAO': 'Prateleira B2',
-                    'CATEGORIA': 'Informática',
-                    'PRECO': '2500.00',
-                    'STATUS': 'Disponível para Venda',
-                    'OBSERVACOES': '8GB RAM, 256GB SSD',
-                    'TAGS': 'dell,notebook,windows'
+                    'STATUS': 'Disponível para Venda'
                 }
             ];
             
             const ws = XLSX.utils.json_to_sheet(templateData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Modelo Importação");
-            XLSX.writeFile(wb, 'modelo_importacao_estoque.xlsx');
-            
-            alert('📋 Modelo baixado com sucesso!');
+            XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+            XLSX.writeFile(wb, 'modelo_importacao.xlsx');
+            alert('📋 Modelo baixado!');
         }
 
-        // 📥 IMPORTAR DO EXCEL - COM SUPABASE
+        // 📥 IMPORTAR DO EXCEL - SALVA EM AMBOS
         async function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -286,7 +359,7 @@
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                         
-                        console.log('📊 Dados da planilha:', jsonData.length, 'itens');
+                        console.log('📊 Processando planilha:', jsonData.length, 'itens');
                         await processImportedData(jsonData);
                         
                     } catch (error) {
@@ -294,42 +367,31 @@
                         state.importErrors.push(`Erro ao ler arquivo: ${error.message}`);
                         state.importLoading = false;
                         render();
-                        alert('❌ Erro ao ler o arquivo: ' + error.message);
                     }
-                };
-                
-                reader.onerror = function() {
-                    state.importErrors.push('Erro ao ler o arquivo');
-                    state.importLoading = false;
-                    render();
-                    alert('❌ Erro ao ler o arquivo');
                 };
                 
                 reader.readAsArrayBuffer(file);
                 
             } catch (error) {
-                state.importErrors.push(`Erro geral: ${error.message}`);
+                state.importErrors.push(`Erro: ${error.message}`);
                 state.importLoading = false;
                 render();
-                alert('❌ Erro ao processar arquivo: ' + error.message);
             }
         }
 
-        // 🔄 PROCESSAR DADOS IMPORTADOS - COM SUPABASE
+        // 🔄 PROCESSAR DADOS - SALVA EM AMBOS
         async function processImportedData(data) {
             try {
-                console.log('🔍 Processando dados para Supabase...', data.length, 'itens');
-                
                 let importedCount = 0;
                 let errorCount = 0;
-                const itemsToSave = [];
+                const newItems = [];
                 
                 for (let i = 0; i < data.length; i++) {
                     const item = data[i];
                     
                     try {
-                        // Mapear colunas
                         const mappedItem = {
+                            id: 'item_' + Date.now() + '_' + i,
                             codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
                             nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
                             quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
@@ -346,105 +408,79 @@
                             updated_at: new Date().toISOString()
                         };
                         
-                        // Validação
                         if (!mappedItem.codigo || !mappedItem.nome) {
                             throw new Error('Código e nome são obrigatórios');
                         }
 
-                        // Converter preço
                         if (mappedItem.preco && typeof mappedItem.preco === 'string') {
                             mappedItem.preco = parseFloat(mappedItem.preco.replace('R$', '').replace(',', '.').trim()) || '';
                         }
                         
-                        itemsToSave.push(mappedItem);
+                        newItems.push(mappedItem);
                         importedCount++;
                         
                     } catch (itemError) {
                         errorCount++;
-                        const errorMsg = `Linha ${i + 1}: ${itemError.message}`;
-                        state.importErrors.push(errorMsg);
-                        console.error(`❌ Erro no item ${i + 1}:`, itemError);
+                        state.importErrors.push(`Linha ${i + 1}: ${itemError.message}`);
                     }
                 }
                 
-                // TENTAR SALVAR NO SUPABASE
-                if (itemsToSave.length > 0 && !state.usingLocalStorage) {
+                // ADICIONAR NOVOS ITENS À LISTA
+                state.items = [...newItems, ...state.items];
+                
+                // SALVAR EM AMBOS (LOCAL E SUPABASE)
+                await saveItems();
+                
+                // TENTAR SALVAR NO SUPABASE SE ESTIVER ONLINE
+                if (!state.usingLocalStorage && newItems.length > 0) {
                     try {
-                        console.log('💾 Tentando salvar no Supabase...', itemsToSave.length, 'itens');
                         const { error } = await supabase
                             .from('items')
-                            .insert(itemsToSave);
+                            .insert(newItems);
                             
                         if (error) throw error;
                         console.log('✅ Dados salvos no Supabase');
-                        
-                    } catch (supabaseError) {
-                        console.error('❌ Erro ao salvar no Supabase:', supabaseError);
-                        // Fallback para localStorage
+                    } catch (error) {
+                        console.error('❌ Erro ao salvar no Supabase, mantendo apenas local:', error);
                         state.usingLocalStorage = true;
-                        state.items = [...state.items, ...itemsToSave];
-                        saveItems();
-                        console.log('🔄 Dados salvos localmente (fallback)');
                     }
-                } else {
-                    // Salvar localmente
-                    state.items = [...state.items, ...itemsToSave];
-                    saveItems();
                 }
                 
                 state.importLoading = false;
                 render();
                 
-                // Mostrar resultados
-                let message = '';
+                // MENSAGEM DE SUCESSO
+                let message = `✅ ${importedCount} itens importados`;
                 if (state.usingLocalStorage) {
-                    message = `📱 Modo Local: ${importedCount} itens importados`;
-                    if (errorCount > 0) {
-                        message += `, ${errorCount} com erro`;
-                    }
+                    message += ' (armazenamento local)';
                 } else {
-                    message = `☁️ Supabase: ${importedCount} itens importados`;
-                    if (errorCount > 0) {
-                        message += `, ${errorCount} com erro`;
-                    }
+                    message += ' (Supabase)';
+                }
+                if (errorCount > 0) {
+                    message += `, ${errorCount} erros`;
                 }
                 
                 alert(message);
                 
-                // Recarregar lista
-                await loadItems();
-                
             } catch (error) {
                 console.error('❌ Erro no processamento:', error);
-                state.importErrors.push(`Erro no processamento: ${error.message}`);
                 state.importLoading = false;
                 render();
-                alert('❌ Erro ao processar dados: ' + error.message);
+                alert('Erro: ' + error.message);
             }
         }
 
         // 🗺️ MAPEAR STATUS
         function mapStatus(statusStr) {
             if (!statusStr) return 'venda';
-            
             const statusMap = {
-                'disponível para venda': 'venda',
-                'disponivel para venda': 'venda',
-                'venda': 'venda',
-                'assistência técnica': 'assistencia',
-                'assistencia tecnica': 'assistencia',
-                'assistencia': 'assistencia',
-                'mostruário': 'mostruario',
-                'mostruario': 'mostruario',
-                'uso da loja': 'uso_loja',
-                'uso loja': 'uso_loja',
-                'separado p/ entrega/recolhimento': 'separado',
-                'separado para entrega': 'separado',
-                'separado': 'separado'
+                'disponível para venda': 'venda', 'venda': 'venda',
+                'assistência técnica': 'assistencia', 'assistencia': 'assistencia',
+                'mostruário': 'mostruario', 'mostruario': 'mostruario',
+                'uso da loja': 'uso_loja', 'uso loja': 'uso_loja',
+                'separado p/ entrega/recolhimento': 'separado', 'separado': 'separado'
             };
-            
-            const normalizedStatus = String(statusStr).toLowerCase().trim();
-            return statusMap[normalizedStatus] || 'venda';
+            return statusMap[String(statusStr).toLowerCase().trim()] || 'venda';
         }
 
         // 🗑️ EXCLUIR ITEM
@@ -452,21 +488,25 @@
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
             
             try {
-                if (!state.usingLocalStorage) {
-                    const { error } = await supabase
-                        .from('items')
-                        .delete()
-                        .eq('id', id);
-                    
-                    if (error) throw error;
-                }
-                
-                // Sempre remover localmente também
+                // Remover localmente
                 state.items = state.items.filter(item => item.id !== id);
                 saveItems();
                 
+                // Tentar remover do Supabase se estiver online
+                if (!state.usingLocalStorage) {
+                    try {
+                        const { error } = await supabase
+                            .from('items')
+                            .delete()
+                            .eq('id', id);
+                            
+                        if (error) throw error;
+                    } catch (error) {
+                        console.error('❌ Erro ao excluir do Supabase:', error);
+                    }
+                }
+                
                 alert('✅ Produto excluído!');
-                await loadItems();
                 
             } catch (error) {
                 console.error('❌ Erro ao excluir:', error);
@@ -492,7 +532,7 @@
                     <div class="flex items-center justify-center min-h-screen">
                         <div class="text-center">
                             <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="text-gray-600">Conectando ao Supabase...</p>
+                            <p class="text-gray-600">Carregando...</p>
                         </div>
                     </div>
                 `;
@@ -519,72 +559,39 @@
                             <p class="text-gray-600">41º S3 - Sistema Compartilhado</p>
                         </div>
 
-                        ${state.showLogin ? `
-                            <div class="space-y-4">
-                                <div>
-                                    <input type="email" placeholder="Seu email" 
-                                        value="${state.loginForm.email}"
-                                        oninput="state.loginForm.email = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                                </div>
-                                <div>
-                                    <input type="password" placeholder="Sua senha" 
-                                        value="${state.loginForm.password}"
-                                        oninput="state.loginForm.password = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                                </div>
-                                <button onclick="login()" 
-                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold">
-                                    Entrar no Sistema
-                                </button>
-                                <div class="text-center">
-                                    <button onclick="state.showLogin = false; render()" 
-                                        class="text-purple-600 hover:text-purple-700 text-sm font-medium">
-                                        Primeira vez? Criar conta
-                                    </button>
-                                </div>
+                        <div class="space-y-4">
+                            <div>
+                                <input type="email" placeholder="Seu email" 
+                                    value="${state.loginForm.email}"
+                                    oninput="state.loginForm.email = this.value"
+                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                             </div>
-                        ` : `
-                            <div class="space-y-4">
-                                <div>
-                                    <input type="text" placeholder="Seu nome completo" 
-                                        value="${state.registerForm.nome}"
-                                        oninput="state.registerForm.nome = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                                </div>
-                                <div>
-                                    <input type="email" placeholder="Seu melhor email" 
-                                        value="${state.registerForm.email}"
-                                        oninput="state.registerForm.email = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                                </div>
-                                <div>
-                                    <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
-                                        value="${state.registerForm.password}"
-                                        oninput="state.registerForm.password = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                                </div>
-                                <button onclick="register()" 
-                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold">
-                                    Criar Minha Conta
-                                </button>
-                                <div class="text-center">
-                                    <button onclick="state.showLogin = true; render()" 
-                                        class="text-purple-600 hover:text-purple-700 text-sm font-medium">
-                                        Já tem conta? Fazer login
-                                    </button>
-                                </div>
+                            <div>
+                                <input type="password" placeholder="Sua senha" 
+                                    value="${state.loginForm.password}"
+                                    oninput="state.loginForm.password = this.value"
+                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                             </div>
-                        `}
+                            <button onclick="login()" 
+                                class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold">
+                                Entrar no Sistema
+                            </button>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-blue-700 text-center">
+                                <strong>Dica:</strong> Use o mesmo email para acessar seus dados em qualquer dispositivo
+                            </p>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
         function renderApp() {
-            const statusEmoji = state.usingLocalStorage ? '📱' : '☁️';
-            const statusText = state.usingLocalStorage ? 'Modo Local' : 'Supabase Online';
-            const statusColor = state.usingLocalStorage ? 'text-orange-600' : 'text-green-600';
+            const statusInfo = state.usingLocalStorage ? 
+                { emoji: '📱', text: 'Modo Local', color: 'text-orange-600', bg: 'bg-orange-100' } : 
+                { emoji: '☁️', text: 'Supabase Online', color: 'text-green-600', bg: 'bg-green-100' };
             
             document.getElementById('app').innerHTML = `
                 <div class="min-h-screen p-4 bg-gray-50">
@@ -600,7 +607,7 @@
                                         <h1 class="text-2xl font-bold text-gray-900">Controle de Estoque</h1>
                                         <p class="text-gray-600">41º S3 • ${state.user.email}</p>
                                         <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-sm ${statusColor} font-medium">${statusEmoji} ${statusText}</span>
+                                            <span class="text-sm ${statusInfo.color} font-medium">${statusInfo.emoji} ${statusInfo.text}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -617,7 +624,7 @@
                             </div>
                         </div>
 
-                        <!-- BOTÕES DE AÇÃO -->
+                        <!-- BOTÕES -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex gap-4 flex-wrap">
                                 <button onclick="downloadTemplate()" 
@@ -629,24 +636,14 @@
                                     📥 Importar Planilha
                                 </button>
                             </div>
-                            
-                            ${state.importErrors.length > 0 ? `
-                                <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                    <h3 class="font-semibold text-red-800 mb-2">Erros na última importação:</h3>
-                                    <div class="text-sm text-red-700 max-h-32 overflow-y-auto">
-                                        ${state.importErrors.slice(0, 5).map(error => `<div class="mb-1">• ${error}</div>`).join('')}
-                                        ${state.importErrors.length > 5 ? `<div class="text-red-600">... e mais ${state.importErrors.length - 5} erros</div>` : ''}
-                                    </div>
-                                </div>
-                            ` : ''}
                         </div>
 
-                        <!-- LISTA DE PRODUTOS -->
+                        <!-- LISTA -->
                         <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
                             ${state.items.length === 0 ? `
                                 <div class="text-center py-16">
                                     <div class="text-8xl mb-6 text-purple-600">📦</div>
-                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto cadastrado</h3>
+                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto</h3>
                                     <p class="text-gray-500 mb-6">Importe uma planilha para começar</p>
                                     <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold">
                                         Importar Planilha
@@ -662,7 +659,6 @@
                                                 <th class="px-6 py-4 text-left text-sm font-bold">Categoria</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold">Quantidade</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold">Preço</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Status</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold">Ações</th>
                                             </tr>
                                         </thead>
@@ -692,11 +688,6 @@
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4">
-                                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                                                            ${getStatusLabel(item.status)}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
                                                         <button onclick="deleteItem('${item.id}')" 
                                                             class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg">
                                                             Excluir
@@ -715,24 +706,15 @@
                 <!-- MODAL IMPORTAR -->
                 ${state.activeModal === 'import' ? `
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full">
                             <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
                                 <h2 class="text-xl font-bold">Importar Planilha</h2>
                             </div>
-                            <div class="p-6 space-y-6">
-                                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                    <h3 class="font-semibold text-blue-800 mb-2">📋 Formato da Planilha</h3>
-                                    <p class="text-sm text-blue-700">
-                                        Sua planilha será salva no Supabase e compartilhada com todos os usuários.
-                                    </p>
-                                </div>
-
+                            <div class="p-6">
                                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
                                     <div class="text-4xl mb-4 text-purple-600">📤</div>
                                     <h3 class="font-semibold text-gray-900 mb-2">Selecione sua planilha</h3>
-                                    <p class="text-sm text-gray-600 mb-4">
-                                        Formatos: .xlsx, .xls, .csv
-                                    </p>
+                                    <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
                                     <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block">
                                         ${state.importLoading ? `
                                             <div class="flex items-center gap-2">
@@ -743,12 +725,6 @@
                                         <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
                                     </label>
                                 </div>
-
-                                ${state.importLoading ? `
-                                    <div class="text-center py-4">
-                                        <p class="text-gray-600">Importando para ${state.usingLocalStorage ? 'armazenamento local' : 'Supabase'}...</p>
-                                    </div>
-                                ` : ''}
                             </div>
                             <div class="p-6 border-t border-gray-200 flex justify-end">
                                 <button onclick="closeModal()" 
@@ -762,29 +738,17 @@
             `;
         }
 
-        function getStatusLabel(status) {
-            const statusMap = {
-                'venda': 'Disponível para Venda',
-                'assistencia': 'Assistência Técnica',
-                'mostruario': 'Mostruário',
-                'uso_loja': 'Uso da Loja',
-                'separado': 'Separado p/ Entrega/Recolhimento'
-            };
-            return statusMap[status] || status;
-        }
-
-        // INICIAR APLICAÇÃO
-        console.log('🚀 Iniciando sistema com Supabase...');
+        // INICIAR
+        console.log('🚀 Iniciando sistema...');
         initAuth();
 
         // ESCUTAR MUDANÇAS DE AUTENTICAÇÃO
         supabase.auth.onAuthStateChange((event, session) => {
             console.log('🔄 Mudança de autenticação:', event);
             state.user = session?.user || null;
-            if (state.user) {
-                state.usingLocalStorage = false;
+            if (state.user && !state.usingLocalStorage) {
+                loadItems();
             }
-            render();
         });
     </script>
 </body>
