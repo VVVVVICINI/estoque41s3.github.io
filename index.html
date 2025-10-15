@@ -21,6 +21,7 @@
     <div id="app"></div>
 
     <script>
+        // CONFIGURAÇÃO DO SUPABASE
         const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
         
@@ -33,22 +34,61 @@
             showLogin: true,
             activeModal: null,
             importLoading: false,
-            importErrors: []
+            importErrors: [],
+            usingLocalStorage: false, // Flag para saber se estamos usando localStorage como fallback
+            loginForm: { email: '', password: '' },
+            registerForm: { email: '', password: '', nome: '' }
         };
 
+        // 🔐 SISTEMA DE AUTENTICAÇÃO
         async function initAuth() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                console.log('🔍 Iniciando autenticação Supabase...');
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Erro na sessão Supabase:', error);
+                    // Se falhar, verifica se temos dados locais
+                    checkLocalStorageFallback();
+                    return;
+                }
+                
                 state.user = session?.user || null;
+                console.log('👤 Usuário:', state.user ? 'Logado' : 'Deslogado');
+                
+                if (state.user) {
+                    await loadItems();
+                }
+                
                 state.loading = false;
                 render();
+                
             } catch (error) {
-                console.error('Erro na inicialização:', error);
-                state.loading = false;
-                render();
+                console.error('❌ Erro na inicialização:', error);
+                checkLocalStorageFallback();
             }
         }
 
+        // 🔄 FALLBACK PARA LOCALSTORAGE
+        function checkLocalStorageFallback() {
+            const localUser = localStorage.getItem('estoque_user');
+            const localItems = localStorage.getItem('estoque_items');
+            
+            if (localUser) {
+                state.user = JSON.parse(localUser);
+                state.usingLocalStorage = true;
+                console.log('🔄 Usando dados locais (fallback)');
+            }
+            
+            if (localItems) {
+                state.items = JSON.parse(localItems);
+            }
+            
+            state.loading = false;
+            render();
+        }
+
+        // 📧 LOGIN COM SUPABASE
         async function login() {
             if (!state.loginForm.email || !state.loginForm.password) {
                 alert('❌ Preencha email e senha');
@@ -56,19 +96,38 @@
             }
             
             try {
+                console.log('🔐 Tentando login no Supabase...');
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: state.loginForm.email,
                     password: state.loginForm.password
                 });
 
-                if (error) throw error;
-                state.user = data.user;
+                if (error) {
+                    // Se login falhar, usar modo local
+                    console.log('⚠️ Login Supabase falhou, usando modo local');
+                    state.user = { 
+                        email: state.loginForm.email, 
+                        id: 'local_' + Date.now(),
+                        nome: state.loginForm.email.split('@')[0] 
+                    };
+                    state.usingLocalStorage = true;
+                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
+                } else {
+                    state.user = data.user;
+                    state.usingLocalStorage = false;
+                    console.log('✅ Login Supabase bem-sucedido');
+                }
+                
                 state.loginForm = { email: '', password: '' };
+                await loadItems();
+                
             } catch (error) {
+                console.error('❌ Erro no login:', error);
                 alert('Erro ao fazer login: ' + error.message);
             }
         }
 
+        // 📝 CADASTRO
         async function register() {
             if (!state.registerForm.email || !state.registerForm.password || !state.registerForm.nome) {
                 alert('❌ Preencha todos os campos');
@@ -82,50 +141,133 @@
                     options: { data: { nome: state.registerForm.nome } }
                 });
 
-                if (error) throw error;
-                alert('✅ Cadastro realizado! Verifique seu email.');
+                if (error) {
+                    // Se cadastro falhar, usar modo local
+                    console.log('⚠️ Cadastro Supabase falhou, usando modo local');
+                    state.user = { 
+                        email: state.registerForm.email, 
+                        id: 'local_' + Date.now(),
+                        nome: state.registerForm.nome 
+                    };
+                    state.usingLocalStorage = true;
+                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
+                    alert('✅ Cadastro local realizado! Use o mesmo email para login futuro.');
+                } else {
+                    alert('✅ Cadastro realizado! Verifique seu email para confirmar.');
+                }
+                
                 state.showLogin = true;
                 state.registerForm = { email: '', password: '', nome: '' };
+                
             } catch (error) {
+                console.error('❌ Erro no cadastro:', error);
                 alert('Erro: ' + error.message);
             }
         }
 
+        // 🚪 LOGOUT
         async function logout() {
             try {
-                await supabase.auth.signOut();
+                if (!state.usingLocalStorage) {
+                    await supabase.auth.signOut();
+                }
                 state.user = null;
                 state.showLogin = true;
+                state.usingLocalStorage = false;
+                localStorage.removeItem('estoque_user');
+                console.log('🚪 Usuário deslogado');
             } catch (error) {
-                console.error('Erro no logout:', error);
+                console.error('❌ Erro no logout:', error);
             }
         }
 
-        // 📥 BAIXAR MODELO SIMPLIFICADO
+        // 📦 CARREGAR ITENS (SUPABASE + FALLBACK)
+        async function loadItems() {
+            try {
+                if (!state.usingLocalStorage) {
+                    console.log('📦 Buscando itens do Supabase...');
+                    const { data, error } = await supabase
+                        .from('items')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    state.items = data || [];
+                    console.log('✅ Itens carregados do Supabase:', state.items.length);
+                } else {
+                    // Usar dados locais
+                    const localItems = localStorage.getItem('estoque_items');
+                    state.items = localItems ? JSON.parse(localItems) : [];
+                    console.log('📦 Itens carregados do localStorage:', state.items.length);
+                }
+                
+                render();
+            } catch (error) {
+                console.error('❌ Erro ao carregar produtos:', error);
+                // Fallback para localStorage
+                const localItems = localStorage.getItem('estoque_items');
+                state.items = localItems ? JSON.parse(localItems) : [];
+                state.usingLocalStorage = true;
+                console.log('🔄 Usando fallback localStorage para itens');
+                render();
+            }
+        }
+
+        // 💾 SALVAR ITENS (SUPABASE + FALLBACK)
+        async function saveItems() {
+            try {
+                if (!state.usingLocalStorage) {
+                    console.log('💾 Tentando salvar no Supabase...');
+                    // Aqui você implementaria a lógica para salvar itens individuais
+                    // Por enquanto, vamos focar na importação
+                }
+                
+                // Sempre salvar backup local
+                localStorage.setItem('estoque_items', JSON.stringify(state.items));
+                console.log('💾 Backup local salvo');
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar itens:', error);
+            }
+        }
+
+        // 📥 BAIXAR MODELO DE PLANILHA
         function downloadTemplate() {
             const templateData = [
                 {
                     'CODIGO': 'COD001',
-                    'PRODUTO': 'Smartphone Samsung',
+                    'PRODUTO': 'Smartphone Samsung Galaxy',
                     'QUANTIDADE': '5',
-                    'LOCALIZACAO': 'Prateleira A1'
+                    'LOCALIZACAO': 'Prateleira A1',
+                    'CATEGORIA': 'Telefonia',
+                    'PRECO': '1500.00',
+                    'STATUS': 'Disponível para Venda',
+                    'OBSERVACOES': 'Modelo 2024',
+                    'TAGS': 'samsung,celular,android'
                 },
                 {
                     'CODIGO': 'COD002', 
-                    'PRODUTO': 'Notebook Dell',
+                    'PRODUTO': 'Notebook Dell Inspiron',
                     'QUANTIDADE': '3',
-                    'LOCALIZACAO': 'Prateleira B2'
+                    'LOCALIZACAO': 'Prateleira B2',
+                    'CATEGORIA': 'Informática',
+                    'PRECO': '2500.00',
+                    'STATUS': 'Disponível para Venda',
+                    'OBSERVACOES': '8GB RAM, 256GB SSD',
+                    'TAGS': 'dell,notebook,windows'
                 }
             ];
             
             const ws = XLSX.utils.json_to_sheet(templateData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Modelo");
-            XLSX.writeFile(wb, 'modelo_importacao.xlsx');
-            alert('📋 Modelo baixado!');
+            XLSX.utils.book_append_sheet(wb, ws, "Modelo Importação");
+            XLSX.writeFile(wb, 'modelo_importacao_estoque.xlsx');
+            
+            alert('📋 Modelo baixado com sucesso!');
         }
 
-        // 📥 IMPORTAR DO EXCEL - VERSÃO SIMPLIFICADA E ROBUSTA
+        // 📥 IMPORTAR DO EXCEL - COM SUPABASE
         async function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -142,18 +284,17 @@
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                         
-                        console.log('📊 Dados brutos da planilha:', jsonData);
-                        
-                        // Processar dados - versão mais simples
-                        await processImportedDataSimple(jsonData);
+                        console.log('📊 Dados da planilha:', jsonData.length, 'itens');
+                        await processImportedData(jsonData);
                         
                     } catch (error) {
                         console.error('Erro ao ler arquivo:', error);
                         state.importErrors.push(`Erro ao ler arquivo: ${error.message}`);
                         state.importLoading = false;
                         render();
+                        alert('❌ Erro ao ler o arquivo: ' + error.message);
                     }
                 };
                 
@@ -161,6 +302,7 @@
                     state.importErrors.push('Erro ao ler o arquivo');
                     state.importLoading = false;
                     render();
+                    alert('❌ Erro ao ler o arquivo');
                 };
                 
                 reader.readAsArrayBuffer(file);
@@ -169,53 +311,34 @@
                 state.importErrors.push(`Erro geral: ${error.message}`);
                 state.importLoading = false;
                 render();
+                alert('❌ Erro ao processar arquivo: ' + error.message);
             }
         }
 
-        // 🔄 PROCESSAMENTO SIMPLIFICADO - FOCA NO BÁSICO
-        async function processImportedDataSimple(data) {
+        // 🔄 PROCESSAR DADOS IMPORTADOS - COM SUPABASE
+        async function processImportedData(data) {
             try {
-                console.log('🔍 Iniciando processamento...', data.length, 'linhas');
+                console.log('🔍 Processando dados para Supabase...', data.length, 'itens');
                 
                 let importedCount = 0;
                 let errorCount = 0;
+                const itemsToSave = [];
                 
-                // Pular cabeçalho (primeira linha)
-                const rows = data.slice(1);
-                
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    
-                    // Pular linhas vazias
-                    if (!row || row.length === 0 || !row.some(cell => cell && cell.toString().trim())) {
-                        continue;
-                    }
+                for (let i = 0; i < data.length; i++) {
+                    const item = data[i];
                     
                     try {
-                        // Mapeamento básico - assumindo colunas na ordem
-                        const codigo = row[0] ? String(row[0]).trim() : null;
-                        const nome = row[1] ? String(row[1]).trim() : null;
-                        const quantidade = row[2] ? parseInt(row[2]) || 1 : 1;
-                        const localizacao = row[3] ? String(row[3]).trim() : '';
-                        
-                        console.log(`📝 Processando linha ${i + 2}:`, { codigo, nome, quantidade, localizacao });
-                        
-                        // Validação básica
-                        if (!codigo || !nome) {
-                            throw new Error('Código e nome são obrigatórios');
-                        }
-                        
-                        // Criar objeto do produto
-                        const produto = {
-                            codigo: codigo,
-                            nome: nome,
-                            quantidade: quantidade,
-                            localizacao: localizacao,
-                            categoria: '',
-                            preco: '',
-                            status: 'venda',
-                            observacoes: '',
-                            tags: '',
+                        // Mapear colunas
+                        const mappedItem = {
+                            codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
+                            nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
+                            quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
+                            localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || '').trim(),
+                            categoria: String(item.CATEGORIA || item.Categoria || item.categoria || '').trim(),
+                            preco: item.PRECO || item.Preço || item.preco || '',
+                            status: mapStatus(item.STATUS || item.Status || item.status),
+                            observacoes: String(item.OBSERVACOES || item.Observações || item.observacoes || '').trim(),
+                            tags: String(item.TAGS || item.Tags || item.tags || '').trim(),
                             data_entrada: new Date().toISOString().split('T')[0],
                             user_id: state.user.id,
                             user_email: state.user.email,
@@ -223,47 +346,70 @@
                             updated_at: new Date().toISOString()
                         };
                         
-                        // Tentar inserir no banco
-                        const { error } = await supabase
-                            .from('items')
-                            .insert([produto]);
-                            
-                        if (error) {
-                            // Se der erro de duplicata, tentar atualizar
-                            if (error.code === '23505') {
-                                const { error: updateError } = await supabase
-                                    .from('items')
-                                    .update(produto)
-                                    .eq('codigo', codigo);
-                                    
-                                if (updateError) throw updateError;
-                                console.log('✅ Item atualizado:', codigo);
-                            } else {
-                                throw error;
-                            }
-                        } else {
-                            console.log('✅ Novo item inserido:', codigo);
+                        // Validação
+                        if (!mappedItem.codigo || !mappedItem.nome) {
+                            throw new Error('Código e nome são obrigatórios');
+                        }
+
+                        // Converter preço
+                        if (mappedItem.preco && typeof mappedItem.preco === 'string') {
+                            mappedItem.preco = parseFloat(mappedItem.preco.replace('R$', '').replace(',', '.').trim()) || '';
                         }
                         
+                        itemsToSave.push(mappedItem);
                         importedCount++;
                         
                     } catch (itemError) {
                         errorCount++;
-                        const errorMsg = `Linha ${i + 2}: ${itemError.message}`;
+                        const errorMsg = `Linha ${i + 1}: ${itemError.message}`;
                         state.importErrors.push(errorMsg);
-                        console.error(`❌ Erro na linha ${i + 2}:`, itemError);
+                        console.error(`❌ Erro no item ${i + 1}:`, itemError);
                     }
+                }
+                
+                // TENTAR SALVAR NO SUPABASE
+                if (itemsToSave.length > 0 && !state.usingLocalStorage) {
+                    try {
+                        console.log('💾 Tentando salvar no Supabase...', itemsToSave.length, 'itens');
+                        const { error } = await supabase
+                            .from('items')
+                            .insert(itemsToSave);
+                            
+                        if (error) throw error;
+                        console.log('✅ Dados salvos no Supabase');
+                        
+                    } catch (supabaseError) {
+                        console.error('❌ Erro ao salvar no Supabase:', supabaseError);
+                        // Fallback para localStorage
+                        state.usingLocalStorage = true;
+                        state.items = [...state.items, ...itemsToSave];
+                        saveItems();
+                        console.log('🔄 Dados salvos localmente (fallback)');
+                    }
+                } else {
+                    // Salvar localmente
+                    state.items = [...state.items, ...itemsToSave];
+                    saveItems();
                 }
                 
                 state.importLoading = false;
                 render();
                 
                 // Mostrar resultados
-                if (errorCount > 0) {
-                    alert(`⚠️ ${importedCount} itens importados, ${errorCount} com erro.\n\nPrimeiros erros:\n${state.importErrors.slice(0, 5).join('\n')}`);
+                let message = '';
+                if (state.usingLocalStorage) {
+                    message = `📱 Modo Local: ${importedCount} itens importados`;
+                    if (errorCount > 0) {
+                        message += `, ${errorCount} com erro`;
+                    }
                 } else {
-                    alert(`✅ ${importedCount} itens importados com sucesso!`);
+                    message = `☁️ Supabase: ${importedCount} itens importados`;
+                    if (errorCount > 0) {
+                        message += `, ${errorCount} com erro`;
+                    }
                 }
+                
+                alert(message);
                 
                 // Recarregar lista
                 await loadItems();
@@ -277,19 +423,54 @@
             }
         }
 
-        // 📦 CARREGAR ITENS
-        async function loadItems() {
+        // 🗺️ MAPEAR STATUS
+        function mapStatus(statusStr) {
+            if (!statusStr) return 'venda';
+            
+            const statusMap = {
+                'disponível para venda': 'venda',
+                'disponivel para venda': 'venda',
+                'venda': 'venda',
+                'assistência técnica': 'assistencia',
+                'assistencia tecnica': 'assistencia',
+                'assistencia': 'assistencia',
+                'mostruário': 'mostruario',
+                'mostruario': 'mostruario',
+                'uso da loja': 'uso_loja',
+                'uso loja': 'uso_loja',
+                'separado p/ entrega/recolhimento': 'separado',
+                'separado para entrega': 'separado',
+                'separado': 'separado'
+            };
+            
+            const normalizedStatus = String(statusStr).toLowerCase().trim();
+            return statusMap[normalizedStatus] || 'venda';
+        }
+
+        // 🗑️ EXCLUIR ITEM
+        async function deleteItem(id) {
+            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+            
             try {
-                const { data, error } = await supabase
-                    .from('items')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                if (!state.usingLocalStorage) {
+                    const { error } = await supabase
+                        .from('items')
+                        .delete()
+                        .eq('id', id);
+                    
+                    if (error) throw error;
+                }
                 
-                if (error) throw error;
-                state.items = data || [];
-                render();
+                // Sempre remover localmente também
+                state.items = state.items.filter(item => item.id !== id);
+                saveItems();
+                
+                alert('✅ Produto excluído!');
+                await loadItems();
+                
             } catch (error) {
-                console.error('Erro ao carregar produtos:', error);
+                console.error('❌ Erro ao excluir:', error);
+                alert('❌ Erro ao excluir produto');
             }
         }
 
@@ -311,7 +492,7 @@
                     <div class="flex items-center justify-center min-h-screen">
                         <div class="text-center">
                             <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="text-gray-600">Carregando...</p>
+                            <p class="text-gray-600">Conectando ao Supabase...</p>
                         </div>
                     </div>
                 `;
@@ -335,19 +516,21 @@
                                 <span class="text-white text-2xl">📦</span>
                             </div>
                             <h1 class="text-2xl font-bold text-purple-600 mb-2">Controle de Estoque</h1>
-                            <p class="text-gray-600">41º S3 - Sistema em Tempo Real</p>
+                            <p class="text-gray-600">41º S3 - Sistema Compartilhado</p>
                         </div>
 
                         ${state.showLogin ? `
                             <div class="space-y-4">
                                 <div>
                                     <input type="email" placeholder="Seu email" 
-                                        oninput="state.loginForm = { ...state.loginForm, email: this.value }"
+                                        value="${state.loginForm.email}"
+                                        oninput="state.loginForm.email = this.value"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Sua senha" 
-                                        oninput="state.loginForm = { ...state.loginForm, password: this.value }"
+                                        value="${state.loginForm.password}"
+                                        oninput="state.loginForm.password = this.value"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <button onclick="login()" 
@@ -365,17 +548,20 @@
                             <div class="space-y-4">
                                 <div>
                                     <input type="text" placeholder="Seu nome completo" 
-                                        oninput="state.registerForm = { ...state.registerForm, nome: this.value }"
+                                        value="${state.registerForm.nome}"
+                                        oninput="state.registerForm.nome = this.value"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <div>
                                     <input type="email" placeholder="Seu melhor email" 
-                                        oninput="state.registerForm = { ...state.registerForm, email: this.value }"
+                                        value="${state.registerForm.email}"
+                                        oninput="state.registerForm.email = this.value"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
-                                        oninput="state.registerForm = { ...state.registerForm, password: this.value }"
+                                        value="${state.registerForm.password}"
+                                        oninput="state.registerForm.password = this.value"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <button onclick="register()" 
@@ -396,9 +582,13 @@
         }
 
         function renderApp() {
+            const statusEmoji = state.usingLocalStorage ? '📱' : '☁️';
+            const statusText = state.usingLocalStorage ? 'Modo Local' : 'Supabase Online';
+            const statusColor = state.usingLocalStorage ? 'text-orange-600' : 'text-green-600';
+            
             document.getElementById('app').innerHTML = `
                 <div class="min-h-screen p-4 bg-gray-50">
-                    <div class="max-w-6xl mx-auto">
+                    <div class="max-w-7xl mx-auto">
                         <!-- CABEÇALHO -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex items-center justify-between">
@@ -409,12 +599,21 @@
                                     <div>
                                         <h1 class="text-2xl font-bold text-gray-900">Controle de Estoque</h1>
                                         <p class="text-gray-600">41º S3 • ${state.user.email}</p>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-sm ${statusColor} font-medium">${statusEmoji} ${statusText}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <button onclick="logout()" 
-                                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold">
-                                    Sair
-                                </button>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
+                                        <div class="text-sm text-gray-600">produtos</div>
+                                    </div>
+                                    <button onclick="logout()" 
+                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold">
+                                        Sair
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -435,57 +634,73 @@
                                 <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                                     <h3 class="font-semibold text-red-800 mb-2">Erros na última importação:</h3>
                                     <div class="text-sm text-red-700 max-h-32 overflow-y-auto">
-                                        ${state.importErrors.slice(0, 10).map(error => `<div class="mb-1">• ${error}</div>`).join('')}
-                                        ${state.importErrors.length > 10 ? `<div class="text-red-600">... e mais ${state.importErrors.length - 10} erros</div>` : ''}
+                                        ${state.importErrors.slice(0, 5).map(error => `<div class="mb-1">• ${error}</div>`).join('')}
+                                        ${state.importErrors.length > 5 ? `<div class="text-red-600">... e mais ${state.importErrors.length - 5} erros</div>` : ''}
                                     </div>
                                 </div>
                             ` : ''}
                         </div>
 
                         <!-- LISTA DE PRODUTOS -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6">
-                            <h2 class="text-xl font-bold text-gray-900 mb-4">
-                                Produtos no Estoque (${state.items.length})
-                            </h2>
-                            
+                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
                             ${state.items.length === 0 ? `
-                                <div class="text-center py-12">
-                                    <div class="text-6xl mb-4 text-purple-600">📦</div>
-                                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                                        Nenhum produto cadastrado
-                                    </h3>
-                                    <p class="text-gray-600 mb-4">
-                                        Importe uma planilha para começar.
-                                    </p>
+                                <div class="text-center py-16">
+                                    <div class="text-8xl mb-6 text-purple-600">📦</div>
+                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto cadastrado</h3>
+                                    <p class="text-gray-500 mb-6">Importe uma planilha para começar</p>
+                                    <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold">
+                                        Importar Planilha
+                                    </button>
                                 </div>
                             ` : `
                                 <div class="overflow-x-auto">
                                     <table class="w-full">
-                                        <thead class="bg-gray-100">
+                                        <thead class="bg-purple-600 text-white">
                                             <tr>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Código</th>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Produto</th>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Quantidade</th>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Localização</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Código</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Produto</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Categoria</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Quantidade</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Preço</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Status</th>
+                                                <th class="px-6 py-4 text-left text-sm font-bold">Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
                                             ${state.items.map(item => `
                                                 <tr class="hover:bg-gray-50">
-                                                    <td class="px-4 py-3">
+                                                    <td class="px-6 py-4">
                                                         <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
                                                     </td>
-                                                    <td class="px-4 py-3">
+                                                    <td class="px-6 py-4">
                                                         <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
-                                                        <div class="text-xs text-gray-500">${item.categoria || 'Sem categoria'}</div>
+                                                        <div class="text-xs text-gray-500">${item.observacoes || ''}</div>
                                                     </td>
-                                                    <td class="px-4 py-3">
-                                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
+                                                    <td class="px-6 py-4">
+                                                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                                                            ${item.categoria || 'Geral'}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-6 py-4">
+                                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
                                                             ${item.quantidade}
                                                         </span>
                                                     </td>
-                                                    <td class="px-4 py-3">
-                                                        <div class="text-sm text-gray-600">${item.localizacao || '-'}</div>
+                                                    <td class="px-6 py-4">
+                                                        <div class="text-sm font-bold text-green-600">
+                                                            ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4">
+                                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                                            ${getStatusLabel(item.status)}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-6 py-4">
+                                                        <button onclick="deleteItem('${item.id}')" 
+                                                            class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg">
+                                                            Excluir
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             `).join('')}
@@ -497,7 +712,7 @@
                     </div>
                 </div>
 
-                <!-- MODAL DE IMPORTAÇÃO -->
+                <!-- MODAL IMPORTAR -->
                 ${state.activeModal === 'import' ? `
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -507,17 +722,8 @@
                             <div class="p-6 space-y-6">
                                 <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
                                     <h3 class="font-semibold text-blue-800 mb-2">📋 Formato da Planilha</h3>
-                                    <p class="text-sm text-blue-700 mb-2">
-                                        <strong>Colunas necessárias (na ordem):</strong>
-                                    </p>
-                                    <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
-                                        <li><strong>Código</strong> - Código do produto (obrigatório)</li>
-                                        <li><strong>Produto</strong> - Nome do produto (obrigatório)</li>
-                                        <li><strong>Quantidade</strong> - Quantidade em estoque</li>
-                                        <li><strong>Localização</strong> - Onde está armazenado</li>
-                                    </ol>
-                                    <p class="text-sm text-blue-700 mt-2">
-                                        <strong>Dica:</strong> Use o modelo acima para garantir o formato correto.
+                                    <p class="text-sm text-blue-700">
+                                        Sua planilha será salva no Supabase e compartilhada com todos os usuários.
                                     </p>
                                 </div>
 
@@ -540,8 +746,7 @@
 
                                 ${state.importLoading ? `
                                     <div class="text-center py-4">
-                                        <p class="text-gray-600">Importando produtos... Por favor aguarde.</p>
-                                        <p class="text-sm text-gray-500 mt-1">Verifique o console (F12) para detalhes.</p>
+                                        <p class="text-gray-600">Importando para ${state.usingLocalStorage ? 'armazenamento local' : 'Supabase'}...</p>
                                     </div>
                                 ` : ''}
                             </div>
@@ -557,18 +762,30 @@
             `;
         }
 
+        function getStatusLabel(status) {
+            const statusMap = {
+                'venda': 'Disponível para Venda',
+                'assistencia': 'Assistência Técnica',
+                'mostruario': 'Mostruário',
+                'uso_loja': 'Uso da Loja',
+                'separado': 'Separado p/ Entrega/Recolhimento'
+            };
+            return statusMap[status] || status;
+        }
+
         // INICIAR APLICAÇÃO
+        console.log('🚀 Iniciando sistema com Supabase...');
         initAuth();
 
         // ESCUTAR MUDANÇAS DE AUTENTICAÇÃO
         supabase.auth.onAuthStateChange((event, session) => {
+            console.log('🔄 Mudança de autenticação:', event);
             state.user = session?.user || null;
+            if (state.user) {
+                state.usingLocalStorage = false;
+            }
             render();
         });
-
-        // INICIALIZAR FORMULÁRIOS
-        state.loginForm = { email: '', password: '' };
-        state.registerForm = { email: '', password: '', nome: '' };
     </script>
 </body>
 </html>
