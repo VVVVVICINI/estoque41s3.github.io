@@ -15,24 +15,9 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-        
-        .dark-mode {
-            background: #1a202c;
-            color: #e2e8f0;
-        }
-        .dark-card {
-            background: #2d3748;
-            color: #e2e8f0;
-            border: 1px solid #4a5568;
-        }
-        .dark-input {
-            background: #4a5568;
-            border-color: #718096;
-            color: #e2e8f0;
-        }
     </style>
 </head>
-<body class="bg-gray-50" id="body">
+<body class="bg-gray-50">
     <div id="app"></div>
 
     <script>
@@ -47,28 +32,18 @@
             loading: true,
             showLogin: true,
             activeModal: null,
-            darkMode: false,
-            loginForm: { email: '', password: '' },
-            registerForm: { email: '', password: '', nome: '' },
-            importLoading: false
+            importLoading: false,
+            importErrors: []
         };
-
-        const categories = ['Eletrônicos', 'Eletrodomésticos', 'Informática', 'Telefonia', 'Áudio e Vídeo', 'Games', 'Acessórios', 'Outros'];
 
         async function initAuth() {
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                    console.error('Erro na sessão:', error);
-                }
-                
+                const { data: { session } } = await supabase.auth.getSession();
                 state.user = session?.user || null;
                 state.loading = false;
                 render();
-                
             } catch (error) {
-                console.error('❌ Erro na inicialização:', error);
+                console.error('Erro na inicialização:', error);
                 state.loading = false;
                 render();
             }
@@ -87,10 +62,8 @@
                 });
 
                 if (error) throw error;
-                
                 state.user = data.user;
                 state.loginForm = { email: '', password: '' };
-                
             } catch (error) {
                 alert('Erro ao fazer login: ' + error.message);
             }
@@ -106,19 +79,13 @@
                 const { data, error } = await supabase.auth.signUp({
                     email: state.registerForm.email,
                     password: state.registerForm.password,
-                    options: { 
-                        data: { 
-                            nome: state.registerForm.nome
-                        }
-                    }
+                    options: { data: { nome: state.registerForm.nome } }
                 });
 
                 if (error) throw error;
-                
-                alert('✅ Cadastro realizado! Verifique seu email para confirmar.');
+                alert('✅ Cadastro realizado! Verifique seu email.');
                 state.showLogin = true;
                 state.registerForm = { email: '', password: '', nome: '' };
-                
             } catch (error) {
                 alert('Erro: ' + error.message);
             }
@@ -130,52 +97,42 @@
                 state.user = null;
                 state.showLogin = true;
             } catch (error) {
-                console.error('❌ Erro no logout:', error);
+                console.error('Erro no logout:', error);
             }
         }
 
-        // 📥 BAIXAR MODELO DE PLANILHA
+        // 📥 BAIXAR MODELO SIMPLIFICADO
         function downloadTemplate() {
             const templateData = [
                 {
-                    'Código': 'COD001',
-                    'Produto': 'Smartphone Samsung Galaxy',
-                    'Quantidade': '5',
-                    'Localização': 'Prateleira A1',
-                    'Categoria': 'Telefonia',
-                    'Preço': '1500.00',
-                    'Status': 'Disponível para Venda',
-                    'Observações': 'Modelo 2024',
-                    'Tags': 'samsung,celular,android'
+                    'CODIGO': 'COD001',
+                    'PRODUTO': 'Smartphone Samsung',
+                    'QUANTIDADE': '5',
+                    'LOCALIZACAO': 'Prateleira A1'
                 },
                 {
-                    'Código': 'COD002',
-                    'Produto': 'Notebook Dell Inspiron',
-                    'Quantidade': '3',
-                    'Localização': 'Prateleira B2',
-                    'Categoria': 'Informática',
-                    'Preço': '2500.00',
-                    'Status': 'Disponível para Venda',
-                    'Observações': '8GB RAM, 256GB SSD',
-                    'Tags': 'dell,notebook,windows'
+                    'CODIGO': 'COD002', 
+                    'PRODUTO': 'Notebook Dell',
+                    'QUANTIDADE': '3',
+                    'LOCALIZACAO': 'Prateleira B2'
                 }
             ];
             
             const ws = XLSX.utils.json_to_sheet(templateData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Modelo Importação");
-            XLSX.writeFile(wb, 'modelo_importacao_estoque.xlsx');
-            
-            alert('📋 Modelo baixado com sucesso!');
+            XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+            XLSX.writeFile(wb, 'modelo_importacao.xlsx');
+            alert('📋 Modelo baixado!');
         }
 
-        // 📥 IMPORTAR DO EXCEL - CORRIGIDA
+        // 📥 IMPORTAR DO EXCEL - VERSÃO SIMPLIFICADA E ROBUSTA
         async function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
             
             try {
                 state.importLoading = true;
+                state.importErrors = [];
                 render();
                 
                 const reader = new FileReader();
@@ -185,20 +142,23 @@
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
                         
-                        await processImportedData(jsonData);
+                        console.log('📊 Dados brutos da planilha:', jsonData);
+                        
+                        // Processar dados - versão mais simples
+                        await processImportedDataSimple(jsonData);
                         
                     } catch (error) {
-                        console.error('Erro ao importar arquivo:', error);
-                        alert('❌ Erro ao importar arquivo: ' + error.message);
+                        console.error('Erro ao ler arquivo:', error);
+                        state.importErrors.push(`Erro ao ler arquivo: ${error.message}`);
                         state.importLoading = false;
                         render();
                     }
                 };
                 
                 reader.onerror = function() {
-                    alert('❌ Erro ao ler o arquivo');
+                    state.importErrors.push('Erro ao ler o arquivo');
                     state.importLoading = false;
                     render();
                 };
@@ -206,36 +166,56 @@
                 reader.readAsArrayBuffer(file);
                 
             } catch (error) {
+                state.importErrors.push(`Erro geral: ${error.message}`);
                 state.importLoading = false;
                 render();
-                alert('❌ Erro ao processar arquivo: ' + error.message);
             }
         }
 
-        // 🔄 PROCESSAR DADOS IMPORTADOS - CORRIGIDA
-        async function processImportedData(data) {
+        // 🔄 PROCESSAMENTO SIMPLIFICADO - FOCA NO BÁSICO
+        async function processImportedDataSimple(data) {
             try {
-                console.log('📥 Processando dados importados...', data.length, 'itens');
+                console.log('🔍 Iniciando processamento...', data.length, 'linhas');
                 
                 let importedCount = 0;
                 let errorCount = 0;
                 
-                // Processar em lote para melhor performance
-                for (let i = 0; i < data.length; i++) {
-                    const item = data[i];
+                // Pular cabeçalho (primeira linha)
+                const rows = data.slice(1);
+                
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    
+                    // Pular linhas vazias
+                    if (!row || row.length === 0 || !row.some(cell => cell && cell.toString().trim())) {
+                        continue;
+                    }
                     
                     try {
-                        // Mapear colunas do Excel
-                        const mappedItem = {
-                            codigo: String(item.Código || item.codigo || `IMP${Date.now()}${i}`).trim(),
-                            nome: String(item.Produto || item.produto || item.Nome || item.nome || 'Produto sem nome').trim(),
-                            quantidade: parseInt(item.Quantidade || item.quantidade || '1') || 1,
-                            localizacao: String(item.Localização || item.localizacao || item.Local || item.local || '').trim(),
-                            categoria: String(item.Categoria || item.categoria || '').trim(),
-                            preco: item.Preço || item.preco || item.Preco || '',
-                            status: mapStatus(item.Status || item.status) || 'venda',
-                            observacoes: String(item.Observações || item.observacoes || item.Observacoes || '').trim(),
-                            tags: String(item.Tags || item.tags || '').trim(),
+                        // Mapeamento básico - assumindo colunas na ordem
+                        const codigo = row[0] ? String(row[0]).trim() : null;
+                        const nome = row[1] ? String(row[1]).trim() : null;
+                        const quantidade = row[2] ? parseInt(row[2]) || 1 : 1;
+                        const localizacao = row[3] ? String(row[3]).trim() : '';
+                        
+                        console.log(`📝 Processando linha ${i + 2}:`, { codigo, nome, quantidade, localizacao });
+                        
+                        // Validação básica
+                        if (!codigo || !nome) {
+                            throw new Error('Código e nome são obrigatórios');
+                        }
+                        
+                        // Criar objeto do produto
+                        const produto = {
+                            codigo: codigo,
+                            nome: nome,
+                            quantidade: quantidade,
+                            localizacao: localizacao,
+                            categoria: '',
+                            preco: '',
+                            status: 'venda',
+                            observacoes: '',
+                            tags: '',
                             data_entrada: new Date().toISOString().split('T')[0],
                             user_id: state.user.id,
                             user_email: state.user.email,
@@ -243,91 +223,58 @@
                             updated_at: new Date().toISOString()
                         };
                         
-                        // Converter preço para número se existir
-                        if (mappedItem.preco) {
-                            if (typeof mappedItem.preco === 'string') {
-                                mappedItem.preco = parseFloat(mappedItem.preco.replace('R$', '').replace(',', '.').trim()) || '';
-                            }
-                        }
-                        
-                        console.log('💾 Salvando item:', mappedItem.codigo, mappedItem.nome);
-                        
-                        // Verificar se item já existe
-                        const { data: existingItem } = await supabase
+                        // Tentar inserir no banco
+                        const { error } = await supabase
                             .from('items')
-                            .select('id')
-                            .eq('codigo', mappedItem.codigo)
-                            .single();
-                        
-                        if (existingItem) {
-                            // Atualizar item existente
-                            const { error } = await supabase
-                                .from('items')
-                                .update(mappedItem)
-                                .eq('id', existingItem.id);
-                                
-                            if (error) throw error;
-                            console.log('✅ Item atualizado:', mappedItem.codigo);
+                            .insert([produto]);
+                            
+                        if (error) {
+                            // Se der erro de duplicata, tentar atualizar
+                            if (error.code === '23505') {
+                                const { error: updateError } = await supabase
+                                    .from('items')
+                                    .update(produto)
+                                    .eq('codigo', codigo);
+                                    
+                                if (updateError) throw updateError;
+                                console.log('✅ Item atualizado:', codigo);
+                            } else {
+                                throw error;
+                            }
                         } else {
-                            // Inserir novo item
-                            const { error } = await supabase
-                                .from('items')
-                                .insert([mappedItem]);
-                                
-                            if (error) throw error;
-                            console.log('✅ Novo item inserido:', mappedItem.codigo);
+                            console.log('✅ Novo item inserido:', codigo);
                         }
                         
                         importedCount++;
                         
                     } catch (itemError) {
                         errorCount++;
-                        console.error(`❌ Erro no item ${i + 1}:`, itemError);
+                        const errorMsg = `Linha ${i + 2}: ${itemError.message}`;
+                        state.importErrors.push(errorMsg);
+                        console.error(`❌ Erro na linha ${i + 2}:`, itemError);
                     }
                 }
                 
                 state.importLoading = false;
                 render();
                 
+                // Mostrar resultados
                 if (errorCount > 0) {
-                    alert(`⚠️ ${importedCount} itens importados, ${errorCount} com erro. Verifique o console para detalhes.`);
+                    alert(`⚠️ ${importedCount} itens importados, ${errorCount} com erro.\n\nPrimeiros erros:\n${state.importErrors.slice(0, 5).join('\n')}`);
                 } else {
                     alert(`✅ ${importedCount} itens importados com sucesso!`);
                 }
                 
-                // Recarregar itens
+                // Recarregar lista
                 await loadItems();
                 
             } catch (error) {
-                console.error('❌ Erro completo ao processar dados:', error);
+                console.error('❌ Erro no processamento:', error);
+                state.importErrors.push(`Erro no processamento: ${error.message}`);
                 state.importLoading = false;
                 render();
-                alert('❌ Erro ao importar dados: ' + error.message);
+                alert('❌ Erro ao processar dados: ' + error.message);
             }
-        }
-
-        // 🗺️ MAPEAR STATUS
-        function mapStatus(statusStr) {
-            if (!statusStr) return 'venda';
-            
-            const statusMap = {
-                'disponível para venda': 'venda',
-                'disponivel para venda': 'venda',
-                'venda': 'venda',
-                'assistência técnica': 'assistencia',
-                'assistencia tecnica': 'assistencia',
-                'assistencia': 'assistencia',
-                'mostruário': 'mostruario',
-                'mostruario': 'mostruario',
-                'uso da loja': 'uso_loja',
-                'uso loja': 'uso_loja',
-                'separado p/ entrega/recolhimento': 'separado',
-                'separado para entrega': 'separado',
-                'separado': 'separado'
-            };
-            
-            const normalizedStatus = String(statusStr).toLowerCase().trim();
-            return statusMap[normalizedStatus] || 'venda';
         }
 
         // 📦 CARREGAR ITENS
@@ -339,25 +286,11 @@
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
-                
                 state.items = data || [];
                 render();
             } catch (error) {
-                console.error('❌ Erro ao carregar produtos:', error);
+                console.error('Erro ao carregar produtos:', error);
             }
-        }
-
-        function toggleDarkMode() {
-            state.darkMode = !state.darkMode;
-            const body = document.getElementById('body');
-            if (state.darkMode) {
-                body.classList.add('dark-mode');
-                body.classList.remove('bg-gray-50');
-            } else {
-                body.classList.remove('dark-mode');
-                body.classList.add('bg-gray-50');
-            }
-            render();
         }
 
         function openModal(type) {
@@ -368,6 +301,7 @@
         function closeModal() {
             state.activeModal = null;
             state.importLoading = false;
+            state.importErrors = [];
             render();
         }
 
@@ -393,34 +327,31 @@
         }
 
         function renderLogin() {
-            const isDark = state.darkMode;
             document.getElementById('app').innerHTML = `
                 <div class="flex items-center justify-center min-h-screen p-4">
-                    <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-xl p-8 max-w-md w-full transition-colors">
+                    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
                         <div class="text-center mb-8">
                             <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 <span class="text-white text-2xl">📦</span>
                             </div>
                             <h1 class="text-2xl font-bold text-purple-600 mb-2">Controle de Estoque</h1>
-                            <p class="${isDark ? 'text-gray-400' : 'text-gray-600'}">41º S3 - Sistema em Tempo Real</p>
+                            <p class="text-gray-600">41º S3 - Sistema em Tempo Real</p>
                         </div>
 
                         ${state.showLogin ? `
                             <div class="space-y-4">
                                 <div>
                                     <input type="email" placeholder="Seu email" 
-                                        value="${state.loginForm.email}"
-                                        oninput="state.loginForm.email = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors">
+                                        oninput="state.loginForm = { ...state.loginForm, email: this.value }"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Sua senha" 
-                                        value="${state.loginForm.password}"
-                                        oninput="state.loginForm.password = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors">
+                                        oninput="state.loginForm = { ...state.loginForm, password: this.value }"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <button onclick="login()" 
-                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors">
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold">
                                     Entrar no Sistema
                                 </button>
                                 <div class="text-center">
@@ -434,24 +365,21 @@
                             <div class="space-y-4">
                                 <div>
                                     <input type="text" placeholder="Seu nome completo" 
-                                        value="${state.registerForm.nome}"
-                                        oninput="state.registerForm.nome = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors">
+                                        oninput="state.registerForm = { ...state.registerForm, nome: this.value }"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <div>
                                     <input type="email" placeholder="Seu melhor email" 
-                                        value="${state.registerForm.email}"
-                                        oninput="state.registerForm.email = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors">
+                                        oninput="state.registerForm = { ...state.registerForm, email: this.value }"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <div>
                                     <input type="password" placeholder="Crie uma senha (6+ caracteres)" 
-                                        value="${state.registerForm.password}"
-                                        oninput="state.registerForm.password = this.value"
-                                        class="w-full px-4 py-3 rounded-xl border-2 ${isDark ? 'dark-input' : 'border-gray-200'} focus:border-purple-400 transition-colors">
+                                        oninput="state.registerForm = { ...state.registerForm, password: this.value }"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
                                 </div>
                                 <button onclick="register()" 
-                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors">
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold">
                                     Criar Minha Conta
                                 </button>
                                 <div class="text-center">
@@ -462,104 +390,102 @@
                                 </div>
                             </div>
                         `}
-
-                        <div class="text-center mt-6">
-                            <button onclick="toggleDarkMode()" 
-                                class="text-sm ${isDark ? 'text-yellow-400' : 'text-gray-600'} hover:text-purple-600 transition-colors">
-                                ${isDark ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
-                            </button>
-                        </div>
                     </div>
                 </div>
             `;
         }
 
         function renderApp() {
-            const isDark = state.darkMode;
             document.getElementById('app').innerHTML = `
-                <div class="min-h-screen p-4 ${isDark ? 'dark-mode' : 'bg-gray-50'} transition-colors">
+                <div class="min-h-screen p-4 bg-gray-50">
                     <div class="max-w-6xl mx-auto">
                         <!-- CABEÇALHO -->
-                        <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-lg p-6 mb-6 transition-colors">
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
                                         <span class="text-white text-xl">📦</span>
                                     </div>
                                     <div>
-                                        <h1 class="text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}">Controle de Estoque</h1>
-                                        <p class="${isDark ? 'text-gray-400' : 'text-gray-600'}">41º S3 • ${state.user.email}</p>
+                                        <h1 class="text-2xl font-bold text-gray-900">Controle de Estoque</h1>
+                                        <p class="text-gray-600">41º S3 • ${state.user.email}</p>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-4">
-                                    <button onclick="toggleDarkMode()" 
-                                        class="p-2 rounded-lg ${isDark ? 'bg-gray-600 text-yellow-400' : 'bg-gray-200 text-gray-700'} transition-colors">
-                                        ${isDark ? '☀️' : '🌙'}
-                                    </button>
-                                    <button onclick="logout()" 
-                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition-colors">
-                                        Sair
-                                    </button>
-                                </div>
+                                <button onclick="logout()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold">
+                                    Sair
+                                </button>
                             </div>
                         </div>
 
                         <!-- BOTÕES DE AÇÃO -->
-                        <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-lg p-6 mb-6 transition-colors">
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex gap-4 flex-wrap">
                                 <button onclick="downloadTemplate()" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                                     📋 Baixar Modelo
                                 </button>
                                 <button onclick="openModal('import')" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                                     📥 Importar Planilha
                                 </button>
                             </div>
+                            
+                            ${state.importErrors.length > 0 ? `
+                                <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <h3 class="font-semibold text-red-800 mb-2">Erros na última importação:</h3>
+                                    <div class="text-sm text-red-700 max-h-32 overflow-y-auto">
+                                        ${state.importErrors.slice(0, 10).map(error => `<div class="mb-1">• ${error}</div>`).join('')}
+                                        ${state.importErrors.length > 10 ? `<div class="text-red-600">... e mais ${state.importErrors.length - 10} erros</div>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>
 
                         <!-- LISTA DE PRODUTOS -->
-                        <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-lg p-6 transition-colors">
-                            <h2 class="text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4">Produtos no Estoque</h2>
+                        <div class="bg-white rounded-2xl shadow-lg p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-4">
+                                Produtos no Estoque (${state.items.length})
+                            </h2>
                             
                             ${state.items.length === 0 ? `
                                 <div class="text-center py-12">
-                                    <div class="text-6xl mb-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}">📦</div>
-                                    <h3 class="text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2">
+                                    <div class="text-6xl mb-4 text-purple-600">📦</div>
+                                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
                                         Nenhum produto cadastrado
                                     </h3>
-                                    <p class="${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4">
-                                        Importe uma planilha ou adicione produtos manualmente.
+                                    <p class="text-gray-600 mb-4">
+                                        Importe uma planilha para começar.
                                     </p>
                                 </div>
                             ` : `
                                 <div class="overflow-x-auto">
                                     <table class="w-full">
-                                        <thead class="${isDark ? 'bg-gray-700' : 'bg-gray-100'}">
+                                        <thead class="bg-gray-100">
                                             <tr>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Código</th>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Produto</th>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Quantidade</th>
-                                                <th class="px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">Localização</th>
+                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Código</th>
+                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Produto</th>
+                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Quantidade</th>
+                                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Localização</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y ${isDark ? 'divide-gray-600' : 'divide-gray-200'}">
+                                        <tbody class="divide-y divide-gray-200">
                                             ${state.items.map(item => `
-                                                <tr class="${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors">
+                                                <tr class="hover:bg-gray-50">
                                                     <td class="px-4 py-3">
-                                                        <div class="text-sm font-bold ${isDark ? 'text-purple-300' : 'text-purple-600'}">${item.codigo}</div>
+                                                        <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}">${item.nome}</div>
-                                                        <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">${item.categoria || 'Sem categoria'}</div>
+                                                        <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
+                                                        <div class="text-xs text-gray-500">${item.categoria || 'Sem categoria'}</div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <span class="px-2 py-1 ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'} rounded-full text-sm font-bold">
+                                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
                                                             ${item.quantidade}
                                                         </span>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">${item.localizacao || '-'}</div>
+                                                        <div class="text-sm text-gray-600">${item.localizacao || '-'}</div>
                                                     </td>
                                                 </tr>
                                             `).join('')}
@@ -574,25 +500,34 @@
                 <!-- MODAL DE IMPORTAÇÃO -->
                 ${state.activeModal === 'import' ? `
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div class="${isDark ? 'dark-card' : 'bg-white'} rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transition-colors">
+                        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                             <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
                                 <h2 class="text-xl font-bold">Importar Planilha</h2>
                             </div>
                             <div class="p-6 space-y-6">
-                                <div class="${isDark ? 'bg-blue-900' : 'bg-blue-50'} border ${isDark ? 'border-blue-700' : 'border-blue-200'} rounded-xl p-4">
-                                    <h3 class="font-semibold ${isDark ? 'text-blue-200' : 'text-blue-800'} mb-2">📋 Formato da Planilha</h3>
-                                    <p class="text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'}">
-                                        Sua planilha deve conter estas colunas: Código, Produto, Quantidade, Localização, etc.
+                                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                    <h3 class="font-semibold text-blue-800 mb-2">📋 Formato da Planilha</h3>
+                                    <p class="text-sm text-blue-700 mb-2">
+                                        <strong>Colunas necessárias (na ordem):</strong>
+                                    </p>
+                                    <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
+                                        <li><strong>Código</strong> - Código do produto (obrigatório)</li>
+                                        <li><strong>Produto</strong> - Nome do produto (obrigatório)</li>
+                                        <li><strong>Quantidade</strong> - Quantidade em estoque</li>
+                                        <li><strong>Localização</strong> - Onde está armazenado</li>
+                                    </ol>
+                                    <p class="text-sm text-blue-700 mt-2">
+                                        <strong>Dica:</strong> Use o modelo acima para garantir o formato correto.
                                     </p>
                                 </div>
 
-                                <div class="border-2 border-dashed ${isDark ? 'border-gray-600' : 'border-gray-300'} rounded-xl p-8 text-center">
-                                    <div class="text-4xl mb-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}">📤</div>
-                                    <h3 class="font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2">Selecione sua planilha</h3>
-                                    <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4">
+                                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                                    <div class="text-4xl mb-4 text-purple-600">📤</div>
+                                    <h3 class="font-semibold text-gray-900 mb-2">Selecione sua planilha</h3>
+                                    <p class="text-sm text-gray-600 mb-4">
                                         Formatos: .xlsx, .xls, .csv
                                     </p>
-                                    <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer transition-colors inline-block">
+                                    <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block">
                                         ${state.importLoading ? `
                                             <div class="flex items-center gap-2">
                                                 <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
@@ -605,13 +540,14 @@
 
                                 ${state.importLoading ? `
                                     <div class="text-center py-4">
-                                        <p class="${isDark ? 'text-gray-400' : 'text-gray-600'}">Importando produtos... Isso pode levar alguns segundos.</p>
+                                        <p class="text-gray-600">Importando produtos... Por favor aguarde.</p>
+                                        <p class="text-sm text-gray-500 mt-1">Verifique o console (F12) para detalhes.</p>
                                     </div>
                                 ` : ''}
                             </div>
-                            <div class="p-6 border-t ${isDark ? 'border-gray-600' : 'border-gray-200'} flex justify-end">
+                            <div class="p-6 border-t border-gray-200 flex justify-end">
                                 <button onclick="closeModal()" 
-                                    class="px-6 py-3 border-2 ${isDark ? 'border-gray-600 text-white hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-xl font-medium transition-colors">
+                                    class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium">
                                     Fechar
                                 </button>
                             </div>
@@ -629,6 +565,10 @@
             state.user = session?.user || null;
             render();
         });
+
+        // INICIALIZAR FORMULÁRIOS
+        state.loginForm = { email: '', password: '' };
+        state.registerForm = { email: '', password: '', nome: '' };
     </script>
 </body>
 </html>
