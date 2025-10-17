@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Localizador de Produtos - 41º S3</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .loading-spinner {
@@ -22,161 +21,134 @@
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
                 <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-gray-600">Carregando estoque...</p>
+                <p class="text-gray-600">Carregando estoque do Google Sheets...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // CONFIGURAÇÃO DO SUPABASE
-        const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
+        // CONFIGURAÇÃO DA SUA PLANILHA
+        const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
+        const GOOGLE_SHEET_NAME = 'Página1';
         
-        // Estado global
         let state = {
             items: [],
             loading: true,
-            activeModal: null,
-            importLoading: false,
             searchTerm: '',
             filteredItems: [],
-            isEstoquista: false,
-            editingItem: null,
-            isNewProduct: false,
+            lastUpdate: null,
             connectionError: false
         };
 
-        // Inicializar Supabase
-        let supabase;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('✅ Supabase conectado');
-        } catch (error) {
-            console.error('❌ Erro ao conectar com Supabase:', error);
-            state.connectionError = true;
-        }
-
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
-            console.log('🚀 Iniciando sistema compartilhado...');
-            
-            await checkUserRole();
-            await loadSharedItems();
-            
+            console.log('🚀 Iniciando sistema com sua planilha...');
+            await loadFromGoogleSheets();
             state.loading = false;
             render();
             
-            // Atualizar dados a cada 10 segundos (para vendedores verem mudanças)
-            if (!state.isEstoquista) {
-                setInterval(loadSharedItems, 10000);
-            }
+            // Atualizar a cada 30 segundos
+            setInterval(loadFromGoogleSheets, 30000);
         }
 
-        // 🔐 VERIFICAR SE É ESTOQUISTA
-        async function checkUserRole() {
-            const isEstoquista = localStorage.getItem('estoque_estoquista') === 'true';
-            state.isEstoquista = isEstoquista;
-            console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
-        }
-
-        // 📦 CARREGAR DADOS COMPARTILHADOS DO SUPABASE - PARA TODOS OS USUÁRIOS
-        async function loadSharedItems() {
+        // 📊 CARREGAR DA SUA PLANILHA - APENAS COLUNAS ESPECÍFICAS
+        async function loadFromGoogleSheets() {
             try {
-                console.log('📦 Tentando carregar dados do Supabase...');
+                console.log('📊 Buscando dados da sua planilha...');
                 
-                if (!supabase) {
-                    throw new Error('Supabase não inicializado');
-                }
-
-                const { data, error } = await supabase
-                    .from('items')
-                    .select('*')
-                    .order('updated_at', { ascending: false });
-
-                if (error) {
-                    console.error('❌ Erro ao buscar dados:', error);
-                    throw error;
-                }
-
-                console.log('✅ Dados carregados do Supabase:', data ? data.length : 0, 'itens');
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
                 
-                if (data && data.length > 0) {
-                    state.items = data;
-                    state.filteredItems = [...data];
-                    state.connectionError = false;
-                } else {
-                    // Se não há dados no Supabase, usar localStorage como fallback
-                    const localItems = localStorage.getItem('estoque_compartilhado');
-                    if (localItems) {
-                        state.items = JSON.parse(localItems);
-                        state.filteredItems = [...state.items];
-                        console.log('📱 Usando dados do localStorage:', state.items.length, 'itens');
-                    } else {
-                        state.items = [];
-                        state.filteredItems = [];
-                    }
-                }
+                const response = await fetch(sheetUrl);
+                if (!response.ok) throw new Error('Erro ao carregar planilha');
+                
+                const csvData = await response.text();
+                const items = parseCSV(csvData);
+                
+                state.items = items;
+                state.filteredItems = [...items];
+                state.lastUpdate = new Date().toLocaleString('pt-BR');
+                state.connectionError = false;
+                
+                console.log('✅ Dados carregados:', items.length, 'itens');
+                render();
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar dados compartilhados:', error);
+                console.error('❌ Erro ao carregar do Google Sheets:', error);
                 state.connectionError = true;
-                
-                // Fallback para localStorage
-                const localItems = localStorage.getItem('estoque_compartilhado');
-                if (localItems) {
-                    state.items = JSON.parse(localItems);
-                    state.filteredItems = [...state.items];
-                    console.log('📱 Fallback para localStorage:', state.items.length, 'itens');
-                }
+                await loadFromLocalStorage();
             }
         }
 
-        // 💾 SALVAR DADOS NO SUPABASE E LOCAL
-        async function saveSharedItems() {
-            try {
-                console.log('💾 Salvando dados...');
-                
-                // Sempre salvar no localStorage como backup
-                localStorage.setItem('estoque_compartilhado', JSON.stringify(state.items));
-                console.log('📱 Dados salvos no localStorage');
-
-                // Se é estoquista, salvar no Supabase também
-                if (supabase && state.isEstoquista) {
-                    console.log('☁️ Tentando salvar no Supabase...');
+        // 📝 ANALISAR CSV - APENAS COLUNAS 1, 2, 6, 7
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            const items = [];
+            
+            // Pular cabeçalho (primeira linha)
+            for (let i = 1; i < lines.length; i++) {
+                try {
+                    const cells = parseCSVLine(lines[i]);
                     
-                    const itemsToSave = state.items.map(item => ({
-                        ...item,
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    // Limpar tabela e inserir novos dados
-                    const { error: deleteError } = await supabase
-                        .from('items')
-                        .delete()
-                        .neq('id', '0');
-
-                    if (deleteError) {
-                        console.error('❌ Erro ao limpar tabela:', deleteError);
-                        throw deleteError;
+                    // COLUNAS QUE VAMOS USAR:
+                    // Coluna 1 (índice 0): CÓDIGO
+                    // Coluna 2 (índice 1): NOME DO PRODUTO  
+                    // Coluna 6 (índice 5): QUANTIDADE
+                    // Coluna 7 (índice 6): LOCALIZAÇÃO
+                    
+                    const codigo = (cells[0] || '').toString().trim();
+                    const nome = (cells[1] || '').toString().trim();
+                    const quantidade = parseInt(cells[5]) || 1;
+                    const localizacao = (cells[6] || 'Não informado').toString().trim();
+                    
+                    // Só adiciona se tiver código e nome
+                    if (codigo && nome) {
+                        items.push({
+                            id: 'item_' + i + '_' + Date.now(),
+                            codigo: codigo,
+                            nome: nome,
+                            quantidade: quantidade,
+                            localizacao: localizacao,
+                            data_entrada: new Date().toISOString().split('T')[0]
+                        });
                     }
-
-                    const { error: insertError } = await supabase
-                        .from('items')
-                        .insert(itemsToSave);
-
-                    if (insertError) {
-                        console.error('❌ Erro ao inserir dados:', insertError);
-                        throw insertError;
-                    }
-
-                    console.log('✅ Dados salvos no Supabase');
-                    state.connectionError = false;
+                } catch (error) {
+                    console.warn(`Erro na linha ${i + 1}:`, error);
                 }
+            }
+            
+            return items;
+        }
+
+        // 🔧 PARSER DE CSV MAIS ROBUSTO
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
                 
-            } catch (error) {
-                console.error('❌ Erro ao salvar dados compartilhados:', error);
-                state.connectionError = true;
-                // Os dados já estão salvos no localStorage, então não perdemos nada
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current);
+            return result.map(cell => cell.replace(/^"|"$/g, '').trim());
+        }
+
+        // 💾 CARREGAR DO LOCALSTORAGE (FALLBACK)
+        async function loadFromLocalStorage() {
+            const savedItems = localStorage.getItem('estoque_compartilhado');
+            if (savedItems) {
+                state.items = JSON.parse(savedItems);
+                state.filteredItems = [...state.items];
+                console.log('📱 Dados carregados do localStorage:', state.items.length, 'itens');
             }
         }
 
@@ -192,293 +164,11 @@
             state.filteredItems = state.items.filter(item => 
                 item.codigo.toLowerCase().includes(term) ||
                 item.nome.toLowerCase().includes(term) ||
-                item.localizacao.toLowerCase().includes(term) ||
-                item.categoria.toLowerCase().includes(term) ||
-                (item.observacoes && item.observacoes.toLowerCase().includes(term))
+                item.localizacao.toLowerCase().includes(term)
             );
         }
 
-        // 🔓 ATIVAR MODO ESTOQUISTA
-        function activateEstoquistaMode() {
-            const password = prompt('🔐 Digite a senha de estoquista:');
-            if (password === 'estoque123') {
-                state.isEstoquista = true;
-                localStorage.setItem('estoque_estoquista', 'true');
-                alert('✅ Modo estoquista ativado! Agora você pode editar produtos.');
-                render();
-            } else {
-                alert('❌ Senha incorreta. Apenas visualização permitida.');
-            }
-        }
-
-        // ➕ ADICIONAR NOVO PRODUTO
-        function addNewProduct() {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem adicionar produtos.');
-                return;
-            }
-            
-            state.editingItem = {
-                id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                codigo: '',
-                nome: '',
-                quantidade: 1,
-                localizacao: '',
-                categoria: 'Geral',
-                status: 'venda',
-                observacoes: '',
-                data_entrada: new Date().toISOString().split('T')[0],
-                updated_at: new Date().toISOString()
-            };
-            state.isNewProduct = true;
-            render();
-        }
-
-        // ✏️ EDITAR PRODUTO
-        function editItem(item) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem editar produtos.');
-                return;
-            }
-            
-            state.editingItem = { ...item };
-            state.isNewProduct = false;
-            render();
-        }
-
-        // 💾 SALVAR PRODUTO (NOVO OU EDIÇÃO)
-        async function saveProduct() {
-            try {
-                if (!state.editingItem.codigo || !state.editingItem.nome) {
-                    alert('❌ Código e nome são obrigatórios!');
-                    return;
-                }
-                
-                if (state.isNewProduct) {
-                    // Adicionar novo produto
-                    state.items.unshift(state.editingItem);
-                    alert('✅ Produto adicionado com sucesso!');
-                } else {
-                    // Atualizar produto existente
-                    const index = state.items.findIndex(item => item.id === state.editingItem.id);
-                    if (index !== -1) {
-                        state.items[index] = {
-                            ...state.editingItem,
-                            updated_at: new Date().toISOString()
-                        };
-                    }
-                    alert('✅ Produto atualizado com sucesso!');
-                }
-                
-                state.filteredItems = [...state.items];
-                await saveSharedItems();
-                
-                state.editingItem = null;
-                state.isNewProduct = false;
-                render();
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar produto:', error);
-                alert('Erro ao salvar produto: ' + error.message);
-            }
-        }
-
-        // ❌ CANCELAR EDIÇÃO
-        function cancelEdit() {
-            state.editingItem = null;
-            state.isNewProduct = false;
-            render();
-        }
-
-        // 🗑️ EXCLUIR PRODUTO
-        async function deleteItem(id) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem excluir produtos.');
-                return;
-            }
-            
-            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-            
-            state.items = state.items.filter(item => item.id !== id);
-            state.filteredItems = state.filteredItems.filter(item => item.id !== id);
-            await saveSharedItems();
-            render();
-            alert('✅ Produto excluído!');
-        }
-
-        // 📥 BAIXAR MODELO
-        function downloadTemplate() {
-            try {
-                const templateData = [
-                    {
-                        'CODIGO': 'CEL-001',
-                        'PRODUTO': 'Smartphone Samsung Galaxy',
-                        'QUANTIDADE': '5',
-                        'LOCALIZACAO': 'Prateleira A1 - Corredor 3',
-                        'CATEGORIA': 'Telefonia',
-                        'STATUS': 'Disponível para Venda',
-                        'OBSERVACOES': 'Modelo 2024 - Caixa Azul'
-                    },
-                    {
-                        'CODIGO': 'NOTE-002',
-                        'PRODUTO': 'Notebook Dell Inspiron',
-                        'QUANTIDADE': '3',
-                        'LOCALIZACAO': 'Armário Técnico - Sala 2',
-                        'CATEGORIA': 'Informática',
-                        'STATUS': 'Uso da Loja',
-                        'OBSERVACOES': 'Com carregador original'
-                    }
-                ];
-                
-                const ws = XLSX.utils.json_to_sheet(templateData);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Modelo");
-                XLSX.writeFile(wb, 'modelo_estoque.xlsx');
-                alert('📋 Modelo baixado!');
-            } catch (error) {
-                alert('Erro ao baixar modelo');
-            }
-        }
-
-        // 📥 IMPORTAR EXCEL
-        async function importFromExcel(event) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem importar planilhas.');
-                return;
-            }
-
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                state.importLoading = true;
-                render();
-                
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                        
-                        processImportedData(jsonData);
-                        
-                    } catch (error) {
-                        alert('Erro ao ler arquivo: ' + error.message);
-                        state.importLoading = false;
-                        render();
-                    }
-                };
-                
-                reader.readAsArrayBuffer(file);
-                
-            } catch (error) {
-                alert('Erro na importação: ' + error.message);
-                state.importLoading = false;
-                render();
-            }
-        }
-
-        // 🔄 PROCESSAR DADOS IMPORTADOS
-        function processImportedData(data) {
-            try {
-                let importedCount = 0;
-                const newItems = [];
-                
-                for (let i = 0; i < data.length; i++) {
-                    try {
-                        const item = data[i];
-                        const mappedItem = {
-                            id: 'item_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 9),
-                            codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
-                            nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
-                            quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
-                            localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || 'Não informado').trim(),
-                            categoria: String(item.CATEGORIA || item.Categoria || item.categoria || 'Geral').trim(),
-                            status: mapStatus(item.STATUS || item.Status || item.status),
-                            observacoes: String(item.OBSERVACOES || item.Observações || item.observacoes || '').trim(),
-                            data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString()
-                        };
-                        
-                        if (mappedItem.codigo && mappedItem.nome) {
-                            newItems.push(mappedItem);
-                            importedCount++;
-                        }
-                        
-                    } catch (itemError) {
-                        console.warn(`Erro no item ${i}:`, itemError);
-                    }
-                }
-                
-                // SUBSTITUIR todos os itens
-                state.items = newItems;
-                state.filteredItems = [...newItems];
-                saveSharedItems();
-                
-                state.importLoading = false;
-                render();
-                
-                alert(`✅ Estoque atualizado!\n${importedCount} produtos importados.\n\nTodos os vendedores já podem ver as novas localizações!`);
-                
-            } catch (error) {
-                alert('Erro ao processar dados: ' + error.message);
-                state.importLoading = false;
-                render();
-            }
-        }
-
-        // 🗺️ MAPEAR STATUS
-        function mapStatus(statusStr) {
-            if (!statusStr) return 'venda';
-            const statusMap = {
-                'disponível para venda': 'venda', 'venda': 'venda',
-                'assistência técnica': 'assistencia', 'assistencia': 'assistencia',
-                'mostruário': 'mostruario', 'mostruario': 'mostruario',
-                'uso da loja': 'uso_loja', 'uso loja': 'uso_loja',
-                'separado p/ entrega/recolhimento': 'separado', 'separado': 'separado'
-            };
-            return statusMap[String(statusStr).toLowerCase().trim()] || 'venda';
-        }
-
-        // 📊 OBTER COR DO STATUS
-        function getStatusColor(status) {
-            const colors = {
-                'venda': 'bg-green-100 text-green-800',
-                'assistencia': 'bg-yellow-100 text-yellow-800',
-                'mostruario': 'bg-blue-100 text-blue-800',
-                'uso_loja': 'bg-purple-100 text-purple-800',
-                'separado': 'bg-orange-100 text-orange-800'
-            };
-            return colors[status] || 'bg-gray-100 text-gray-800';
-        }
-
-        // 📊 OBTER TEXTO DO STATUS
-        function getStatusText(status) {
-            const texts = {
-                'venda': 'Disponível para Venda',
-                'assistencia': 'Assistência Técnica',
-                'mostruario': 'Mostruário',
-                'uso_loja': 'Uso da Loja',
-                'separado': 'Separado'
-            };
-            return texts[status] || status;
-        }
-
         // 🎯 FUNÇÕES DE UI
-        function openModal(type) {
-            state.activeModal = type;
-            render();
-        }
-
-        function closeModal() {
-            state.activeModal = null;
-            state.importLoading = false;
-            render();
-        }
-
         function render() {
             if (state.loading) {
                 return;
@@ -496,59 +186,46 @@
                                     </div>
                                     <div>
                                         <h1 class="text-2xl font-bold text-gray-900">Localizador de Produtos</h1>
-                                        <p class="text-gray-600">41º S3 - Estoque Compartilhado</p>
+                                        <p class="text-gray-600">41º S3 - Sistema com Google Sheets</p>
                                         <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-sm ${state.isEstoquista ? 'text-green-600 font-bold' : 'text-blue-600'}">
-                                                ${state.isEstoquista ? '👨‍💼 MODO ESTOQUISTA' : '👤 MODO VENDEDOR'}
+                                            <span class="text-xs ${state.connectionError ? 'text-red-600' : 'text-green-600'}">
+                                                ${state.connectionError ? '⚠️ Offline' : '✅ Conectado'}
                                             </span>
-                                            ${!state.isEstoquista ? `
-                                                <button onclick="activateEstoquistaMode()" class="text-xs text-purple-600 underline">
-                                                    Tornar-se estoquista
-                                                </button>
-                                            ` : ''}
-                                            ${state.connectionError ? `
-                                                <span class="text-xs text-red-600 bg-red-100 px-2 py-1 rounded">⚠️ Offline</span>
-                                            ` : `
-                                                <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">✅ Online</span>
-                                            `}
+                                            <span class="text-xs text-gray-500">
+                                                📅 ${state.lastUpdate || 'Carregando...'}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
                                     <div class="text-right">
                                         <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="text-sm text-gray-600">produtos no estoque</div>
+                                        <div class="text-sm text-gray-600">produtos carregados</div>
                                     </div>
+                                    <button onclick="loadFromGoogleSheets()" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                        🔄 Atualizar
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BARRA DE PESQUISA E AÇÕES -->
+                        <!-- BARRA DE PESQUISA -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex flex-col md:flex-row gap-4">
                                 <div class="flex-1">
                                     <input 
                                         type="text" 
-                                        placeholder="🔍 Pesquisar por código, produto, localização..."
+                                        placeholder="🔍 Pesquisar por código, produto ou localização..."
                                         value="${state.searchTerm}"
                                         oninput="state.searchTerm = this.value; filterItems(); render();"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
                                     >
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
-                                    ${state.isEstoquista ? `
-                                        <button onclick="addNewProduct()" 
-                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                            ➕ Adicionar Produto
-                                        </button>
-                                        <button onclick="openModal('import')" 
-                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                            📥 Importar Planilha
-                                        </button>
-                                    ` : ''}
-                                    <button onclick="downloadTemplate()" 
-                                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                        📋 Modelo
+                                    <button onclick="window.open('https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit', '_blank')" 
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                        📊 Ver Planilha
                                     </button>
                                 </div>
                             </div>
@@ -564,21 +241,19 @@
                             ${state.items.length === 0 ? `
                                 <div class="text-center py-16">
                                     <div class="text-8xl mb-6 text-purple-600">📦</div>
-                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Estoque vazio</h3>
-                                    <p class="text-gray-500 mb-6">${state.connectionError ? 'Erro ao carregar dados do servidor' : 'O estoquista precisa importar uma planilha'}</p>
-                                    ${state.isEstoquista ? `
-                                        <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors mr-2">
-                                            ➕ Adicionar Primeiro Produto
+                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto encontrado</h3>
+                                    <p class="text-gray-500 mb-6">${state.connectionError ? 'Erro ao carregar planilha' : 'Adicione produtos na planilha do Google Sheets'}</p>
+                                    <div class="flex gap-2 justify-center flex-wrap">
+                                        <button onclick="window.open('https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit', '_blank')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                                            📊 Editar Planilha
                                         </button>
-                                        <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
-                                            📥 Importar Planilha
+                                        <button onclick="loadFromGoogleSheets()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                                            🔄 Tentar Novamente
                                         </button>
-                                    ` : `
-                                        <p class="text-sm text-gray-500">Aguarde o estoquista carregar os produtos</p>
-                                    `}
+                                    </div>
                                     ${state.connectionError ? `
-                                        <div class="mt-4 p-3 bg-red-50 rounded-lg">
-                                            <p class="text-red-700 text-sm">⚠️ Não foi possível conectar com o servidor. Recarregue a página.</p>
+                                        <div class="mt-4 p-3 bg-red-50 rounded-lg max-w-md mx-auto">
+                                            <p class="text-red-700 text-sm">❌ Não foi possível conectar com a planilha. Verifique se ela está pública.</p>
                                         </div>
                                     ` : ''}
                                 </div>
@@ -595,12 +270,8 @@
                                             <tr>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Código</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">📍 Localização</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Status</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
-                                                ${state.isEstoquista ? `
-                                                    <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
-                                                ` : ''}
+                                                <th class="px-4 py-3 text-left text-sm font-bold">📍 Localização</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
@@ -611,7 +282,11 @@
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
-                                                        <div class="text-xs text-gray-500">${item.categoria} • ${item.observacoes || ''}</div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
+                                                            ${item.quantidade}
+                                                        </span>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <div class="flex items-center gap-2">
@@ -619,30 +294,6 @@
                                                             <div class="text-sm font-bold text-green-700">${item.localizacao}</div>
                                                         </div>
                                                     </td>
-                                                    <td class="px-4 py-3">
-                                                        <span class="px-2 py-1 ${getStatusColor(item.status)} rounded-full text-xs font-medium">
-                                                            ${getStatusText(item.status)}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
-                                                            ${item.quantidade}
-                                                        </span>
-                                                    </td>
-                                                    ${state.isEstoquista ? `
-                                                        <td class="px-4 py-3">
-                                                            <div class="flex gap-2">
-                                                                <button onclick="editItem(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                                                    class="text-blue-600 hover:text-blue-800 font-medium text-sm bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors">
-                                                                    Editar
-                                                                </button>
-                                                                <button onclick="deleteItem('${item.id}')" 
-                                                                    class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors">
-                                                                    Excluir
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    ` : ''}
                                                 </tr>
                                             `).join('')}
                                         </tbody>
@@ -651,137 +302,26 @@
                             `}
                         </div>
 
-                        <!-- MODAL EDIÇÃO/ADICIONAR -->
-                        ${state.editingItem ? `
-                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                                <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                                    <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
-                                        <h2 class="text-xl font-bold">${state.isNewProduct ? 'Adicionar Novo Produto' : 'Editar Produto'}</h2>
-                                    </div>
-                                    <div class="p-6">
-                                        <div class="space-y-4">
-                                            <div class="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
-                                                    <input type="text" 
-                                                        value="${state.editingItem.codigo}"
-                                                        oninput="state.editingItem.codigo = this.value"
-                                                        placeholder="Ex: CEL-001"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                                </div>
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
-                                                    <input type="number" 
-                                                        value="${state.editingItem.quantidade}"
-                                                        oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
-                                                <input type="text" 
-                                                    value="${state.editingItem.nome}"
-                                                    oninput="state.editingItem.nome = this.value"
-                                                    placeholder="Ex: Smartphone Samsung Galaxy"
-                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                            </div>
-                                            <div class="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                                    <input type="text" 
-                                                        value="${state.editingItem.categoria}"
-                                                        oninput="state.editingItem.categoria = this.value"
-                                                        placeholder="Ex: Telefonia"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                                </div>
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                                    <select 
-                                                        onchange="state.editingItem.status = this.value"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                                        <option value="venda" ${state.editingItem.status === 'venda' ? 'selected' : ''}>Disponível para Venda</option>
-                                                        <option value="assistencia" ${state.editingItem.status === 'assistencia' ? 'selected' : ''}>Assistência Técnica</option>
-                                                        <option value="mostruario" ${state.editingItem.status === 'mostruario' ? 'selected' : ''}>Mostruário</option>
-                                                        <option value="uso_loja" ${state.editingItem.status === 'uso_loja' ? 'selected' : ''}>Uso da Loja</option>
-                                                        <option value="separado" ${state.editingItem.status === 'separado' ? 'selected' : ''}>Separado</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">📍 Localização *</label>
-                                                <input type="text" 
-                                                    value="${state.editingItem.localizacao}"
-                                                    oninput="state.editingItem.localizacao = this.value"
-                                                    placeholder="Ex: Prateleira A1 - Corredor 3"
-                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                                                <textarea 
-                                                    oninput="state.editingItem.observacoes = this.value"
-                                                    placeholder="Informações adicionais sobre o produto"
-                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none"
-                                                    rows="3">${state.editingItem.observacoes || ''}</textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
-                                        <button onclick="cancelEdit()" 
-                                            class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
-                                            Cancelar
-                                        </button>
-                                        <button onclick="saveProduct()" 
-                                            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors">
-                                            ${state.isNewProduct ? 'Adicionar Produto' : 'Salvar Alterações'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <!-- MODAL IMPORTAR -->
-                        ${state.activeModal === 'import' ? `
-                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                                <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                                    <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
-                                        <h2 class="text-xl font-bold">Importar Planilha</h2>
-                                    </div>
-                                    <div class="p-6">
-                                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                                            <div class="text-4xl mb-4 text-purple-600">📤</div>
-                                            <h3 class="font-semibold text-gray-900 mb-2">Selecione a planilha</h3>
-                                            <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
-                                            <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block transition-colors">
-                                                ${state.importLoading ? `
-                                                    <div class="flex items-center gap-2">
-                                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                                        <span>Processando...</span>
-                                                    </div>
-                                                ` : 'Selecionar Planilha'}
-                                                <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="p-6 border-t border-gray-200 flex justify-between">
-                                        <button onclick="downloadTemplate()" 
-                                            class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors">
-                                            📋 Baixar Modelo
-                                        </button>
-                                        <button onclick="closeModal()" 
-                                            class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
-                                            Fechar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
+                        <!-- STATUS DO SISTEMA -->
+                        <div class="mt-6 text-center">
+                            <p class="text-sm text-gray-500">
+                                📊 Sistema conectado à sua planilha do Google Sheets • 
+                                Atualizado: ${state.lastUpdate || 'Agora'} •
+                                <button onclick="loadFromGoogleSheets()" class="text-purple-600 hover:text-purple-800 underline">
+                                    Atualizar Dados
+                                </button>
+                            </p>
+                            <p class="text-xs text-gray-400 mt-2">
+                                Lendo colunas: Código (1ª) • Produto (2ª) • Quantidade (6ª) • Localização (7ª)
+                            </p>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
         // INICIAR APLICAÇÃO
-        console.log('🚀 Iniciando Sistema Compartilhado...');
+        console.log('🚀 Iniciando sistema com sua planilha...');
         
         const safetyTimeout = setTimeout(() => {
             if (state.loading) {
