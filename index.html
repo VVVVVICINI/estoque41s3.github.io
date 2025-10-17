@@ -40,65 +40,64 @@
             registerForm: { email: '', password: '', nome: '' }
         };
 
-        // 🔐 SISTEMA DE AUTENTICAÇÃO MELHORADO
+        // 🔐 SISTEMA DE AUTENTICAÇÃO SIMPLIFICADO
         async function initAuth() {
             try {
                 console.log('🔍 Iniciando autenticação...');
+                
+                // Primeiro, verificar se há dados locais
+                const localUser = localStorage.getItem('estoque_user');
+                if (localUser) {
+                    console.log('📱 Usuário local encontrado');
+                    state.user = JSON.parse(localUser);
+                    state.usingLocalStorage = true;
+                    state.loading = false;
+                    await loadItems();
+                    return;
+                }
+                
+                // Tentar autenticação Supabase
                 const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (error) {
                     console.error('❌ Erro na sessão Supabase:', error);
-                    // Verificar se temos dados locais de outro usuário
-                    await checkForLocalData();
+                    // Criar usuário local temporário
+                    createLocalUser();
                     return;
                 }
                 
-                state.user = session?.user || null;
-                console.log('👤 Estado do usuário:', state.user ? `Logado (${state.user.email})` : 'Deslogado');
-                
-                if (state.user) {
+                if (session?.user) {
+                    state.user = session.user;
+                    state.usingLocalStorage = false;
+                    console.log('✅ Usuário Supabase encontrado');
                     await loadItems();
                 } else {
+                    // Nenhum usuário encontrado, mostrar login
                     state.loading = false;
                     render();
                 }
                 
             } catch (error) {
                 console.error('❌ Erro na inicialização:', error);
-                await checkForLocalData();
+                createLocalUser();
             }
         }
 
-        // 🔄 VERIFICAR E CARREGAR DADOS LOCAIS
-        async function checkForLocalData() {
-            const localUser = localStorage.getItem('estoque_user');
-            const localItems = localStorage.getItem('estoque_items');
-            
-            if (localUser) {
-                state.user = JSON.parse(localUser);
-                state.usingLocalStorage = true;
-                console.log('📱 Usuário local encontrado:', state.user.email);
-            } else {
-                // Se não tem usuário local, criar um temporário
-                state.user = { 
-                    email: 'usuario@local.com', 
-                    id: 'local_user',
-                    nome: 'Usuário Local'
-                };
-                state.usingLocalStorage = true;
-                console.log('👤 Criando usuário local temporário');
-            }
-            
-            if (localItems) {
-                state.items = JSON.parse(localItems);
-                console.log('📦 Itens locais carregados:', state.items.length);
-            }
-            
+        // 👤 CRIAR USUÁRIO LOCAL
+        function createLocalUser() {
+            state.user = { 
+                email: 'usuario@local.com', 
+                id: 'local_user_' + Date.now(),
+                nome: 'Usuário Local'
+            };
+            state.usingLocalStorage = true;
             state.loading = false;
-            render();
+            localStorage.setItem('estoque_user', JSON.stringify(state.user));
+            console.log('👤 Usuário local criado');
+            loadItems();
         }
 
-        // 📧 LOGIN MELHORADO
+        // 📧 LOGIN SIMPLIFICADO
         async function login() {
             if (!state.loginForm.email || !state.loginForm.password) {
                 alert('❌ Preencha email e senha');
@@ -106,52 +105,29 @@
             }
             
             try {
-                console.log('🔐 Tentando login no Supabase...');
+                console.log('🔐 Tentando login...');
+                
+                // Primeiro tentar Supabase
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: state.loginForm.email,
                     password: state.loginForm.password
                 });
 
                 if (error) {
-                    // Se login falhar, verificar se temos dados locais para este email
-                    const localUser = localStorage.getItem('estoque_user');
-                    if (localUser) {
-                        const savedUser = JSON.parse(localUser);
-                        if (savedUser.email === state.loginForm.email) {
-                            // Usar dados locais existentes
-                            state.user = savedUser;
-                            state.usingLocalStorage = true;
-                            console.log('📱 Login local com dados existentes');
-                        } else {
-                            // Criar novo usuário local
-                            state.user = { 
-                                email: state.loginForm.email, 
-                                id: 'local_' + Date.now(),
-                                nome: state.loginForm.email.split('@')[0] 
-                            };
-                            state.usingLocalStorage = true;
-                            localStorage.setItem('estoque_user', JSON.stringify(state.user));
-                            console.log('📱 Novo usuário local criado');
-                        }
-                    } else {
-                        // Criar novo usuário local
-                        state.user = { 
-                            email: state.loginForm.email, 
-                            id: 'local_' + Date.now(),
-                            nome: state.loginForm.email.split('@')[0] 
-                        };
-                        state.usingLocalStorage = true;
-                        localStorage.setItem('estoque_user', JSON.stringify(state.user));
-                        console.log('📱 Novo usuário local criado');
-                    }
+                    console.log('⚠️ Login Supabase falhou, usando modo local');
+                    // Usar modo local
+                    state.user = { 
+                        email: state.loginForm.email, 
+                        id: 'local_' + Date.now(),
+                        nome: state.loginForm.email.split('@')[0] 
+                    };
+                    state.usingLocalStorage = true;
+                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
                 } else {
                     // Login Supabase bem-sucedido
                     state.user = data.user;
                     state.usingLocalStorage = false;
-                    console.log('✅ Login Supabase bem-sucedido');
-                    
-                    // Tentar sincronizar dados locais com Supabase
-                    await syncLocalDataToSupabase();
+                    console.log('✅ Login bem-sucedido');
                 }
                 
                 state.loginForm = { email: '', password: '' };
@@ -163,108 +139,19 @@
             }
         }
 
-        // 🔄 SINCRONIZAR DADOS LOCAIS COM SUPABASE
-        async function syncLocalDataToSupabase() {
-            try {
-                const localItems = localStorage.getItem('estoque_items');
-                if (!localItems) return;
-                
-                const items = JSON.parse(localItems);
-                if (items.length === 0) return;
-                
-                console.log('🔄 Tentando sincronizar dados locais com Supabase...', items.length, 'itens');
-                
-                // Preparar dados para o Supabase
-                const itemsForSupabase = items.map(item => ({
-                    ...item,
-                    user_id: state.user.id,
-                    user_email: state.user.email,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }));
-                
-                const { error } = await supabase
-                    .from('items')
-                    .insert(itemsForSupabase);
-                    
-                if (error) {
-                    console.error('❌ Erro na sincronização:', error);
-                    return;
-                }
-                
-                console.log('✅ Dados locais sincronizados com Supabase');
-                
-                // Limpar dados locais após sincronização bem-sucedida
-                localStorage.removeItem('estoque_items');
-                console.log('🧹 Dados locais removidos após sincronização');
-                
-            } catch (error) {
-                console.error('❌ Erro na sincronização:', error);
-            }
-        }
-
-        // 📝 CADASTRO MELHORADO
-        async function register() {
-            if (!state.registerForm.email || !state.registerForm.password || !state.registerForm.nome) {
-                alert('❌ Preencha todos os campos');
-                return;
-            }
-            
-            try {
-                const { data, error } = await supabase.auth.signUp({
-                    email: state.registerForm.email,
-                    password: state.registerForm.password,
-                    options: { data: { nome: state.registerForm.nome } }
-                });
-
-                if (error) {
-                    // Se cadastro falhar, criar usuário local
-                    console.log('⚠️ Cadastro Supabase falhou, criando usuário local');
-                    state.user = { 
-                        email: state.registerForm.email, 
-                        id: 'local_' + Date.now(),
-                        nome: state.registerForm.nome 
-                    };
-                    state.usingLocalStorage = true;
-                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
-                    alert('✅ Cadastro local realizado! Use o mesmo email para login futuro.');
-                } else {
-                    alert('✅ Cadastro realizado! Verifique seu email para confirmar.');
-                    state.user = data.user;
-                    state.usingLocalStorage = false;
-                }
-                
-                state.showLogin = true;
-                state.registerForm = { email: '', password: '', nome: '' };
-                render();
-                
-            } catch (error) {
-                console.error('❌ Erro no cadastro:', error);
-                alert('Erro: ' + error.message);
-            }
-        }
-
-        // 🚪 LOGOUT
-        async function logout() {
-            try {
-                if (!state.usingLocalStorage) {
-                    await supabase.auth.signOut();
-                }
-                state.user = null;
-                state.showLogin = true;
-                state.usingLocalStorage = false;
-                state.items = [];
-                render();
-                console.log('🚪 Usuário deslogado');
-            } catch (error) {
-                console.error('❌ Erro no logout:', error);
-            }
-        }
-
-        // 📦 CARREGAR ITENS MELHORADO
+        // 📦 CARREGAR ITENS SIMPLIFICADO
         async function loadItems() {
             try {
-                if (!state.usingLocalStorage) {
+                state.loading = true;
+                render();
+                
+                if (state.usingLocalStorage) {
+                    // Usar dados locais
+                    const localItems = localStorage.getItem('estoque_items');
+                    state.items = localItems ? JSON.parse(localItems) : [];
+                    console.log('📦 Itens carregados do localStorage:', state.items.length);
+                } else {
+                    // Buscar do Supabase
                     console.log('☁️ Buscando itens do Supabase...');
                     const { data, error } = await supabase
                         .from('items')
@@ -276,47 +163,42 @@
                     state.items = data || [];
                     console.log('✅ Itens carregados do Supabase:', state.items.length);
                     
-                    // Salvar backup local dos dados do Supabase
+                    // Salvar backup local
                     localStorage.setItem('estoque_items', JSON.stringify(state.items));
-                    console.log('💾 Backup local dos dados Supabase salvo');
-                    
-                } else {
-                    // Usar dados locais
-                    const localItems = localStorage.getItem('estoque_items');
-                    state.items = localItems ? JSON.parse(localItems) : [];
-                    console.log('📦 Itens carregados do localStorage:', state.items.length);
                 }
                 
-                render();
-                
             } catch (error) {
-                console.error('❌ Erro ao carregar do Supabase:', error);
+                console.error('❌ Erro ao carregar itens:', error);
                 // Fallback para localStorage
                 const localItems = localStorage.getItem('estoque_items');
                 state.items = localItems ? JSON.parse(localItems) : [];
                 state.usingLocalStorage = true;
-                console.log('🔄 Fallback para localStorage:', state.items.length, 'itens');
+            } finally {
+                state.loading = false;
                 render();
             }
         }
 
-        // 💾 SALVAR ITENS (SEMPRE SALVA EM AMBOS)
-        async function saveItems() {
+        // 🚪 LOGOUT
+        async function logout() {
             try {
-                // Sempre salvar backup local
-                localStorage.setItem('estoque_items', JSON.stringify(state.items));
-                console.log('💾 Backup local salvo:', state.items.length, 'itens');
-                
-                // Se estiver online, tentar salvar no Supabase também
                 if (!state.usingLocalStorage) {
-                    console.log('☁️ Tentando salvar no Supabase...');
-                    // Aqui você implementaria a lógica para salvar itens individuais
-                    // Para simplificar, vamos focar na importação que já cuida disso
+                    await supabase.auth.signOut();
                 }
-                
+                state.user = null;
+                state.items = [];
+                state.loading = false;
+                render();
+                console.log('🚪 Usuário deslogado');
             } catch (error) {
-                console.error('❌ Erro ao salvar itens:', error);
+                console.error('❌ Erro no logout:', error);
             }
+        }
+
+        // 💾 SALVAR ITENS
+        function saveItems() {
+            localStorage.setItem('estoque_items', JSON.stringify(state.items));
+            console.log('💾 Itens salvos localmente:', state.items.length);
         }
 
         // 📥 BAIXAR MODELO DE PLANILHA
@@ -340,7 +222,7 @@
             alert('📋 Modelo baixado!');
         }
 
-        // 📥 IMPORTAR DO EXCEL - SALVA EM AMBOS
+        // 📥 IMPORTAR DO EXCEL
         async function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -352,7 +234,7 @@
                 
                 const reader = new FileReader();
                 
-                reader.onload = async function(e) {
+                reader.onload = function(e) {
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
@@ -360,7 +242,7 @@
                         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                         
                         console.log('📊 Processando planilha:', jsonData.length, 'itens');
-                        await processImportedData(jsonData);
+                        processImportedData(jsonData);
                         
                     } catch (error) {
                         console.error('Erro ao ler arquivo:', error);
@@ -379,8 +261,8 @@
             }
         }
 
-        // 🔄 PROCESSAR DADOS - SALVA EM AMBOS
-        async function processImportedData(data) {
+        // 🔄 PROCESSAR DADOS IMPORTADOS
+        function processImportedData(data) {
             try {
                 let importedCount = 0;
                 let errorCount = 0;
@@ -425,39 +307,17 @@
                     }
                 }
                 
-                // ADICIONAR NOVOS ITENS À LISTA
+                // ADICIONAR NOVOS ITENS
                 state.items = [...newItems, ...state.items];
-                
-                // SALVAR EM AMBOS (LOCAL E SUPABASE)
-                await saveItems();
-                
-                // TENTAR SALVAR NO SUPABASE SE ESTIVER ONLINE
-                if (!state.usingLocalStorage && newItems.length > 0) {
-                    try {
-                        const { error } = await supabase
-                            .from('items')
-                            .insert(newItems);
-                            
-                        if (error) throw error;
-                        console.log('✅ Dados salvos no Supabase');
-                    } catch (error) {
-                        console.error('❌ Erro ao salvar no Supabase, mantendo apenas local:', error);
-                        state.usingLocalStorage = true;
-                    }
-                }
+                saveItems();
                 
                 state.importLoading = false;
                 render();
                 
                 // MENSAGEM DE SUCESSO
-                let message = `✅ ${importedCount} itens importados`;
-                if (state.usingLocalStorage) {
-                    message += ' (armazenamento local)';
-                } else {
-                    message += ' (Supabase)';
-                }
+                let message = `✅ ${importedCount} itens importados com sucesso!`;
                 if (errorCount > 0) {
-                    message += `, ${errorCount} erros`;
+                    message += ` (${errorCount} erros)`;
                 }
                 
                 alert(message);
@@ -466,7 +326,7 @@
                 console.error('❌ Erro no processamento:', error);
                 state.importLoading = false;
                 render();
-                alert('Erro: ' + error.message);
+                alert('Erro ao importar: ' + error.message);
             }
         }
 
@@ -484,34 +344,13 @@
         }
 
         // 🗑️ EXCLUIR ITEM
-        async function deleteItem(id) {
+        function deleteItem(id) {
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
             
-            try {
-                // Remover localmente
-                state.items = state.items.filter(item => item.id !== id);
-                saveItems();
-                
-                // Tentar remover do Supabase se estiver online
-                if (!state.usingLocalStorage) {
-                    try {
-                        const { error } = await supabase
-                            .from('items')
-                            .delete()
-                            .eq('id', id);
-                            
-                        if (error) throw error;
-                    } catch (error) {
-                        console.error('❌ Erro ao excluir do Supabase:', error);
-                    }
-                }
-                
-                alert('✅ Produto excluído!');
-                
-            } catch (error) {
-                console.error('❌ Erro ao excluir:', error);
-                alert('❌ Erro ao excluir produto');
-            }
+            state.items = state.items.filter(item => item.id !== id);
+            saveItems();
+            alert('✅ Produto excluído!');
+            render();
         }
 
         function openModal(type) {
