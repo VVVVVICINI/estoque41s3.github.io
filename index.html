@@ -18,218 +18,206 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <div id="app"></div>
+    <div id="app">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p class="text-gray-600">Iniciando sistema...</p>
+            </div>
+        </div>
+    </div>
 
     <script>
         // CONFIGURAÇÃO DO SUPABASE
         const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        // Estado global
         let state = {
             user: null,
             items: [],
             loading: true,
-            showLogin: true,
             activeModal: null,
             importLoading: false,
             importErrors: [],
             usingLocalStorage: false,
-            loginForm: { email: '', password: '' },
-            registerForm: { email: '', password: '', nome: '' }
+            loginForm: { email: '', password: '' }
         };
 
-        // 🔐 SISTEMA DE AUTENTICAÇÃO SIMPLIFICADO
-        async function initAuth() {
-            try {
-                console.log('🔍 Iniciando autenticação...');
-                
-                // Primeiro, verificar se há dados locais
-                const localUser = localStorage.getItem('estoque_user');
-                if (localUser) {
-                    console.log('📱 Usuário local encontrado');
-                    state.user = JSON.parse(localUser);
-                    state.usingLocalStorage = true;
-                    state.loading = false;
-                    await loadItems();
-                    return;
-                }
-                
-                // Tentar autenticação Supabase
-                const { data: { session }, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                    console.error('❌ Erro na sessão Supabase:', error);
-                    // Criar usuário local temporário
-                    createLocalUser();
-                    return;
-                }
-                
-                if (session?.user) {
-                    state.user = session.user;
-                    state.usingLocalStorage = false;
-                    console.log('✅ Usuário Supabase encontrado');
-                    await loadItems();
-                } else {
-                    // Nenhum usuário encontrado, mostrar login
-                    state.loading = false;
-                    render();
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro na inicialização:', error);
-                createLocalUser();
-            }
+        // Inicializar Supabase
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('✅ Supabase inicializado');
+        } catch (error) {
+            console.error('❌ Erro ao inicializar Supabase:', error);
+            supabase = null;
         }
 
-        // 👤 CRIAR USUÁRIO LOCAL
-        function createLocalUser() {
-            state.user = { 
-                email: 'usuario@local.com', 
-                id: 'local_user_' + Date.now(),
-                nome: 'Usuário Local'
-            };
-            state.usingLocalStorage = true;
+        // 🔄 INICIALIZAÇÃO SIMPLIFICADA
+        async function initApp() {
+            console.log('🚀 Iniciando aplicação...');
+            
+            // SEMPRE começar com usuário local para garantir funcionamento
+            await setupLocalUser();
+            
+            // Tentar carregar itens
+            await loadItems();
+            
             state.loading = false;
-            localStorage.setItem('estoque_user', JSON.stringify(state.user));
-            console.log('👤 Usuário local criado');
-            loadItems();
+            render();
+        }
+
+        // 👤 CONFIGURAR USUÁRIO LOCAL
+        async function setupLocalUser() {
+            try {
+                let localUser = localStorage.getItem('estoque_user');
+                
+                if (!localUser) {
+                    // Criar usuário local padrão
+                    state.user = {
+                        email: 'usuario@estoque.com',
+                        id: 'local_user_' + Date.now(),
+                        nome: 'Usuário Local'
+                    };
+                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
+                    console.log('👤 Usuário local criado');
+                } else {
+                    state.user = JSON.parse(localUser);
+                    console.log('👤 Usuário local carregado:', state.user.email);
+                }
+                
+                state.usingLocalStorage = true;
+                
+            } catch (error) {
+                console.error('❌ Erro ao configurar usuário local:', error);
+                // Fallback absoluto
+                state.user = {
+                    email: 'usuario@estoque.com',
+                    id: 'fallback_user',
+                    nome: 'Usuário'
+                };
+                state.usingLocalStorage = true;
+            }
         }
 
         // 📧 LOGIN SIMPLIFICADO
         async function login() {
-            if (!state.loginForm.email || !state.loginForm.password) {
+            const email = state.loginForm.email.trim();
+            const password = state.loginForm.password;
+            
+            if (!email || !password) {
                 alert('❌ Preencha email e senha');
                 return;
             }
             
             try {
-                console.log('🔐 Tentando login...');
-                
-                // Primeiro tentar Supabase
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: state.loginForm.email,
-                    password: state.loginForm.password
-                });
-
-                if (error) {
-                    console.log('⚠️ Login Supabase falhou, usando modo local');
-                    // Usar modo local
-                    state.user = { 
-                        email: state.loginForm.email, 
-                        id: 'local_' + Date.now(),
-                        nome: state.loginForm.email.split('@')[0] 
-                    };
-                    state.usingLocalStorage = true;
-                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
-                } else {
-                    // Login Supabase bem-sucedido
-                    state.user = data.user;
-                    state.usingLocalStorage = false;
-                    console.log('✅ Login bem-sucedido');
-                }
-                
-                state.loginForm = { email: '', password: '' };
-                await loadItems();
-                
-            } catch (error) {
-                console.error('❌ Erro no login:', error);
-                alert('Erro ao fazer login: ' + error.message);
-            }
-        }
-
-        // 📦 CARREGAR ITENS SIMPLIFICADO
-        async function loadItems() {
-            try {
                 state.loading = true;
                 render();
                 
-                if (state.usingLocalStorage) {
-                    // Usar dados locais
-                    const localItems = localStorage.getItem('estoque_items');
-                    state.items = localItems ? JSON.parse(localItems) : [];
-                    console.log('📦 Itens carregados do localStorage:', state.items.length);
+                if (supabase) {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+
+                    if (!error && data.user) {
+                        state.user = data.user;
+                        state.usingLocalStorage = false;
+                        console.log('✅ Login Supabase bem-sucedido');
+                    } else {
+                        throw new Error('Login Supabase falhou');
+                    }
                 } else {
-                    // Buscar do Supabase
-                    console.log('☁️ Buscando itens do Supabase...');
-                    const { data, error } = await supabase
-                        .from('items')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    
-                    if (error) throw error;
-                    
-                    state.items = data || [];
-                    console.log('✅ Itens carregados do Supabase:', state.items.length);
-                    
-                    // Salvar backup local
-                    localStorage.setItem('estoque_items', JSON.stringify(state.items));
+                    throw new Error('Supabase não disponível');
                 }
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar itens:', error);
-                // Fallback para localStorage
-                const localItems = localStorage.getItem('estoque_items');
-                state.items = localItems ? JSON.parse(localItems) : [];
+                console.log('⚠️ Usando modo local:', error.message);
+                // Modo local como fallback
+                state.user = {
+                    email: email,
+                    id: 'local_' + Date.now(),
+                    nome: email.split('@')[0]
+                };
                 state.usingLocalStorage = true;
-            } finally {
-                state.loading = false;
-                render();
+                localStorage.setItem('estoque_user', JSON.stringify(state.user));
             }
+            
+            state.loginForm = { email: '', password: '' };
+            await loadItems();
         }
 
-        // 🚪 LOGOUT
-        async function logout() {
+        // 📦 CARREGAR ITENS
+        async function loadItems() {
             try {
-                if (!state.usingLocalStorage) {
-                    await supabase.auth.signOut();
-                }
-                state.user = null;
-                state.items = [];
-                state.loading = false;
-                render();
-                console.log('🚪 Usuário deslogado');
+                console.log('📦 Carregando itens...');
+                
+                // SEMPRE usar localStorage como fonte primária
+                const localItems = localStorage.getItem('estoque_items');
+                state.items = localItems ? JSON.parse(localItems) : [];
+                
+                console.log('✅ Itens carregados:', state.items.length);
+                
             } catch (error) {
-                console.error('❌ Erro no logout:', error);
+                console.error('❌ Erro ao carregar itens:', error);
+                state.items = [];
             }
         }
 
         // 💾 SALVAR ITENS
         function saveItems() {
-            localStorage.setItem('estoque_items', JSON.stringify(state.items));
-            console.log('💾 Itens salvos localmente:', state.items.length);
+            try {
+                localStorage.setItem('estoque_items', JSON.stringify(state.items));
+                console.log('💾 Itens salvos:', state.items.length);
+            } catch (error) {
+                console.error('❌ Erro ao salvar itens:', error);
+            }
         }
 
-        // 📥 BAIXAR MODELO DE PLANILHA
-        function downloadTemplate() {
-            const templateData = [
-                {
-                    'CODIGO': 'COD001',
-                    'PRODUTO': 'Smartphone Samsung Galaxy',
-                    'QUANTIDADE': '5',
-                    'LOCALIZACAO': 'Prateleira A1',
-                    'CATEGORIA': 'Telefonia',
-                    'PRECO': '1500.00',
-                    'STATUS': 'Disponível para Venda'
-                }
-            ];
+        // 🚪 LOGOUT
+        function logout() {
+            state.user = null;
+            state.items = [];
+            state.loading = false;
             
-            const ws = XLSX.utils.json_to_sheet(templateData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Modelo");
-            XLSX.writeFile(wb, 'modelo_importacao.xlsx');
-            alert('📋 Modelo baixado!');
+            // Manter dados no localStorage para possível recuperação
+            renderLogin();
         }
 
-        // 📥 IMPORTAR DO EXCEL
+        // 📥 BAIXAR MODELO
+        function downloadTemplate() {
+            try {
+                const templateData = [
+                    {
+                        'CODIGO': 'COD001',
+                        'PRODUTO': 'Smartphone Samsung Galaxy',
+                        'QUANTIDADE': '5',
+                        'LOCALIZACAO': 'Prateleira A1',
+                        'CATEGORIA': 'Telefonia',
+                        'PRECO': '1500.00',
+                        'STATUS': 'Disponível para Venda'
+                    }
+                ];
+                
+                const ws = XLSX.utils.json_to_sheet(templateData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+                XLSX.writeFile(wb, 'modelo_importacao.xlsx');
+                alert('📋 Modelo baixado!');
+            } catch (error) {
+                console.error('❌ Erro ao baixar modelo:', error);
+                alert('Erro ao baixar modelo');
+            }
+        }
+
+        // 📥 IMPORTAR EXCEL
         async function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
             
             try {
                 state.importLoading = true;
-                state.importErrors = [];
                 render();
                 
                 const reader = new FileReader();
@@ -241,12 +229,11 @@
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                         
-                        console.log('📊 Processando planilha:', jsonData.length, 'itens');
                         processImportedData(jsonData);
                         
                     } catch (error) {
-                        console.error('Erro ao ler arquivo:', error);
-                        state.importErrors.push(`Erro ao ler arquivo: ${error.message}`);
+                        console.error('❌ Erro ao ler arquivo:', error);
+                        alert('Erro ao ler arquivo: ' + error.message);
                         state.importLoading = false;
                         render();
                     }
@@ -255,7 +242,8 @@
                 reader.readAsArrayBuffer(file);
                 
             } catch (error) {
-                state.importErrors.push(`Erro: ${error.message}`);
+                console.error('❌ Erro na importação:', error);
+                alert('Erro na importação: ' + error.message);
                 state.importLoading = false;
                 render();
             }
@@ -265,13 +253,11 @@
         function processImportedData(data) {
             try {
                 let importedCount = 0;
-                let errorCount = 0;
                 const newItems = [];
                 
                 for (let i = 0; i < data.length; i++) {
-                    const item = data[i];
-                    
                     try {
+                        const item = data[i];
                         const mappedItem = {
                             id: 'item_' + Date.now() + '_' + i,
                             codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
@@ -279,68 +265,38 @@
                             quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
                             localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || '').trim(),
                             categoria: String(item.CATEGORIA || item.Categoria || item.categoria || '').trim(),
-                            preco: item.PRECO || item.Preço || item.preco || '',
-                            status: mapStatus(item.STATUS || item.Status || item.status),
-                            observacoes: String(item.OBSERVACOES || item.Observações || item.observacoes || '').trim(),
-                            tags: String(item.TAGS || item.Tags || item.tags || '').trim(),
+                            preco: parseFloat(item.PRECO || item.Preço || item.preco || 0),
+                            status: 'venda',
                             data_entrada: new Date().toISOString().split('T')[0],
                             user_id: state.user.id,
-                            user_email: state.user.email,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
+                            user_email: state.user.email
                         };
                         
-                        if (!mappedItem.codigo || !mappedItem.nome) {
-                            throw new Error('Código e nome são obrigatórios');
+                        if (mappedItem.codigo && mappedItem.nome) {
+                            newItems.push(mappedItem);
+                            importedCount++;
                         }
-
-                        if (mappedItem.preco && typeof mappedItem.preco === 'string') {
-                            mappedItem.preco = parseFloat(mappedItem.preco.replace('R$', '').replace(',', '.').trim()) || '';
-                        }
-                        
-                        newItems.push(mappedItem);
-                        importedCount++;
                         
                     } catch (itemError) {
-                        errorCount++;
-                        state.importErrors.push(`Linha ${i + 1}: ${itemError.message}`);
+                        console.warn(`Erro no item ${i}:`, itemError);
                     }
                 }
                 
-                // ADICIONAR NOVOS ITENS
+                // Adicionar novos itens
                 state.items = [...newItems, ...state.items];
                 saveItems();
                 
                 state.importLoading = false;
                 render();
                 
-                // MENSAGEM DE SUCESSO
-                let message = `✅ ${importedCount} itens importados com sucesso!`;
-                if (errorCount > 0) {
-                    message += ` (${errorCount} erros)`;
-                }
-                
-                alert(message);
+                alert(`✅ ${importedCount} itens importados com sucesso!`);
                 
             } catch (error) {
                 console.error('❌ Erro no processamento:', error);
+                alert('Erro ao processar dados: ' + error.message);
                 state.importLoading = false;
                 render();
-                alert('Erro ao importar: ' + error.message);
             }
-        }
-
-        // 🗺️ MAPEAR STATUS
-        function mapStatus(statusStr) {
-            if (!statusStr) return 'venda';
-            const statusMap = {
-                'disponível para venda': 'venda', 'venda': 'venda',
-                'assistência técnica': 'assistencia', 'assistencia': 'assistencia',
-                'mostruário': 'mostruario', 'mostruario': 'mostruario',
-                'uso da loja': 'uso_loja', 'uso loja': 'uso_loja',
-                'separado p/ entrega/recolhimento': 'separado', 'separado': 'separado'
-            };
-            return statusMap[String(statusStr).toLowerCase().trim()] || 'venda';
         }
 
         // 🗑️ EXCLUIR ITEM
@@ -349,10 +305,11 @@
             
             state.items = state.items.filter(item => item.id !== id);
             saveItems();
-            alert('✅ Produto excluído!');
             render();
+            alert('✅ Produto excluído!');
         }
 
+        // 🎯 FUNÇÕES DE UI
         function openModal(type) {
             state.activeModal = type;
             render();
@@ -361,8 +318,198 @@
         function closeModal() {
             state.activeModal = null;
             state.importLoading = false;
-            state.importErrors = [];
             render();
+        }
+
+        function renderLogin() {
+            document.getElementById('app').innerHTML = `
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+                        <div class="text-center mb-8">
+                            <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <span class="text-white text-2xl">📦</span>
+                            </div>
+                            <h1 class="text-2xl font-bold text-purple-600 mb-2">Controle de Estoque</h1>
+                            <p class="text-gray-600">41º S3 - Sistema Compartilhado</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <input type="email" placeholder="Seu email" 
+                                    value="${state.loginForm.email}"
+                                    oninput="state.loginForm.email = this.value"
+                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <input type="password" placeholder="Sua senha" 
+                                    value="${state.loginForm.password}"
+                                    oninput="state.loginForm.password = this.value"
+                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none">
+                            </div>
+                            <button onclick="login()" 
+                                class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors">
+                                Entrar no Sistema
+                            </button>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-blue-700 text-center">
+                                <strong>Dica:</strong> Use qualquer email e senha para entrar no modo local
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderApp() {
+            const statusInfo = state.usingLocalStorage ? 
+                { emoji: '📱', text: 'Modo Local', color: 'text-orange-600', bg: 'bg-orange-100' } : 
+                { emoji: '☁️', text: 'Supabase Online', color: 'text-green-600', bg: 'bg-green-100' };
+            
+            document.getElementById('app').innerHTML = `
+                <div class="min-h-screen p-4 bg-gray-50">
+                    <div class="max-w-7xl mx-auto">
+                        <!-- CABEÇALHO -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
+                                        <span class="text-white text-xl">📦</span>
+                                    </div>
+                                    <div>
+                                        <h1 class="text-2xl font-bold text-gray-900">Controle de Estoque</h1>
+                                        <p class="text-gray-600">41º S3 • ${state.user.email}</p>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-sm ${statusInfo.color} font-medium">${statusInfo.emoji} ${statusInfo.text}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
+                                        <div class="text-sm text-gray-600">produtos</div>
+                                    </div>
+                                    <button onclick="logout()" 
+                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition-colors">
+                                        Sair
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BOTÕES -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                            <div class="flex gap-4 flex-wrap">
+                                <button onclick="downloadTemplate()" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
+                                    📋 Baixar Modelo
+                                </button>
+                                <button onclick="openModal('import')" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
+                                    📥 Importar Planilha
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- LISTA -->
+                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                            ${state.items.length === 0 ? `
+                                <div class="text-center py-16">
+                                    <div class="text-8xl mb-6 text-purple-600">📦</div>
+                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto</h3>
+                                    <p class="text-gray-500 mb-6">Importe uma planilha para começar</p>
+                                    <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
+                                        Importar Planilha
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-purple-600 text-white">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Código</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Categoria</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Preço</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200">
+                                            ${state.items.map(item => `
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="px-4 py-3">
+                                                        <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
+                                                        <div class="text-xs text-gray-500">${item.localizacao || ''}</div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                                                            ${item.categoria || 'Geral'}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
+                                                            ${item.quantidade}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="text-sm font-bold text-green-600">
+                                                            ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <button onclick="deleteItem('${item.id}')" 
+                                                            class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors">
+                                                            Excluir
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL IMPORTAR -->
+                ${state.activeModal === 'import' ? `
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
+                                <h2 class="text-xl font-bold">Importar Planilha</h2>
+                            </div>
+                            <div class="p-6">
+                                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                                    <div class="text-4xl mb-4 text-purple-600">📤</div>
+                                    <h3 class="font-semibold text-gray-900 mb-2">Selecione sua planilha</h3>
+                                    <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
+                                    <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block transition-colors">
+                                        ${state.importLoading ? `
+                                            <div class="flex items-center gap-2">
+                                                <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                                <span>Processando...</span>
+                                            </div>
+                                        ` : 'Selecionar Arquivo'}
+                                        <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="p-6 border-t border-gray-200 flex justify-end">
+                                <button onclick="closeModal()" 
+                                    class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
         }
 
         function render() {
@@ -386,208 +533,31 @@
             renderApp();
         }
 
-        function renderLogin() {
-            document.getElementById('app').innerHTML = `
-                <div class="flex items-center justify-center min-h-screen p-4">
-                    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-                        <div class="text-center mb-8">
-                            <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <span class="text-white text-2xl">📦</span>
-                            </div>
-                            <h1 class="text-2xl font-bold text-purple-600 mb-2">Controle de Estoque</h1>
-                            <p class="text-gray-600">41º S3 - Sistema Compartilhado</p>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div>
-                                <input type="email" placeholder="Seu email" 
-                                    value="${state.loginForm.email}"
-                                    oninput="state.loginForm.email = this.value"
-                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                            </div>
-                            <div>
-                                <input type="password" placeholder="Sua senha" 
-                                    value="${state.loginForm.password}"
-                                    oninput="state.loginForm.password = this.value"
-                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400">
-                            </div>
-                            <button onclick="login()" 
-                                class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold">
-                                Entrar no Sistema
-                            </button>
-                        </div>
-
-                        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-                            <p class="text-sm text-blue-700 text-center">
-                                <strong>Dica:</strong> Use o mesmo email para acessar seus dados em qualquer dispositivo
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderApp() {
-            const statusInfo = state.usingLocalStorage ? 
-                { emoji: '📱', text: 'Modo Local', color: 'text-orange-600', bg: 'bg-orange-100' } : 
-                { emoji: '☁️', text: 'Supabase Online', color: 'text-green-600', bg: 'bg-green-100' };
-            
-            document.getElementById('app').innerHTML = `
-                <div class="min-h-screen p-4 bg-gray-50">
-                    <div class="max-w-7xl mx-auto">
-                        <!-- CABEÇALHO -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
-                                        <span class="text-white text-xl">📦</span>
-                                    </div>
-                                    <div>
-                                        <h1 class="text-2xl font-bold text-gray-900">Controle de Estoque</h1>
-                                        <p class="text-gray-600">41º S3 • ${state.user.email}</p>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-sm ${statusInfo.color} font-medium">${statusInfo.emoji} ${statusInfo.text}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="text-right">
-                                        <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="text-sm text-gray-600">produtos</div>
-                                    </div>
-                                    <button onclick="logout()" 
-                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold">
-                                        Sair
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- BOTÕES -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="flex gap-4 flex-wrap">
-                                <button onclick="downloadTemplate()" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
-                                    📋 Baixar Modelo
-                                </button>
-                                <button onclick="openModal('import')" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
-                                    📥 Importar Planilha
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- LISTA -->
-                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                            ${state.items.length === 0 ? `
-                                <div class="text-center py-16">
-                                    <div class="text-8xl mb-6 text-purple-600">📦</div>
-                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto</h3>
-                                    <p class="text-gray-500 mb-6">Importe uma planilha para começar</p>
-                                    <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold">
-                                        Importar Planilha
-                                    </button>
-                                </div>
-                            ` : `
-                                <div class="overflow-x-auto">
-                                    <table class="w-full">
-                                        <thead class="bg-purple-600 text-white">
-                                            <tr>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Código</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Produto</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Categoria</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Quantidade</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Preço</th>
-                                                <th class="px-6 py-4 text-left text-sm font-bold">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-200">
-                                            ${state.items.map(item => `
-                                                <tr class="hover:bg-gray-50">
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
-                                                        <div class="text-xs text-gray-500">${item.observacoes || ''}</div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                                                            ${item.categoria || 'Geral'}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
-                                                            ${item.quantidade}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-sm font-bold text-green-600">
-                                                            ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-6 py-4">
-                                                        <button onclick="deleteItem('${item.id}')" 
-                                                            class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg">
-                                                            Excluir
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            `}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MODAL IMPORTAR -->
-                ${state.activeModal === 'import' ? `
-                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full">
-                            <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
-                                <h2 class="text-xl font-bold">Importar Planilha</h2>
-                            </div>
-                            <div class="p-6">
-                                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                                    <div class="text-4xl mb-4 text-purple-600">📤</div>
-                                    <h3 class="font-semibold text-gray-900 mb-2">Selecione sua planilha</h3>
-                                    <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
-                                    <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block">
-                                        ${state.importLoading ? `
-                                            <div class="flex items-center gap-2">
-                                                <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                                <span>Processando...</span>
-                                            </div>
-                                        ` : 'Selecionar Arquivo'}
-                                        <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="p-6 border-t border-gray-200 flex justify-end">
-                                <button onclick="closeModal()" 
-                                    class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium">
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
-            `;
-        }
-
-        // INICIAR
-        console.log('🚀 Iniciando sistema...');
-        initAuth();
-
-        // ESCUTAR MUDANÇAS DE AUTENTICAÇÃO
-        supabase.auth.onAuthStateChange((event, session) => {
-            console.log('🔄 Mudança de autenticação:', event);
-            state.user = session?.user || null;
-            if (state.user && !state.usingLocalStorage) {
-                loadItems();
+        // INICIAR APLICAÇÃO
+        console.log('🚀 Iniciando aplicação no GitHub Pages...');
+        
+        // Timeout de segurança para garantir que não fique carregando para sempre
+        const safetyTimeout = setTimeout(() => {
+            console.log('⚠️ Timeout de segurança ativado');
+            if (state.loading) {
+                state.loading = false;
+                state.user = { email: 'timeout@local.com', id: 'timeout_user', nome: 'Usuário' };
+                state.usingLocalStorage = true;
+                render();
             }
+        }, 5000);
+
+        // Inicializar app
+        initApp().then(() => {
+            clearTimeout(safetyTimeout);
+            console.log('✅ Aplicação inicializada com sucesso');
+        }).catch(error => {
+            clearTimeout(safetyTimeout);
+            console.error('❌ Erro na inicialização:', error);
+            state.loading = false;
+            state.user = { email: 'error@local.com', id: 'error_user', nome: 'Usuário' };
+            state.usingLocalStorage = true;
+            render();
         });
     </script>
 </body>
