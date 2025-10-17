@@ -43,7 +43,8 @@
             isNewProduct: false,
             lastUpdate: null,
             connectionError: false,
-            syncInProgress: false
+            syncInProgress: false,
+            searchFocused: false // Novo estado para controlar foco
         };
 
         // 🔄 INICIALIZAÇÃO
@@ -430,20 +431,37 @@
             }
         }
 
-        // 🔍 FILTRAR ITENS
+        // 🔍 FILTRAR ITENS (SEM RENDERIZAR)
         function filterItems() {
             const term = state.searchTerm.toLowerCase().trim();
             
             if (!term) {
                 state.filteredItems = [...state.items];
-                return;
+            } else {
+                state.filteredItems = state.items.filter(item => 
+                    item.codigo.toLowerCase().includes(term) ||
+                    item.nome.toLowerCase().includes(term) ||
+                    item.localizacao.toLowerCase().includes(term)
+                );
             }
+        }
+
+        // 🎯 FUNÇÃO DE PESQUISA QUE NÃO PERDE FOCO
+        function handleSearchInput(value) {
+            state.searchTerm = value;
+            state.searchFocused = true; // Marcar que o campo está focado
+            filterItems();
+            render();
             
-            state.filteredItems = state.items.filter(item => 
-                item.codigo.toLowerCase().includes(term) ||
-                item.nome.toLowerCase().includes(term) ||
-                item.localizacao.toLowerCase().includes(term)
-            );
+            // Restaurar foco após renderização
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    // Manter o cursor no final do texto
+                    searchInput.setSelectionRange(value.length, value.length);
+                }
+            }, 10);
         }
 
         // 📥 BAIXAR MODELO
@@ -536,10 +554,11 @@
                             <div class="flex flex-col md:flex-row gap-4">
                                 <div class="flex-1">
                                     <input 
+                                        id="searchInput"
                                         type="text" 
                                         placeholder="🔍 Pesquisar por código, produto ou localização..."
                                         value="${state.searchTerm}"
-                                        oninput="state.searchTerm = this.value; filterItems(); render();"
+                                        oninput="handleSearchInput(this.value)"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
                                     >
                                 </div>
@@ -764,6 +783,18 @@
                     </div>
                 </div>
             `;
+
+            // Restaurar foco no campo de pesquisa se estava focado
+            if (state.searchFocused) {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Manter o cursor no final do texto
+                        searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
+                    }
+                }, 10);
+            }
         }
 
         // INICIAR APLICAÇÃO
