@@ -360,61 +360,38 @@
             alert('✅ Produto excluído!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
         }
 
-        // 📊 ANALISAR STATUS DA OBS
-        function parseStatusFromObs(observacoes) {
-            if (!observacoes) return [];
-            
-            const status = [];
-            const obs = observacoes.toLowerCase();
-            
-            // Procurar padrões como "2 disponíveis para venda", "1 em assistência", etc.
-            const patterns = [
-                { regex: /(\d+)\s*(disponível|disponiveis|para venda|venda)/, type: 'venda', label: 'Venda' },
-                { regex: /(\d+)\s*(assistência|assistencia|conserto|reparo)/, type: 'assistencia', label: 'Assistência' },
-                { regex: /(\d+)\s*(mostruário|mostruario|vitrine)/, type: 'mostruario', label: 'Mostruário' },
-                { regex: /(\d+)\s*(uso da loja|uso loja|loja)/, type: 'uso_loja', label: 'Uso Loja' }
-            ];
-            
-            patterns.forEach(pattern => {
-                const match = obs.match(pattern.regex);
-                if (match) {
-                    const quantidade = parseInt(match[1]);
-                    status.push({
-                        type: pattern.type,
-                        label: pattern.label,
-                        quantidade: quantidade,
-                        text: `${quantidade} ${pattern.label}`
-                    });
-                }
-            });
-            
-            return status;
-        }
-
-        // 📊 OBTER COR DO STATUS
-        function getStatusColor(statusType) {
-            const colors = {
-                'venda': 'bg-green-100 text-green-800 border border-green-200',
-                'assistencia': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-                'mostruario': 'bg-blue-100 text-blue-800 border border-blue-200',
-                'uso_loja': 'bg-purple-100 text-purple-800 border border-purple-200'
-            };
-            return colors[statusType] || 'bg-gray-100 text-gray-800 border border-gray-200';
-        }
-
-        // 📊 RENDERIZAR STATUS
-        function renderStatus(observacoes) {
-            const statusList = parseStatusFromObs(observacoes);
-            
-            if (statusList.length === 0) {
-                return '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs border border-gray-200">Sem info</span>';
+        // 📊 FORMATAR OBSERVAÇÕES PARA EXIBIÇÃO
+        function formatObservacoes(observacoes) {
+            if (!observacoes) {
+                return '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs border border-gray-200">Sem informações</span>';
             }
+
+            // Dividir por vírgulas, pontos, ou "e"
+            const partes = observacoes.split(/[,\.]| e /).filter(part => part.trim());
             
-            return statusList.map(status => 
-                `<span class="px-2 py-1 ${getStatusColor(status.type)} rounded text-xs font-medium mr-1 mb-1 inline-block" title="${observacoes}">
-                    ${status.text}
-                </span>`
-            ).join('');
+            return partes.map(parte => {
+                const texto = parte.trim();
+                let cor = 'bg-gray-100 text-gray-800 border-gray-200';
+                
+                // Definir cores baseadas no conteúdo
+                if (texto.toLowerCase().includes('venda') || texto.toLowerCase().includes('disponível')) {
+                    cor = 'bg-green-100 text-green-800 border-green-200';
+                } else if (texto.toLowerCase().includes('assistência') || texto.toLowerCase().includes('conserto')) {
+                    cor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                } else if (texto.toLowerCase().includes('mostruário') || texto.toLowerCase().includes('vitrine')) {
+                    cor = 'bg-blue-100 text-blue-800 border-blue-200';
+                } else if (texto.toLowerCase().includes('uso') || texto.toLowerCase().includes('loja')) {
+                    cor = 'bg-purple-100 text-purple-800 border-purple-200';
+                } else if (texto.toLowerCase().includes('embalado') || texto.toLowerCase().includes('caixa')) {
+                    cor = 'bg-orange-100 text-orange-800 border-orange-200';
+                } else if (texto.toLowerCase().includes('separado') || texto.toLowerCase().includes('reserva')) {
+                    cor = 'bg-red-100 text-red-800 border-red-200';
+                }
+
+                return `<span class="px-2 py-1 ${cor} rounded text-xs border mb-1 inline-block mr-1" title="${texto}">
+                    ${texto}
+                </span>`;
+            }).join('');
         }
 
         // 📥 IMPORTAR EXCEL
@@ -542,18 +519,18 @@
             try {
                 const templateData = [
                     {
-                        'CODIGO': 'CEL-001',
-                        'PRODUTO': 'Smartphone Samsung Galaxy',
-                        'QUANTIDADE': '5',
-                        'LOCALIZACAO': 'Prateleira A1 - Corredor 3',
-                        'OBS': '2 disponíveis para venda, 1 em assistência, 2 mostruário'
+                        'CODIGO': 'ROUP-001',
+                        'PRODUTO': 'Roupeiro Dallas BR',
+                        'QUANTIDADE': '2',
+                        'LOCALIZACAO': 'Setor Móveis - Corredor A',
+                        'OBS': '1 disponível para venda, 1 embalado'
                     },
                     {
-                        'CODIGO': 'NOTE-002', 
-                        'PRODUTO': 'Notebook Dell Inspiron',
+                        'CODIGO': 'CEL-002', 
+                        'PRODUTO': 'Smartphone Samsung',
                         'QUANTIDADE': '3',
-                        'LOCALIZACAO': 'Armário Técnico - Sala 2',
-                        'OBS': '1 disponível para venda, 2 uso da loja'
+                        'LOCALIZACAO': 'Prateleira Eletrônicos',
+                        'OBS': '2 para venda, 1 em assistência técnica'
                     }
                 ];
                 
@@ -700,7 +677,7 @@
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">📍 Localização</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Status</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Status das Unidades</th>
                                                 ${state.isEstoquista ? `
                                                     <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
                                                 ` : ''}
@@ -727,8 +704,8 @@
                                                         </div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="flex flex-wrap gap-1" title="${item.observacoes || 'Sem informações'}">
-                                                            ${renderStatus(item.observacoes)}
+                                                        <div class="flex flex-wrap gap-1 max-w-md">
+                                                            ${formatObservacoes(item.observacoes)}
                                                         </div>
                                                     </td>
                                                     ${state.isEstoquista ? `
@@ -768,7 +745,7 @@
                                                     <input type="text" 
                                                         value="${state.editingItem.codigo}"
                                                         oninput="state.editingItem.codigo = this.value"
-                                                        placeholder="Ex: CEL-001"
+                                                        placeholder="Ex: ROUP-001"
                                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                                 </div>
                                                 <div>
@@ -784,7 +761,7 @@
                                                 <input type="text" 
                                                     value="${state.editingItem.nome}"
                                                     oninput="state.editingItem.nome = this.value"
-                                                    placeholder="Ex: Smartphone Samsung Galaxy"
+                                                    placeholder="Ex: Roupeiro Dallas BR"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
                                             <div>
@@ -792,19 +769,23 @@
                                                 <input type="text" 
                                                     value="${state.editingItem.localizacao}"
                                                     oninput="state.editingItem.localizacao = this.value"
-                                                    placeholder="Ex: Prateleira A1 - Corredor 3"
+                                                    placeholder="Ex: Setor Móveis - Corredor A"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Distribuição (OBS)</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Status das Unidades (OBS)</label>
                                                 <textarea 
                                                     oninput="state.editingItem.observacoes = this.value"
-                                                    placeholder="Ex: 2 disponíveis para venda, 1 em assistência, 2 mostruário"
+                                                    placeholder="Ex: 1 disponível para venda, 1 embalado"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none"
                                                     rows="3">${state.editingItem.observacoes || ''}</textarea>
-                                                <p class="text-xs text-gray-500 mt-1">
-                                                    💡 Exemplos: "3 para venda, 2 em assistência", "1 mostruário, 4 uso da loja"
-                                                </p>
+                                                <div class="text-xs text-gray-500 mt-2 space-y-1">
+                                                    <div>💡 <strong>Exemplos de uso:</strong></div>
+                                                    <div>• "1 disponível para venda, 1 embalado"</div>
+                                                    <div>• "2 para venda, 1 em assistência técnica"</div>
+                                                    <div>• "1 mostruário, 2 uso da loja"</div>
+                                                    <div>• "1 separado para cliente, 1 em caixa"</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
