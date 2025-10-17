@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Estoque - 41º S3</title>
+    <title>Localizador de Produtos - 41º S3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -22,7 +22,7 @@
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
                 <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-gray-600">Iniciando sistema...</p>
+                <p class="text-gray-600">Carregando estoque...</p>
             </div>
         </div>
     </div>
@@ -32,157 +32,133 @@
         const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
         
-        // Estado global
+        // Estado global - DADOS COMPARTILHADOS
         let state = {
-            user: null,
             items: [],
             loading: true,
             activeModal: null,
             importLoading: false,
-            importErrors: [],
-            usingLocalStorage: false,
-            loginForm: { email: '', password: '' }
+            searchTerm: '',
+            filteredItems: [],
+            isEstoquista: false // Modo estoquista (pode importar) vs vendedor (só visualiza)
         };
 
         // Inicializar Supabase
         let supabase;
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('✅ Supabase inicializado');
         } catch (error) {
-            console.error('❌ Erro ao inicializar Supabase:', error);
-            supabase = null;
+            console.error('❌ Supabase não disponível');
         }
 
-        // 🔄 INICIALIZAÇÃO SIMPLIFICADA
+        // 🔄 INICIALIZAÇÃO COM DADOS COMPARTILHADOS
         async function initApp() {
-            console.log('🚀 Iniciando aplicação...');
+            console.log('🚀 Iniciando sistema compartilhado...');
             
-            // SEMPRE começar com usuário local para garantir funcionamento
-            await setupLocalUser();
-            
-            // Tentar carregar itens
-            await loadItems();
+            // Verificar se é estoquista (tem senha) ou vendedor (só visualiza)
+            await checkUserRole();
+            await loadSharedItems();
             
             state.loading = false;
             render();
         }
 
-        // 👤 CONFIGURAR USUÁRIO LOCAL
-        async function setupLocalUser() {
+        // 🔐 VERIFICAR SE É ESTOQUISTA
+        async function checkUserRole() {
+            // Senha simples para estoquista (pode ser qualquer coisa)
+            const isEstoquista = localStorage.getItem('estoque_estoquista') === 'true';
+            state.isEstoquista = isEstoquista;
+            console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
+        }
+
+        // 📦 CARREGAR DADOS COMPARTILHADOS
+        async function loadSharedItems() {
             try {
-                let localUser = localStorage.getItem('estoque_user');
+                // SEMPRE usar a mesma chave para todos os usuários
+                const sharedItemsKey = 'estoque_compartilhado';
+                const localItems = localStorage.getItem(sharedItemsKey);
                 
-                if (!localUser) {
-                    // Criar usuário local padrão
-                    state.user = {
-                        email: 'usuario@estoque.com',
-                        id: 'local_user_' + Date.now(),
-                        nome: 'Usuário Local'
-                    };
-                    localStorage.setItem('estoque_user', JSON.stringify(state.user));
-                    console.log('👤 Usuário local criado');
+                if (localItems) {
+                    state.items = JSON.parse(localItems);
+                    state.filteredItems = [...state.items];
+                    console.log('📦 Dados compartilhados carregados:', state.items.length, 'itens');
                 } else {
-                    state.user = JSON.parse(localUser);
-                    console.log('👤 Usuário local carregado:', state.user.email);
+                    // Dados iniciais de exemplo
+                    state.items = [
+                        {
+                            id: 'exemplo_1',
+                            codigo: 'CEL-001',
+                            nome: 'Smartphone Samsung Galaxy',
+                            quantidade: 5,
+                            localizacao: 'Prateleira A1 - Corredor Principal',
+                            categoria: 'Telefonia',
+                            observacoes: 'Modelo 2024 - Caixa Azul',
+                            data_entrada: new Date().toISOString().split('T')[0]
+                        },
+                        {
+                            id: 'exemplo_2',
+                            codigo: 'NOTE-002',
+                            nome: 'Notebook Dell Inspiron',
+                            quantidade: 3,
+                            localizacao: 'Armário Técnico - Sala 2',
+                            categoria: 'Informática',
+                            observacoes: 'Com carregador original',
+                            data_entrada: new Date().toISOString().split('T')[0]
+                        }
+                    ];
+                    state.filteredItems = [...state.items];
+                    saveSharedItems();
+                    console.log('📦 Dados de exemplo criados');
                 }
                 
-                state.usingLocalStorage = true;
-                
             } catch (error) {
-                console.error('❌ Erro ao configurar usuário local:', error);
-                // Fallback absoluto
-                state.user = {
-                    email: 'usuario@estoque.com',
-                    id: 'fallback_user',
-                    nome: 'Usuário'
-                };
-                state.usingLocalStorage = true;
+                console.error('❌ Erro ao carregar dados compartilhados:', error);
+                state.items = [];
+                state.filteredItems = [];
             }
         }
 
-        // 📧 LOGIN SIMPLIFICADO
-        async function login() {
-            const email = state.loginForm.email.trim();
-            const password = state.loginForm.password;
+        // 💾 SALVAR DADOS COMPARTILHADOS
+        function saveSharedItems() {
+            try {
+                const sharedItemsKey = 'estoque_compartilhado';
+                localStorage.setItem(sharedItemsKey, JSON.stringify(state.items));
+                console.log('💾 Dados compartilhados salvos:', state.items.length, 'itens');
+            } catch (error) {
+                console.error('❌ Erro ao salvar dados compartilhados:', error);
+            }
+        }
+
+        // 🔍 FILTRAR ITENS
+        function filterItems() {
+            const term = state.searchTerm.toLowerCase().trim();
             
-            if (!email || !password) {
-                alert('❌ Preencha email e senha');
+            if (!term) {
+                state.filteredItems = [...state.items];
                 return;
             }
             
-            try {
-                state.loading = true;
+            state.filteredItems = state.items.filter(item => 
+                item.codigo.toLowerCase().includes(term) ||
+                item.nome.toLowerCase().includes(term) ||
+                item.localizacao.toLowerCase().includes(term) ||
+                item.categoria.toLowerCase().includes(term) ||
+                (item.observacoes && item.observacoes.toLowerCase().includes(term))
+            );
+        }
+
+        // 🔓 ATIVAR MODO ESTOQUISTA
+        function activateEstoquistaMode() {
+            const password = prompt('🔐 Digite a senha de estoquista:');
+            // Senha simples - você pode mudar para qualquer coisa
+            if (password === 'estoque123') {
+                state.isEstoquista = true;
+                localStorage.setItem('estoque_estoquista', 'true');
+                alert('✅ Modo estoquista ativado! Agora você pode importar planilhas.');
                 render();
-                
-                if (supabase) {
-                    const { data, error } = await supabase.auth.signInWithPassword({
-                        email: email,
-                        password: password
-                    });
-
-                    if (!error && data.user) {
-                        state.user = data.user;
-                        state.usingLocalStorage = false;
-                        console.log('✅ Login Supabase bem-sucedido');
-                    } else {
-                        throw new Error('Login Supabase falhou');
-                    }
-                } else {
-                    throw new Error('Supabase não disponível');
-                }
-                
-            } catch (error) {
-                console.log('⚠️ Usando modo local:', error.message);
-                // Modo local como fallback
-                state.user = {
-                    email: email,
-                    id: 'local_' + Date.now(),
-                    nome: email.split('@')[0]
-                };
-                state.usingLocalStorage = true;
-                localStorage.setItem('estoque_user', JSON.stringify(state.user));
+            } else {
+                alert('❌ Senha incorreta. Apenas visualização permitida.');
             }
-            
-            state.loginForm = { email: '', password: '' };
-            await loadItems();
-        }
-
-        // 📦 CARREGAR ITENS
-        async function loadItems() {
-            try {
-                console.log('📦 Carregando itens...');
-                
-                // SEMPRE usar localStorage como fonte primária
-                const localItems = localStorage.getItem('estoque_items');
-                state.items = localItems ? JSON.parse(localItems) : [];
-                
-                console.log('✅ Itens carregados:', state.items.length);
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar itens:', error);
-                state.items = [];
-            }
-        }
-
-        // 💾 SALVAR ITENS
-        function saveItems() {
-            try {
-                localStorage.setItem('estoque_items', JSON.stringify(state.items));
-                console.log('💾 Itens salvos:', state.items.length);
-            } catch (error) {
-                console.error('❌ Erro ao salvar itens:', error);
-            }
-        }
-
-        // 🚪 LOGOUT
-        function logout() {
-            state.user = null;
-            state.items = [];
-            state.loading = false;
-            
-            // Manter dados no localStorage para possível recuperação
-            renderLogin();
         }
 
         // 📥 BAIXAR MODELO
@@ -190,29 +166,40 @@
             try {
                 const templateData = [
                     {
-                        'CODIGO': 'COD001',
+                        'CODIGO': 'CEL-001',
                         'PRODUTO': 'Smartphone Samsung Galaxy',
                         'QUANTIDADE': '5',
-                        'LOCALIZACAO': 'Prateleira A1',
+                        'LOCALIZACAO': 'Prateleira A1 - Corredor 3',
                         'CATEGORIA': 'Telefonia',
-                        'PRECO': '1500.00',
-                        'STATUS': 'Disponível para Venda'
+                        'OBSERVACOES': 'Modelo 2024 - Caixa Azul'
+                    },
+                    {
+                        'CODIGO': 'NOTE-002',
+                        'PRODUTO': 'Notebook Dell Inspiron',
+                        'QUANTIDADE': '3',
+                        'LOCALIZACAO': 'Armário Técnico - Sala 2',
+                        'CATEGORIA': 'Informática',
+                        'OBSERVACOES': 'Com carregador original'
                     }
                 ];
                 
                 const ws = XLSX.utils.json_to_sheet(templateData);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Modelo");
-                XLSX.writeFile(wb, 'modelo_importacao.xlsx');
-                alert('📋 Modelo baixado!');
+                XLSX.writeFile(wb, 'modelo_estoque.xlsx');
+                alert('📋 Modelo baixado! Preencha e importe para atualizar o estoque.');
             } catch (error) {
-                console.error('❌ Erro ao baixar modelo:', error);
                 alert('Erro ao baixar modelo');
             }
         }
 
-        // 📥 IMPORTAR EXCEL
+        // 📥 IMPORTAR EXCEL (SÓ ESTOQUISTA)
         async function importFromExcel(event) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem importar planilhas.');
+                return;
+            }
+
             const file = event.target.files[0];
             if (!file) return;
             
@@ -232,7 +219,6 @@
                         processImportedData(jsonData);
                         
                     } catch (error) {
-                        console.error('❌ Erro ao ler arquivo:', error);
                         alert('Erro ao ler arquivo: ' + error.message);
                         state.importLoading = false;
                         render();
@@ -242,7 +228,6 @@
                 reader.readAsArrayBuffer(file);
                 
             } catch (error) {
-                console.error('❌ Erro na importação:', error);
                 alert('Erro na importação: ' + error.message);
                 state.importLoading = false;
                 render();
@@ -263,13 +248,10 @@
                             codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
                             nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
                             quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
-                            localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || '').trim(),
-                            categoria: String(item.CATEGORIA || item.Categoria || item.categoria || '').trim(),
-                            preco: parseFloat(item.PRECO || item.Preço || item.preco || 0),
-                            status: 'venda',
-                            data_entrada: new Date().toISOString().split('T')[0],
-                            user_id: state.user.id,
-                            user_email: state.user.email
+                            localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || 'Não informado').trim(),
+                            categoria: String(item.CATEGORIA || item.Categoria || item.categoria || 'Geral').trim(),
+                            observacoes: String(item.OBSERVACOES || item.Observações || item.observacoes || '').trim(),
+                            data_entrada: new Date().toISOString().split('T')[0]
                         };
                         
                         if (mappedItem.codigo && mappedItem.nome) {
@@ -282,31 +264,21 @@
                     }
                 }
                 
-                // Adicionar novos itens
-                state.items = [...newItems, ...state.items];
-                saveItems();
+                // SUBSTITUIR todos os itens (atualização completa do estoque)
+                state.items = newItems;
+                state.filteredItems = [...newItems];
+                saveSharedItems();
                 
                 state.importLoading = false;
                 render();
                 
-                alert(`✅ ${importedCount} itens importados com sucesso!`);
+                alert(`✅ Estoque atualizado!\n${importedCount} produtos importados.\n\nTodos os vendedores já podem ver as novas localizações!`);
                 
             } catch (error) {
-                console.error('❌ Erro no processamento:', error);
                 alert('Erro ao processar dados: ' + error.message);
                 state.importLoading = false;
                 render();
             }
-        }
-
-        // 🗑️ EXCLUIR ITEM
-        function deleteItem(id) {
-            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-            
-            state.items = state.items.filter(item => item.id !== id);
-            saveItems();
-            render();
-            alert('✅ Produto excluído!');
         }
 
         // 🎯 FUNÇÕES DE UI
@@ -321,107 +293,97 @@
             render();
         }
 
-        function renderLogin() {
-            document.getElementById('app').innerHTML = `
-                <div class="flex items-center justify-center min-h-screen p-4">
-                    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-                        <div class="text-center mb-8">
-                            <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <span class="text-white text-2xl">📦</span>
-                            </div>
-                            <h1 class="text-2xl font-bold text-purple-600 mb-2">Controle de Estoque</h1>
-                            <p class="text-gray-600">41º S3 - Sistema Compartilhado</p>
-                        </div>
+        function render() {
+            if (state.loading) {
+                return; // Já tem loading no HTML inicial
+            }
 
-                        <div class="space-y-4">
-                            <div>
-                                <input type="email" placeholder="Seu email" 
-                                    value="${state.loginForm.email}"
-                                    oninput="state.loginForm.email = this.value"
-                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none">
-                            </div>
-                            <div>
-                                <input type="password" placeholder="Sua senha" 
-                                    value="${state.loginForm.password}"
-                                    oninput="state.loginForm.password = this.value"
-                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none">
-                            </div>
-                            <button onclick="login()" 
-                                class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors">
-                                Entrar no Sistema
-                            </button>
-                        </div>
-
-                        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-                            <p class="text-sm text-blue-700 text-center">
-                                <strong>Dica:</strong> Use qualquer email e senha para entrar no modo local
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderApp() {
-            const statusInfo = state.usingLocalStorage ? 
-                { emoji: '📱', text: 'Modo Local', color: 'text-orange-600', bg: 'bg-orange-100' } : 
-                { emoji: '☁️', text: 'Supabase Online', color: 'text-green-600', bg: 'bg-green-100' };
-            
             document.getElementById('app').innerHTML = `
                 <div class="min-h-screen p-4 bg-gray-50">
                     <div class="max-w-7xl mx-auto">
                         <!-- CABEÇALHO -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center">
-                                        <span class="text-white text-xl">📦</span>
+                                        <span class="text-white text-xl">🏪</span>
                                     </div>
                                     <div>
-                                        <h1 class="text-2xl font-bold text-gray-900">Controle de Estoque</h1>
-                                        <p class="text-gray-600">41º S3 • ${state.user.email}</p>
+                                        <h1 class="text-2xl font-bold text-gray-900">Localizador de Produtos</h1>
+                                        <p class="text-gray-600">41º S3 - Estoque Compartilhado</p>
                                         <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-sm ${statusInfo.color} font-medium">${statusInfo.emoji} ${statusInfo.text}</span>
+                                            <span class="text-sm ${state.isEstoquista ? 'text-green-600 font-bold' : 'text-blue-600'}">
+                                                ${state.isEstoquista ? '👨‍💼 MODO ESTOQUISTA' : '👤 MODO VENDEDOR'}
+                                            </span>
+                                            ${!state.isEstoquista ? `
+                                                <button onclick="activateEstoquistaMode()" class="text-xs text-purple-600 underline">
+                                                    Tornar-se estoquista
+                                                </button>
+                                            ` : ''}
                                         </div>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
                                     <div class="text-right">
                                         <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="text-sm text-gray-600">produtos</div>
+                                        <div class="text-sm text-gray-600">produtos no estoque</div>
                                     </div>
-                                    <button onclick="logout()" 
-                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition-colors">
-                                        Sair
-                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BOTÕES -->
+                        <!-- BARRA DE PESQUISA E AÇÕES -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="flex gap-4 flex-wrap">
-                                <button onclick="downloadTemplate()" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
-                                    📋 Baixar Modelo
-                                </button>
-                                <button onclick="openModal('import')" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
-                                    📥 Importar Planilha
-                                </button>
+                            <div class="flex flex-col md:flex-row gap-4">
+                                <div class="flex-1">
+                                    <input 
+                                        type="text" 
+                                        placeholder="🔍 Pesquisar por código, produto, localização..."
+                                        value="${state.searchTerm}"
+                                        oninput="state.searchTerm = this.value; filterItems(); render();"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
+                                    >
+                                </div>
+                                <div class="flex gap-2 flex-wrap">
+                                    ${state.isEstoquista ? `
+                                        <button onclick="openModal('import')" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                            📥 Atualizar Estoque
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="downloadTemplate()" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                        📋 Modelo
+                                    </button>
+                                </div>
                             </div>
+                            ${state.searchTerm ? `
+                                <div class="mt-3 text-sm text-gray-600">
+                                    ${state.filteredItems.length} resultado(s) para "${state.searchTerm}"
+                                </div>
+                            ` : ''}
                         </div>
 
-                        <!-- LISTA -->
+                        <!-- LISTA DE PRODUTOS -->
                         <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
                             ${state.items.length === 0 ? `
                                 <div class="text-center py-16">
                                     <div class="text-8xl mb-6 text-purple-600">📦</div>
-                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Nenhum produto</h3>
-                                    <p class="text-gray-500 mb-6">Importe uma planilha para começar</p>
-                                    <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
-                                        Importar Planilha
-                                    </button>
+                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Estoque vazio</h3>
+                                    <p class="text-gray-500 mb-6">O estoquista precisa importar uma planilha</p>
+                                    ${state.isEstoquista ? `
+                                        <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
+                                            📥 Importar Primeira Planilha
+                                        </button>
+                                    ` : `
+                                        <p class="text-sm text-gray-500">Aguarde o estoquista carregar os produtos</p>
+                                    `}
+                                </div>
+                            ` : state.filteredItems.length === 0 ? `
+                                <div class="text-center py-16">
+                                    <div class="text-6xl mb-6 text-gray-400">🔍</div>
+                                    <h3 class="text-xl font-semibold text-gray-600 mb-3">Nenhum produto encontrado</h3>
+                                    <p class="text-gray-500">Tente buscar por outro termo</p>
                                 </div>
                             ` : `
                                 <div class="overflow-x-auto">
@@ -430,25 +392,35 @@
                                             <tr>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Código</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">📍 Localização</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Categoria</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Preço</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Observações</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
-                                            ${state.items.map(item => `
-                                                <tr class="hover:bg-gray-50">
+                                            ${state.filteredItems.map(item => `
+                                                <tr class="hover:bg-gray-50 transition-colors">
                                                     <td class="px-4 py-3">
                                                         <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
-                                                        <div class="text-xs text-gray-500">${item.localizacao || ''}</div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="text-lg">📍</span>
+                                                            <div>
+                                                                <div class="text-sm font-bold text-green-700">${item.localizacao}</div>
+                                                                ${item.data_entrada ? `
+                                                                    <div class="text-xs text-gray-500">Atualizado em ${item.data_entrada}</div>
+                                                                ` : ''}
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                                                            ${item.categoria || 'Geral'}
+                                                            ${item.categoria}
                                                         </span>
                                                     </td>
                                                     <td class="px-4 py-3">
@@ -457,15 +429,7 @@
                                                         </span>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="text-sm font-bold text-green-600">
-                                                            ${item.preco ? 'R$ ' + parseFloat(item.preco).toFixed(2) : '-'}
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <button onclick="deleteItem('${item.id}')" 
-                                                            class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors">
-                                                            Excluir
-                                                        </button>
+                                                        <div class="text-sm text-gray-600 max-w-xs">${item.observacoes || '-'}</div>
                                                     </td>
                                                 </tr>
                                             `).join('')}
@@ -473,6 +437,29 @@
                                     </table>
                                 </div>
                             `}
+                        </div>
+
+                        <!-- INSTRUÇÕES -->
+                        <div class="mt-6 bg-blue-50 rounded-xl p-6">
+                            <h3 class="font-semibold text-blue-800 mb-2">💡 Como usar:</h3>
+                            <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-700">
+                                <div>
+                                    <strong>Para Vendedores:</strong>
+                                    <ul class="list-disc list-inside mt-1 space-y-1">
+                                        <li>Use a barra de pesquisa para encontrar produtos</li>
+                                        <li>Veja a localização exata de cada item</li>
+                                        <li>Verifique quantidade disponível</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <strong>Para Estoquistas:</strong>
+                                    <ul class="list-disc list-inside mt-1 space-y-1">
+                                        <li>Baixe o modelo de planilha</li>
+                                        <li>Preencha com produtos e localizações</li>
+                                        <li>Importe para atualizar o estoque para todos</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -482,12 +469,12 @@
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                             <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
-                                <h2 class="text-xl font-bold">Importar Planilha</h2>
+                                <h2 class="text-xl font-bold">Atualizar Estoque</h2>
                             </div>
                             <div class="p-6">
                                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
                                     <div class="text-4xl mb-4 text-purple-600">📤</div>
-                                    <h3 class="font-semibold text-gray-900 mb-2">Selecione sua planilha</h3>
+                                    <h3 class="font-semibold text-gray-900 mb-2">Selecione a planilha atualizada</h3>
                                     <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
                                     <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block transition-colors">
                                         ${state.importLoading ? `
@@ -495,12 +482,24 @@
                                                 <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
                                                 <span>Processando...</span>
                                             </div>
-                                        ` : 'Selecionar Arquivo'}
+                                        ` : 'Selecionar Planilha'}
                                         <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
                                     </label>
                                 </div>
+                                
+                                <div class="mt-6 bg-yellow-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-yellow-800 mb-2">⚠️ Atenção Estoquista:</h4>
+                                    <p class="text-sm text-yellow-700">
+                                        Ao importar uma nova planilha, <strong>todos os produtos anteriores serão substituídos</strong>. 
+                                        Todos os vendedores verão imediatamente as novas localizações.
+                                    </p>
+                                </div>
                             </div>
-                            <div class="p-6 border-t border-gray-200 flex justify-end">
+                            <div class="p-6 border-t border-gray-200 flex justify-between">
+                                <button onclick="downloadTemplate()" 
+                                    class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors">
+                                    📋 Baixar Modelo
+                                </button>
                                 <button onclick="closeModal()" 
                                     class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
                                     Fechar
@@ -512,51 +511,21 @@
             `;
         }
 
-        function render() {
-            if (state.loading) {
-                document.getElementById('app').innerHTML = `
-                    <div class="flex items-center justify-center min-h-screen">
-                        <div class="text-center">
-                            <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                            <p class="text-gray-600">Carregando...</p>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            if (!state.user) {
-                renderLogin();
-                return;
-            }
-
-            renderApp();
-        }
-
         // INICIAR APLICAÇÃO
-        console.log('🚀 Iniciando aplicação no GitHub Pages...');
+        console.log('🚀 Iniciando Sistema Compartilhado...');
         
-        // Timeout de segurança para garantir que não fique carregando para sempre
         const safetyTimeout = setTimeout(() => {
-            console.log('⚠️ Timeout de segurança ativado');
             if (state.loading) {
                 state.loading = false;
-                state.user = { email: 'timeout@local.com', id: 'timeout_user', nome: 'Usuário' };
-                state.usingLocalStorage = true;
                 render();
             }
-        }, 5000);
+        }, 3000);
 
-        // Inicializar app
         initApp().then(() => {
             clearTimeout(safetyTimeout);
-            console.log('✅ Aplicação inicializada com sucesso');
         }).catch(error => {
             clearTimeout(safetyTimeout);
-            console.error('❌ Erro na inicialização:', error);
             state.loading = false;
-            state.user = { email: 'error@local.com', id: 'error_user', nome: 'Usuário' };
-            state.usingLocalStorage = true;
             render();
         });
     </script>
