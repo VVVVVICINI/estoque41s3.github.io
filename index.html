@@ -44,7 +44,7 @@
             lastUpdate: null,
             connectionError: false,
             syncInProgress: false,
-            searchFocused: false // Novo estado para controlar foco
+            searchFocused: false
         };
 
         // 🔄 INICIALIZAÇÃO
@@ -87,7 +87,7 @@
             console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
         }
 
-        // 📊 CARREGAR DO GOOGLE SHEETS
+        // 📊 CARREGAR DO GOOGLE SHEETS - COLUNAS 1, 2, 6, 7, 12
         async function loadFromGoogleSheets() {
             if (state.syncInProgress) return;
             
@@ -117,7 +117,7 @@
             }
         }
 
-        // 📝 ANALISAR CSV - COLUNAS 1, 2, 6, 7
+        // 📝 ANALISAR CSV - COLUNAS 1, 2, 6, 7, 12 (OBS)
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
             const items = [];
@@ -126,11 +126,13 @@
                 try {
                     const cells = parseCSVLine(lines[i]);
                     
-                    // COLUNAS: 1=Código, 2=Produto, 6=Quantidade, 7=Localização
+                    // COLUNAS: 
+                    // 1=Código, 2=Produto, 6=Quantidade, 7=Localização, 12=OBS (Status)
                     const codigo = (cells[0] || '').toString().trim();
                     const nome = (cells[1] || '').toString().trim();
                     const quantidade = parseInt(cells[5]) || 1;
                     const localizacao = (cells[6] || 'Não informado').toString().trim();
+                    const observacoes = (cells[11] || '').toString().trim(); // 12ª coluna (índice 11)
                     
                     if (codigo && nome) {
                         items.push({
@@ -139,6 +141,7 @@
                             nome: nome,
                             quantidade: quantidade,
                             localizacao: localizacao,
+                            observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
                             updated_at: new Date().toISOString()
                         });
@@ -174,6 +177,80 @@
             return result.map(cell => cell.replace(/^"|"$/g, '').trim());
         }
 
+        // 💾 SALVAR NO GOOGLE SHEETS (ATUALIZAR PLANILHA)
+        async function saveToGoogleSheets() {
+            if (!state.isEstoquista) return;
+            
+            try {
+                state.syncInProgress = true;
+                render();
+                
+                console.log('💾 Preparando dados para salvar no Google Sheets...');
+                
+                // Criar CSV no formato da sua planilha (12 colunas)
+                const csvContent = createFullCSVForSheets();
+                
+                // Baixar CSV atualizado
+                downloadCSV(csvContent, 'planilha_atualizada.csv');
+                
+                alert(`✅ Planilha atualizada!\n\n📋 O que fazer agora:\n\n1. 📂 Baixe o arquivo "planilha_atualizada.csv"\n2. 📊 Abra sua planilha no Google Sheets\n3. 🗂️ Vá em Arquivo → Importar → Fazer upload\n4. 🔄 Substitua a planilha atual\n5. 💾 Salve as alterações\n\n🔄 Todos os vendedores verão as mudanças automaticamente!`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar no Google Sheets:', error);
+                alert('Erro ao atualizar planilha: ' + error.message);
+            } finally {
+                state.syncInProgress = false;
+                render();
+            }
+        }
+
+        // 📝 CRIAR CSV COMPLETO PARA PLANILHA (12 COLUNAS)
+        function createFullCSVForSheets() {
+            // Cabeçalho com 12 colunas (mantendo estrutura original)
+            const headers = [
+                'CODIGO', 'PRODUTO', 'COLUNA3', 'COLUNA4', 'COLUNA5', 
+                'QUANTIDADE', 'LOCALIZACAO', 'COLUNA8', 'COLUNA9', 'COLUNA10', 
+                'COLUNA11', 'OBS'
+            ];
+            
+            let csvContent = headers.join(',') + '\n';
+            
+            state.items.forEach(item => {
+                const row = [
+                    `"${item.codigo}"`,           // Coluna 1
+                    `"${item.nome}"`,             // Coluna 2
+                    '',                          // Coluna 3
+                    '',                          // Coluna 4  
+                    '',                          // Coluna 5
+                    item.quantidade,             // Coluna 6
+                    `"${item.localizacao}"`,     // Coluna 7
+                    '',                          // Coluna 8
+                    '',                          // Coluna 9
+                    '',                          // Coluna 10
+                    '',                          // Coluna 11
+                    `"${item.observacoes || ''}"` // Coluna 12 (OBS)
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+            
+            return csvContent;
+        }
+
+        // 📥 BAIXAR CSV
+        function downloadCSV(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         // 💾 CARREGAR DO LOCALSTORAGE (FALLBACK)
         async function loadFromLocalStorage() {
             const savedItems = localStorage.getItem('estoque_compartilhado');
@@ -203,6 +280,7 @@
                 nome: '',
                 quantidade: 1,
                 localizacao: '',
+                observacoes: '',
                 data_entrada: new Date().toISOString().split('T')[0],
                 updated_at: new Date().toISOString()
             };
@@ -222,7 +300,7 @@
             render();
         }
 
-        // 💾 SALVAR PRODUTO (NOVO OU EDIÇÃO)
+        // 💾 SALVAR PRODUTO (NOVO OU EDIÇÃO) E ATUALIZAR PLANILHA
         async function saveProduct() {
             try {
                 if (!state.editingItem.codigo || !state.editingItem.nome) {
@@ -233,7 +311,7 @@
                 if (state.isNewProduct) {
                     // Adicionar novo produto
                     state.items.unshift(state.editingItem);
-                    alert('✅ Produto adicionado! (Salvo localmente)');
+                    alert('✅ Produto adicionado!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
                 } else {
                     // Atualizar produto existente
                     const index = state.items.findIndex(item => item.id === state.editingItem.id);
@@ -243,7 +321,7 @@
                             updated_at: new Date().toISOString()
                         };
                     }
-                    alert('✅ Produto atualizado! (Salvo localmente)');
+                    alert('✅ Produto atualizado!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
                 }
                 
                 state.filteredItems = [...state.items];
@@ -279,69 +357,64 @@
             state.filteredItems = state.filteredItems.filter(item => item.id !== id);
             saveToLocalStorage();
             render();
-            alert('✅ Produto excluído! (Salvo localmente)');
+            alert('✅ Produto excluído!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
         }
 
-        // 🔄 SINCRONIZAR COM PLANILHA (EXPORTAR)
-        async function syncWithSpreadsheet() {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem sincronizar com a planilha.');
-                return;
-            }
+        // 📊 ANALISAR STATUS DA OBS
+        function parseStatusFromObs(observacoes) {
+            if (!observacoes) return [];
             
-            try {
-                state.syncInProgress = true;
-                render();
-                
-                // Criar CSV para exportação
-                const csvContent = createCSVForExport();
-                
-                // Para uma solução real, aqui você usaria a API do Google Sheets
-                // Por enquanto, vamos apenas baixar o CSV
-                downloadCSV(csvContent, 'estoque_atualizado.csv');
-                
-                alert('✅ Dados exportados para CSV!\n\nPara atualizar a planilha:\n1. Abra sua planilha no Google Sheets\n2. Substitua os dados pelo arquivo baixado\n3. Salve a planilha\n\nOs vendedores verão as mudanças automaticamente!');
-                
-            } catch (error) {
-                console.error('❌ Erro na sincronização:', error);
-                alert('Erro na sincronização: ' + error.message);
-            } finally {
-                state.syncInProgress = false;
-                render();
-            }
-        }
-
-        // 📝 CRIAR CSV PARA EXPORTAÇÃO
-        function createCSVForExport() {
-            const headers = ['CODIGO', 'PRODUTO', 'QUANTIDADE', 'LOCALIZACAO'];
-            let csvContent = headers.join(',') + '\n';
+            const status = [];
+            const obs = observacoes.toLowerCase();
             
-            state.items.forEach(item => {
-                const row = [
-                    `"${item.codigo}"`,
-                    `"${item.nome}"`,
-                    item.quantidade,
-                    `"${item.localizacao}"`
-                ];
-                csvContent += row.join(',') + '\n';
+            // Procurar padrões como "2 disponíveis para venda", "1 em assistência", etc.
+            const patterns = [
+                { regex: /(\d+)\s*(disponível|disponiveis|para venda|venda)/, type: 'venda', label: 'Venda' },
+                { regex: /(\d+)\s*(assistência|assistencia|conserto|reparo)/, type: 'assistencia', label: 'Assistência' },
+                { regex: /(\d+)\s*(mostruário|mostruario|vitrine)/, type: 'mostruario', label: 'Mostruário' },
+                { regex: /(\d+)\s*(uso da loja|uso loja|loja)/, type: 'uso_loja', label: 'Uso Loja' }
+            ];
+            
+            patterns.forEach(pattern => {
+                const match = obs.match(pattern.regex);
+                if (match) {
+                    const quantidade = parseInt(match[1]);
+                    status.push({
+                        type: pattern.type,
+                        label: pattern.label,
+                        quantidade: quantidade,
+                        text: `${quantidade} ${pattern.label}`
+                    });
+                }
             });
             
-            return csvContent;
+            return status;
         }
 
-        // 📥 BAIXAR CSV
-        function downloadCSV(content, filename) {
-            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
+        // 📊 OBTER COR DO STATUS
+        function getStatusColor(statusType) {
+            const colors = {
+                'venda': 'bg-green-100 text-green-800 border border-green-200',
+                'assistencia': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+                'mostruario': 'bg-blue-100 text-blue-800 border border-blue-200',
+                'uso_loja': 'bg-purple-100 text-purple-800 border border-purple-200'
+            };
+            return colors[statusType] || 'bg-gray-100 text-gray-800 border border-gray-200';
+        }
+
+        // 📊 RENDERIZAR STATUS
+        function renderStatus(observacoes) {
+            const statusList = parseStatusFromObs(observacoes);
             
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
+            if (statusList.length === 0) {
+                return '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs border border-gray-200">Sem info</span>';
+            }
             
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            return statusList.map(status => 
+                `<span class="px-2 py-1 ${getStatusColor(status.type)} rounded text-xs font-medium mr-1 mb-1 inline-block" title="${observacoes}">
+                    ${status.text}
+                </span>`
+            ).join('');
         }
 
         // 📥 IMPORTAR EXCEL
@@ -400,6 +473,7 @@
                             nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
                             quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
                             localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || 'Não informado').trim(),
+                            observacoes: String(item.OBS || item.Observações || item.observacoes || '').trim(),
                             data_entrada: new Date().toISOString().split('T')[0],
                             updated_at: new Date().toISOString()
                         };
@@ -422,7 +496,7 @@
                 state.importLoading = false;
                 render();
                 
-                alert(`✅ ${importedCount} produtos importados!\n\nDica: Use "Sincronizar com Planilha" para exportar para o Google Sheets.`);
+                alert(`✅ ${importedCount} produtos importados!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.`);
                 
             } catch (error) {
                 alert('Erro ao processar dados: ' + error.message);
@@ -441,7 +515,8 @@
                 state.filteredItems = state.items.filter(item => 
                     item.codigo.toLowerCase().includes(term) ||
                     item.nome.toLowerCase().includes(term) ||
-                    item.localizacao.toLowerCase().includes(term)
+                    item.localizacao.toLowerCase().includes(term) ||
+                    (item.observacoes && item.observacoes.toLowerCase().includes(term))
                 );
             }
         }
@@ -449,16 +524,14 @@
         // 🎯 FUNÇÃO DE PESQUISA QUE NÃO PERDE FOCO
         function handleSearchInput(value) {
             state.searchTerm = value;
-            state.searchFocused = true; // Marcar que o campo está focado
+            state.searchFocused = true;
             filterItems();
             render();
             
-            // Restaurar foco após renderização
             setTimeout(() => {
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) {
                     searchInput.focus();
-                    // Manter o cursor no final do texto
                     searchInput.setSelectionRange(value.length, value.length);
                 }
             }, 10);
@@ -472,13 +545,15 @@
                         'CODIGO': 'CEL-001',
                         'PRODUTO': 'Smartphone Samsung Galaxy',
                         'QUANTIDADE': '5',
-                        'LOCALIZACAO': 'Prateleira A1 - Corredor 3'
+                        'LOCALIZACAO': 'Prateleira A1 - Corredor 3',
+                        'OBS': '2 disponíveis para venda, 1 em assistência, 2 mostruário'
                     },
                     {
-                        'CODIGO': 'NOTE-002',
+                        'CODIGO': 'NOTE-002', 
                         'PRODUTO': 'Notebook Dell Inspiron',
                         'QUANTIDADE': '3',
-                        'LOCALIZACAO': 'Armário Técnico - Sala 2'
+                        'LOCALIZACAO': 'Armário Técnico - Sala 2',
+                        'OBS': '1 disponível para venda, 2 uso da loja'
                     }
                 ];
                 
@@ -556,7 +631,7 @@
                                     <input 
                                         id="searchInput"
                                         type="text" 
-                                        placeholder="🔍 Pesquisar por código, produto ou localização..."
+                                        placeholder="🔍 Pesquisar por código, produto, localização ou status..."
                                         value="${state.searchTerm}"
                                         oninput="handleSearchInput(this.value)"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
@@ -572,9 +647,9 @@
                                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
                                             📥 Importar
                                         </button>
-                                        <button onclick="syncWithSpreadsheet()" 
+                                        <button onclick="saveToGoogleSheets()" 
                                             class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                            📊 Sincronizar
+                                            📊 Atualizar Planilha
                                         </button>
                                     ` : ''}
                                     <button onclick="downloadTemplate()" 
@@ -625,6 +700,7 @@
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">📍 Localização</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">Status</th>
                                                 ${state.isEstoquista ? `
                                                     <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
                                                 ` : ''}
@@ -648,6 +724,11 @@
                                                         <div class="flex items-center gap-2">
                                                             <span class="text-lg">📍</span>
                                                             <div class="text-sm font-bold text-green-700">${item.localizacao}</div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex flex-wrap gap-1" title="${item.observacoes || 'Sem informações'}">
+                                                            ${renderStatus(item.observacoes)}
                                                         </div>
                                                     </td>
                                                     ${state.isEstoquista ? `
@@ -691,7 +772,7 @@
                                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                                 </div>
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade Total *</label>
                                                     <input type="number" 
                                                         value="${state.editingItem.quantidade}"
                                                         oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
@@ -713,6 +794,17 @@
                                                     oninput="state.editingItem.localizacao = this.value"
                                                     placeholder="Ex: Prateleira A1 - Corredor 3"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Distribuição (OBS)</label>
+                                                <textarea 
+                                                    oninput="state.editingItem.observacoes = this.value"
+                                                    placeholder="Ex: 2 disponíveis para venda, 1 em assistência, 2 mostruário"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none"
+                                                    rows="3">${state.editingItem.observacoes || ''}</textarea>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    💡 Exemplos: "3 para venda, 2 em assistência", "1 mostruário, 4 uso da loja"
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -777,7 +869,7 @@
                                 </button>
                             </p>
                             <p class="text-xs text-gray-400 mt-2">
-                                Lendo colunas: Código (1ª) • Produto (2ª) • Quantidade (6ª) • Localização (7ª)
+                                Lendo colunas: Código (1ª) • Produto (2ª) • Quantidade (6ª) • Localização (7ª) • OBS (12ª)
                             </p>
                         </div>
                     </div>
@@ -790,7 +882,6 @@
                     const searchInput = document.getElementById('searchInput');
                     if (searchInput) {
                         searchInput.focus();
-                        // Manter o cursor no final do texto
                         searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
                     }
                 }, 10);
