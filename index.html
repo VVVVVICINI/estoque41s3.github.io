@@ -28,7 +28,7 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DO SUPABASE - AGORA VAMOS USAR PARA COMPARTILHAMENTO REAL
+        // CONFIGURAÇÃO DO SUPABASE
         const SUPABASE_URL = 'https://gknitzmuhslvljtxkoni.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrbml0em11aHNsdmxqdHhrb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMjE0MDEsImV4cCI6MjA3NTg5NzQwMX0.j-OVBYn-OFExiQs-s8GPgDrPIiUNNO8rwoRgVpcqlTA';
         
@@ -41,15 +41,19 @@
             searchTerm: '',
             filteredItems: [],
             isEstoquista: false,
-            editingItem: null // Item sendo editado
+            editingItem: null,
+            isNewProduct: false,
+            connectionError: false
         };
 
         // Inicializar Supabase
         let supabase;
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('✅ Supabase conectado');
         } catch (error) {
-            console.error('❌ Supabase não disponível');
+            console.error('❌ Erro ao conectar com Supabase:', error);
+            state.connectionError = true;
         }
 
         // 🔄 INICIALIZAÇÃO
@@ -62,9 +66,9 @@
             state.loading = false;
             render();
             
-            // Atualizar dados a cada 30 segundos (para vendedores verem mudanças)
+            // Atualizar dados a cada 10 segundos (para vendedores verem mudanças)
             if (!state.isEstoquista) {
-                setInterval(loadSharedItems, 30000);
+                setInterval(loadSharedItems, 10000);
             }
         }
 
@@ -75,72 +79,104 @@
             console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
         }
 
-        // 📦 CARREGAR DADOS COMPARTILHADOS DO SUPABASE
+        // 📦 CARREGAR DADOS COMPARTILHADOS DO SUPABASE - PARA TODOS OS USUÁRIOS
         async function loadSharedItems() {
             try {
-                if (supabase) {
-                    console.log('☁️ Buscando dados do Supabase...');
-                    const { data, error } = await supabase
-                        .from('items')
-                        .select('*')
-                        .order('updated_at', { ascending: false });
-                    
-                    if (!error && data) {
-                        state.items = data;
-                        state.filteredItems = [...data];
-                        console.log('✅ Dados carregados do Supabase:', data.length, 'itens');
-                        return;
+                console.log('📦 Tentando carregar dados do Supabase...');
+                
+                if (!supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+
+                const { data, error } = await supabase
+                    .from('items')
+                    .select('*')
+                    .order('updated_at', { ascending: false });
+
+                if (error) {
+                    console.error('❌ Erro ao buscar dados:', error);
+                    throw error;
+                }
+
+                console.log('✅ Dados carregados do Supabase:', data ? data.length : 0, 'itens');
+                
+                if (data && data.length > 0) {
+                    state.items = data;
+                    state.filteredItems = [...data];
+                    state.connectionError = false;
+                } else {
+                    // Se não há dados no Supabase, usar localStorage como fallback
+                    const localItems = localStorage.getItem('estoque_compartilhado');
+                    if (localItems) {
+                        state.items = JSON.parse(localItems);
+                        state.filteredItems = [...state.items];
+                        console.log('📱 Usando dados do localStorage:', state.items.length, 'itens');
+                    } else {
+                        state.items = [];
+                        state.filteredItems = [];
                     }
                 }
                 
+            } catch (error) {
+                console.error('❌ Erro ao carregar dados compartilhados:', error);
+                state.connectionError = true;
+                
                 // Fallback para localStorage
-                console.log('📱 Usando fallback localStorage');
                 const localItems = localStorage.getItem('estoque_compartilhado');
                 if (localItems) {
                     state.items = JSON.parse(localItems);
                     state.filteredItems = [...state.items];
+                    console.log('📱 Fallback para localStorage:', state.items.length, 'itens');
                 }
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar dados:', error);
             }
         }
 
         // 💾 SALVAR DADOS NO SUPABASE E LOCAL
         async function saveSharedItems() {
             try {
-                // Salvar no localStorage como backup
-                localStorage.setItem('estoque_compartilhado', JSON.stringify(state.items));
+                console.log('💾 Salvando dados...');
                 
-                // Salvar no Supabase para compartilhamento real
+                // Sempre salvar no localStorage como backup
+                localStorage.setItem('estoque_compartilhado', JSON.stringify(state.items));
+                console.log('📱 Dados salvos no localStorage');
+
+                // Se é estoquista, salvar no Supabase também
                 if (supabase && state.isEstoquista) {
-                    console.log('💾 Salvando no Supabase...');
+                    console.log('☁️ Tentando salvar no Supabase...');
                     
-                    // Para simplificar, vamos substituir todos os itens
                     const itemsToSave = state.items.map(item => ({
                         ...item,
                         updated_at: new Date().toISOString()
                     }));
-                    
-                    // Primeiro limpar a tabela, depois inserir novos dados
+
+                    // Limpar tabela e inserir novos dados
                     const { error: deleteError } = await supabase
                         .from('items')
                         .delete()
-                        .neq('id', '0'); // Deletar todos os itens
-                    
-                    if (!deleteError) {
-                        const { error: insertError } = await supabase
-                            .from('items')
-                            .insert(itemsToSave);
-                        
-                        if (!insertError) {
-                            console.log('✅ Dados salvos no Supabase');
-                        }
+                        .neq('id', '0');
+
+                    if (deleteError) {
+                        console.error('❌ Erro ao limpar tabela:', deleteError);
+                        throw deleteError;
                     }
+
+                    const { error: insertError } = await supabase
+                        .from('items')
+                        .insert(itemsToSave);
+
+                    if (insertError) {
+                        console.error('❌ Erro ao inserir dados:', insertError);
+                        throw insertError;
+                    }
+
+                    console.log('✅ Dados salvos no Supabase');
+                    state.connectionError = false;
                 }
                 
             } catch (error) {
-                console.error('❌ Erro ao salvar dados:', error);
+                console.error('❌ Erro ao salvar dados compartilhados:', error);
+                state.connectionError = true;
+                // Os dados já estão salvos no localStorage, então não perdemos nada
             }
         }
 
@@ -175,6 +211,29 @@
             }
         }
 
+        // ➕ ADICIONAR NOVO PRODUTO
+        function addNewProduct() {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem adicionar produtos.');
+                return;
+            }
+            
+            state.editingItem = {
+                id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                codigo: '',
+                nome: '',
+                quantidade: 1,
+                localizacao: '',
+                categoria: 'Geral',
+                status: 'venda',
+                observacoes: '',
+                data_entrada: new Date().toISOString().split('T')[0],
+                updated_at: new Date().toISOString()
+            };
+            state.isNewProduct = true;
+            render();
+        }
+
         // ✏️ EDITAR PRODUTO
         function editItem(item) {
             if (!state.isEstoquista) {
@@ -183,39 +242,51 @@
             }
             
             state.editingItem = { ...item };
+            state.isNewProduct = false;
             render();
         }
 
-        // 💾 SALVAR EDIÇÃO DO PRODUTO
-        async function saveItemEdit() {
+        // 💾 SALVAR PRODUTO (NOVO OU EDIÇÃO)
+        async function saveProduct() {
             try {
-                if (!state.editingItem) return;
-                
-                // Atualizar o item na lista
-                const index = state.items.findIndex(item => item.id === state.editingItem.id);
-                if (index !== -1) {
-                    state.items[index] = {
-                        ...state.editingItem,
-                        updated_at: new Date().toISOString()
-                    };
-                    
-                    await saveSharedItems();
-                    state.filteredItems = [...state.items];
+                if (!state.editingItem.codigo || !state.editingItem.nome) {
+                    alert('❌ Código e nome são obrigatórios!');
+                    return;
                 }
                 
+                if (state.isNewProduct) {
+                    // Adicionar novo produto
+                    state.items.unshift(state.editingItem);
+                    alert('✅ Produto adicionado com sucesso!');
+                } else {
+                    // Atualizar produto existente
+                    const index = state.items.findIndex(item => item.id === state.editingItem.id);
+                    if (index !== -1) {
+                        state.items[index] = {
+                            ...state.editingItem,
+                            updated_at: new Date().toISOString()
+                        };
+                    }
+                    alert('✅ Produto atualizado com sucesso!');
+                }
+                
+                state.filteredItems = [...state.items];
+                await saveSharedItems();
+                
                 state.editingItem = null;
+                state.isNewProduct = false;
                 render();
-                alert('✅ Produto atualizado!');
                 
             } catch (error) {
-                console.error('❌ Erro ao salvar edição:', error);
-                alert('Erro ao salvar alterações');
+                console.error('❌ Erro ao salvar produto:', error);
+                alert('Erro ao salvar produto: ' + error.message);
             }
         }
 
         // ❌ CANCELAR EDIÇÃO
         function cancelEdit() {
             state.editingItem = null;
+            state.isNewProduct = false;
             render();
         }
 
@@ -320,7 +391,7 @@
                     try {
                         const item = data[i];
                         const mappedItem = {
-                            id: 'item_' + Date.now() + '_' + i,
+                            id: 'item_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 9),
                             codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
                             nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
                             quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
@@ -435,6 +506,11 @@
                                                     Tornar-se estoquista
                                                 </button>
                                             ` : ''}
+                                            ${state.connectionError ? `
+                                                <span class="text-xs text-red-600 bg-red-100 px-2 py-1 rounded">⚠️ Offline</span>
+                                            ` : `
+                                                <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">✅ Online</span>
+                                            `}
                                         </div>
                                     </div>
                                 </div>
@@ -461,13 +537,17 @@
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
                                     ${state.isEstoquista ? `
+                                        <button onclick="addNewProduct()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                            ➕ Adicionar Produto
+                                        </button>
                                         <button onclick="openModal('import')" 
                                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
                                             📥 Importar Planilha
                                         </button>
                                     ` : ''}
                                     <button onclick="downloadTemplate()" 
-                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
                                         📋 Modelo
                                     </button>
                                 </div>
@@ -485,14 +565,22 @@
                                 <div class="text-center py-16">
                                     <div class="text-8xl mb-6 text-purple-600">📦</div>
                                     <h3 class="text-2xl font-semibold text-gray-600 mb-3">Estoque vazio</h3>
-                                    <p class="text-gray-500 mb-6">O estoquista precisa importar uma planilha</p>
+                                    <p class="text-gray-500 mb-6">${state.connectionError ? 'Erro ao carregar dados do servidor' : 'O estoquista precisa importar uma planilha'}</p>
                                     ${state.isEstoquista ? `
+                                        <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors mr-2">
+                                            ➕ Adicionar Primeiro Produto
+                                        </button>
                                         <button onclick="openModal('import')" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
-                                            📥 Importar Primeira Planilha
+                                            📥 Importar Planilha
                                         </button>
                                     ` : `
                                         <p class="text-sm text-gray-500">Aguarde o estoquista carregar os produtos</p>
                                     `}
+                                    ${state.connectionError ? `
+                                        <div class="mt-4 p-3 bg-red-50 rounded-lg">
+                                            <p class="text-red-700 text-sm">⚠️ Não foi possível conectar com o servidor. Recarregue a página.</p>
+                                        </div>
+                                    ` : ''}
                                 </div>
                             ` : state.filteredItems.length === 0 ? `
                                 <div class="text-center py-16">
@@ -563,35 +651,47 @@
                             `}
                         </div>
 
-                        <!-- MODAL EDIÇÃO -->
+                        <!-- MODAL EDIÇÃO/ADICIONAR -->
                         ${state.editingItem ? `
                             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                                 <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                                     <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
-                                        <h2 class="text-xl font-bold">Editar Produto</h2>
+                                        <h2 class="text-xl font-bold">${state.isNewProduct ? 'Adicionar Novo Produto' : 'Editar Produto'}</h2>
                                     </div>
                                     <div class="p-6">
                                         <div class="space-y-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Código</label>
-                                                <input type="text" 
-                                                    value="${state.editingItem.codigo}"
-                                                    oninput="state.editingItem.codigo = this.value"
-                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+                                                    <input type="text" 
+                                                        value="${state.editingItem.codigo}"
+                                                        oninput="state.editingItem.codigo = this.value"
+                                                        placeholder="Ex: CEL-001"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
+                                                    <input type="number" 
+                                                        value="${state.editingItem.quantidade}"
+                                                        oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                                </div>
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Produto</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
                                                 <input type="text" 
                                                     value="${state.editingItem.nome}"
                                                     oninput="state.editingItem.nome = this.value"
+                                                    placeholder="Ex: Smartphone Samsung Galaxy"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
                                             <div class="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
-                                                    <input type="number" 
-                                                        value="${state.editingItem.quantidade}"
-                                                        oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                                                    <input type="text" 
+                                                        value="${state.editingItem.categoria}"
+                                                        oninput="state.editingItem.categoria = this.value"
+                                                        placeholder="Ex: Telefonia"
                                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                                 </div>
                                                 <div>
@@ -608,23 +708,18 @@
                                                 </div>
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">📍 Localização</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">📍 Localização *</label>
                                                 <input type="text" 
                                                     value="${state.editingItem.localizacao}"
                                                     oninput="state.editingItem.localizacao = this.value"
-                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                                <input type="text" 
-                                                    value="${state.editingItem.categoria}"
-                                                    oninput="state.editingItem.categoria = this.value"
+                                                    placeholder="Ex: Prateleira A1 - Corredor 3"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                                                 <textarea 
                                                     oninput="state.editingItem.observacoes = this.value"
+                                                    placeholder="Informações adicionais sobre o produto"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none"
                                                     rows="3">${state.editingItem.observacoes || ''}</textarea>
                                             </div>
@@ -635,9 +730,9 @@
                                             class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
                                             Cancelar
                                         </button>
-                                        <button onclick="saveItemEdit()" 
+                                        <button onclick="saveProduct()" 
                                             class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors">
-                                            Salvar Alterações
+                                            ${state.isNewProduct ? 'Adicionar Produto' : 'Salvar Alterações'}
                                         </button>
                                     </div>
                                 </div>
@@ -693,11 +788,12 @@
                 state.loading = false;
                 render();
             }
-        }, 3000);
+        }, 5000);
 
         initApp().then(() => {
             clearTimeout(safetyTimeout);
         }).catch(error => {
+            console.error('❌ Erro na inicialização:', error);
             clearTimeout(safetyTimeout);
             state.loading = false;
             render();
