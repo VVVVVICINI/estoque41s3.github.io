@@ -49,7 +49,9 @@
             connectionError: false,
             syncInProgress: false,
             sortField: 'codigo',
-            sortDirection: 'asc'
+            sortDirection: 'asc',
+            searchTimeout: null,
+            maintainFocus: false // Nova flag para manter foco
         };
 
         // 🔄 INICIALIZAÇÃO
@@ -248,34 +250,65 @@
 
         // 🎯 FUNÇÃO DE PESQUISA SIMPLIFICADA
         function handleSearchInput(event) {
-            // Apenas atualiza o estado quando o usuário para de digitar
+            const value = event.target.value;
+            state.searchTerm = value;
+            
+            // Limpa timeout anterior
             clearTimeout(state.searchTimeout);
+            
+            // Aplica busca com debounce
             state.searchTimeout = setTimeout(() => {
-                state.searchTerm = event.target.value;
                 applySortingAndFiltering();
                 render();
-            }, 300); // 300ms de delay
+                // Mantém o foco após renderização
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Mantém a posição do cursor
+                        searchInput.setSelectionRange(value.length, value.length);
+                    }
+                }, 10);
+            }, 300);
         }
 
         // 🔍 EXECUTAR PESQUISA IMEDIATA (QUANDO PRESSIONAR ENTER)
         function handleSearchKeyPress(event) {
             if (event.key === 'Enter') {
+                const value = event.target.value;
+                state.searchTerm = value;
+                
+                // Limpa timeout anterior
                 clearTimeout(state.searchTimeout);
-                state.searchTerm = event.target.value;
+                
                 applySortingAndFiltering();
                 render();
+                
+                // Mantém o foco após renderização
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Mantém a posição do cursor
+                        searchInput.setSelectionRange(value.length, value.length);
+                    }
+                }, 10);
             }
         }
 
         // 🔍 LIMPAR PESQUISA
         function clearSearch() {
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.value = '';
-            }
             state.searchTerm = '';
             applySortingAndFiltering();
             render();
+            
+            // Mantém o foco após limpar
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }, 10);
         }
 
         // 📋 ORDENAR POR CAMPO
@@ -714,7 +747,7 @@
                                         </div>
                                     </div>
                                     <div class="text-xs text-gray-500 mt-2">
-                                        💡 Digite livremente e pressione Enter para buscar • Busca automática após pausa de 0.3s
+                                        💡 Digite livremente - o foco será mantido automaticamente
                                     </div>
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
@@ -974,6 +1007,16 @@
                     </div>
                 </div>
             `;
+
+            // SEMPRE mantém o foco na barra de pesquisa após renderização
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    // Mantém a posição do cursor no final do texto
+                    searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
+                }
+            }, 10);
         }
 
         // INICIAR APLICAÇÃO
