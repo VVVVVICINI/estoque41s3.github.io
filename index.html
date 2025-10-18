@@ -87,7 +87,7 @@
             console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
         }
 
-        // 📊 CARREGAR DO GOOGLE SHEETS - COLUNAS 1, 2, 6, 7, 12
+        // 📊 CARREGAR DO GOOGLE SHEETS - COLUNAS 1, 2, 3, 4, 5
         async function loadFromGoogleSheets() {
             if (state.syncInProgress) return;
             
@@ -117,7 +117,7 @@
             }
         }
 
-        // 📝 ANALISAR CSV - COLUNAS 1, 2, 6, 7, 12 (OBS)
+        // 📝 ANALISAR CSV - COLUNAS 1, 2, 3, 4, 5
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
             const items = [];
@@ -126,13 +126,13 @@
                 try {
                     const cells = parseCSVLine(lines[i]);
                     
-                    // COLUNAS: 
-                    // 1=Código, 2=Produto, 6=Quantidade, 7=Localização, 12=OBS (Status)
+                    // NOVAS COLUNAS: 
+                    // 1=Código, 2=Nome(Produto), 3=Quantidade, 4=Plataforma, 5=OBS(Status)
                     const codigo = (cells[0] || '').toString().trim();
                     const nome = (cells[1] || '').toString().trim();
-                    const quantidade = parseInt(cells[5]) || 1;
-                    const localizacao = (cells[6] || 'Não informado').toString().trim();
-                    const observacoes = (cells[11] || '').toString().trim(); // 12ª coluna (índice 11)
+                    const quantidade = parseInt(cells[2]) || 1;
+                    const plataforma = (cells[3] || 'Não informado').toString().trim();
+                    const observacoes = (cells[4] || '').toString().trim(); // 5ª coluna (índice 4)
                     
                     if (codigo && nome) {
                         items.push({
@@ -140,7 +140,7 @@
                             codigo: codigo,
                             nome: nome,
                             quantidade: quantidade,
-                            localizacao: localizacao,
+                            plataforma: plataforma,
                             observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
                             updated_at: new Date().toISOString()
@@ -187,7 +187,7 @@
                 
                 console.log('💾 Preparando dados para salvar no Google Sheets...');
                 
-                // Criar CSV no formato da sua planilha (12 colunas)
+                // Criar CSV no formato da sua planilha (5 colunas)
                 const csvContent = createFullCSVForSheets();
                 
                 // Baixar CSV atualizado
@@ -204,13 +204,11 @@
             }
         }
 
-        // 📝 CRIAR CSV COMPLETO PARA PLANILHA (12 COLUNAS)
+        // 📝 CRIAR CSV COMPLETO PARA PLANILHA (5 COLUNAS)
         function createFullCSVForSheets() {
-            // Cabeçalho com 12 colunas (mantendo estrutura original)
+            // Cabeçalho com 5 colunas
             const headers = [
-                'CODIGO', 'PRODUTO', 'COLUNA3', 'COLUNA4', 'COLUNA5', 
-                'QUANTIDADE', 'LOCALIZACAO', 'COLUNA8', 'COLUNA9', 'COLUNA10', 
-                'COLUNA11', 'OBS'
+                'CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS'
             ];
             
             let csvContent = headers.join(',') + '\n';
@@ -219,16 +217,9 @@
                 const row = [
                     `"${item.codigo}"`,           // Coluna 1
                     `"${item.nome}"`,             // Coluna 2
-                    '',                          // Coluna 3
-                    '',                          // Coluna 4  
-                    '',                          // Coluna 5
-                    item.quantidade,             // Coluna 6
-                    `"${item.localizacao}"`,     // Coluna 7
-                    '',                          // Coluna 8
-                    '',                          // Coluna 9
-                    '',                          // Coluna 10
-                    '',                          // Coluna 11
-                    `"${item.observacoes || ''}"` // Coluna 12 (OBS)
+                    item.quantidade,             // Coluna 3
+                    `"${item.plataforma}"`,      // Coluna 4
+                    `"${item.observacoes || ''}"` // Coluna 5 (OBS)
                 ];
                 csvContent += row.join(',') + '\n';
             });
@@ -279,7 +270,7 @@
                 codigo: '',
                 nome: '',
                 quantidade: 1,
-                localizacao: '',
+                plataforma: '',
                 observacoes: '',
                 data_entrada: new Date().toISOString().split('T')[0],
                 updated_at: new Date().toISOString()
@@ -447,9 +438,9 @@
                         const mappedItem = {
                             id: 'import_' + Date.now() + '_' + i,
                             codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
-                            nome: String(item.PRODUTO || item.Produto || item.NOME || item.nome || '').trim(),
+                            nome: String(item.NOME || item.Nome || item.PRODUTO || item.Produto || item.nome || '').trim(),
                             quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
-                            localizacao: String(item.LOCALIZACAO || item.Localização || item.localizacao || 'Não informado').trim(),
+                            plataforma: String(item.PLATAFORMA || item.Plataforma || item.plataforma || 'Não informado').trim(),
                             observacoes: String(item.OBS || item.Observações || item.observacoes || '').trim(),
                             data_entrada: new Date().toISOString().split('T')[0],
                             updated_at: new Date().toISOString()
@@ -492,26 +483,18 @@
                 state.filteredItems = state.items.filter(item => 
                     item.codigo.toLowerCase().includes(term) ||
                     item.nome.toLowerCase().includes(term) ||
-                    item.localizacao.toLowerCase().includes(term) ||
+                    item.plataforma.toLowerCase().includes(term) ||
                     (item.observacoes && item.observacoes.toLowerCase().includes(term))
                 );
             }
         }
 
-        // 🎯 FUNÇÃO DE PESQUISA QUE NÃO PERDE FOCO
+        // 🎯 FUNÇÃO DE PESQUISA CORRIGIDA - SEM FOCAR AUTOMATICAMENTE
         function handleSearchInput(value) {
             state.searchTerm = value;
-            state.searchFocused = true;
+            state.searchFocused = false; // Não forçar foco
             filterItems();
             render();
-            
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.setSelectionRange(value.length, value.length);
-                }
-            }, 10);
         }
 
         // 📥 BAIXAR MODELO
@@ -520,16 +503,16 @@
                 const templateData = [
                     {
                         'CODIGO': 'ROUP-001',
-                        'PRODUTO': 'Roupeiro Dallas BR',
+                        'NOME': 'Roupeiro Dallas BR',
                         'QUANTIDADE': '2',
-                        'LOCALIZACAO': 'Setor Móveis - Corredor A',
+                        'PLATAFORMA': 'Setor Móveis - Corredor A',
                         'OBS': '1 disponível para venda, 1 embalado'
                     },
                     {
                         'CODIGO': 'CEL-002', 
-                        'PRODUTO': 'Smartphone Samsung',
+                        'NOME': 'Smartphone Samsung',
                         'QUANTIDADE': '3',
-                        'LOCALIZACAO': 'Prateleira Eletrônicos',
+                        'PLATAFORMA': 'Prateleira Eletrônicos',
                         'OBS': '2 para venda, 1 em assistência técnica'
                     }
                 ];
@@ -610,7 +593,7 @@
                                     <input 
                                         id="searchInput"
                                         type="text" 
-                                        placeholder="🔍 Pesquisar por código, produto, localização ou status..."
+                                        placeholder="🔍 Pesquisar por código, produto, plataforma ou status..."
                                         value="${state.searchTerm}"
                                         oninput="handleSearchInput(this.value)"
                                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
@@ -678,7 +661,7 @@
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Código</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">📍 Localização</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold">🖥️ Plataforma</th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold">Status das Unidades</th>
                                                 ${state.isEstoquista ? `
                                                     <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
@@ -701,8 +684,8 @@
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <div class="flex items-center gap-2">
-                                                            <span class="text-lg">📍</span>
-                                                            <div class="text-sm font-bold text-green-700">${item.localizacao}</div>
+                                                            <span class="text-lg">🖥️</span>
+                                                            <div class="text-sm font-bold text-green-700">${item.plataforma}</div>
                                                         </div>
                                                     </td>
                                                     <td class="px-4 py-3">
@@ -767,10 +750,10 @@
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">📍 Localização *</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">🖥️ Plataforma *</label>
                                                 <input type="text" 
-                                                    value="${state.editingItem.localizacao}"
-                                                    oninput="state.editingItem.localizacao = this.value"
+                                                    value="${state.editingItem.plataforma}"
+                                                    oninput="state.editingItem.plataforma = this.value"
                                                     placeholder="Ex: Setor Móveis - Corredor A"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
@@ -852,23 +835,15 @@
                                 </button>
                             </p>
                             <p class="text-xs text-gray-400 mt-2">
-                                Lendo colunas: Código (1ª) • Produto (2ª) • Quantidade (6ª) • Localização (7ª) • OBS (12ª)
+                                Lendo colunas: Código (1ª) • Nome (2ª) • Quantidade (3ª) • Plataforma (4ª) • OBS (5ª)
                             </p>
                         </div>
                     </div>
                 </div>
             `;
 
-            // Restaurar foco no campo de pesquisa se estava focado
-            if (state.searchFocused) {
-                setTimeout(() => {
-                    const searchInput = document.getElementById('searchInput');
-                    if (searchInput) {
-                        searchInput.focus();
-                        searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
-                    }
-                }, 10);
-            }
+            // REMOVI O CÓDIGO QUE FORÇAVA O FOCO NO CAMPO DE PESQUISA
+            // Isso estava causando o problema do teclado abrindo e fechando
         }
 
         // INICIAR APLICAÇÃO
