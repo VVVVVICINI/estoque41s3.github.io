@@ -14,6 +14,10 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        .sortable:hover {
+            cursor: pointer;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -44,7 +48,9 @@
             lastUpdate: null,
             connectionError: false,
             syncInProgress: false,
-            searchFocused: false
+            searchFocused: false,
+            sortField: 'codigo',
+            sortDirection: 'asc'
         };
 
         // 🔄 INICIALIZAÇÃO
@@ -103,7 +109,7 @@
                 const items = parseCSV(csvData);
                 
                 state.items = items;
-                state.filteredItems = [...items];
+                applySortingAndFiltering();
                 state.lastUpdate = new Date().toLocaleString('pt-BR');
                 state.connectionError = false;
                 
@@ -177,6 +183,99 @@
             return result.map(cell => cell.replace(/^"|"$/g, '').trim());
         }
 
+        // 🔄 APLICAR ORDENAÇÃO E FILTRO
+        function applySortingAndFiltering() {
+            // Primeiro filtrar
+            filterItems();
+            
+            // Depois ordenar
+            sortItems();
+        }
+
+        // 🔍 FILTRAR ITENS
+        function filterItems() {
+            const term = state.searchTerm.toLowerCase().trim();
+            
+            if (!term) {
+                state.filteredItems = [...state.items];
+            } else {
+                state.filteredItems = state.items.filter(item => 
+                    item.codigo.toLowerCase().includes(term) ||
+                    item.nome.toLowerCase().includes(term) ||
+                    item.plataforma.toLowerCase().includes(term) ||
+                    (item.observacoes && item.observacoes.toLowerCase().includes(term))
+                );
+            }
+        }
+
+        // 📊 ORDENAR ITENS
+        function sortItems() {
+            state.filteredItems.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch (state.sortField) {
+                    case 'codigo':
+                        valueA = a.codigo.toLowerCase();
+                        valueB = b.codigo.toLowerCase();
+                        break;
+                    case 'nome':
+                        valueA = a.nome.toLowerCase();
+                        valueB = b.nome.toLowerCase();
+                        break;
+                    case 'quantidade':
+                        valueA = a.quantidade;
+                        valueB = b.quantidade;
+                        break;
+                    case 'plataforma':
+                        valueA = a.plataforma.toLowerCase();
+                        valueB = b.plataforma.toLowerCase();
+                        break;
+                    case 'observacoes':
+                        valueA = (a.observacoes || '').toLowerCase();
+                        valueB = (b.observacoes || '').toLowerCase();
+                        break;
+                    default:
+                        valueA = a.codigo.toLowerCase();
+                        valueB = b.codigo.toLowerCase();
+                }
+                
+                if (state.sortDirection === 'asc') {
+                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                } else {
+                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                }
+            });
+        }
+
+        // 🎯 FUNÇÃO DE PESQUISA CORRIGIDA
+        function handleSearchInput(value) {
+            state.searchTerm = value;
+            applySortingAndFiltering();
+            render();
+        }
+
+        // 📋 ORDENAR POR CAMPO
+        function sortBy(field) {
+            if (state.sortField === field) {
+                // Se já está ordenando por este campo, inverte a direção
+                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Se é um campo novo, define como ascendente
+                state.sortField = field;
+                state.sortDirection = 'asc';
+            }
+            applySortingAndFiltering();
+            render();
+        }
+
+        // 📊 OBTER ÍCONE DE ORDENAÇÃO
+        function getSortIcon(field) {
+            if (state.sortField !== field) {
+                return '↕️';
+            }
+            return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
+        }
+
         // 💾 SALVAR NO GOOGLE SHEETS (ATUALIZAR PLANILHA)
         async function saveToGoogleSheets() {
             if (!state.isEstoquista) return;
@@ -247,7 +346,7 @@
             const savedItems = localStorage.getItem('estoque_compartilhado');
             if (savedItems) {
                 state.items = JSON.parse(savedItems);
-                state.filteredItems = [...state.items];
+                applySortingAndFiltering();
                 console.log('📱 Dados carregados do localStorage:', state.items.length, 'itens');
             }
         }
@@ -315,7 +414,7 @@
                     alert('✅ Produto atualizado!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
                 }
                 
-                state.filteredItems = [...state.items];
+                applySortingAndFiltering();
                 saveToLocalStorage();
                 
                 state.editingItem = null;
@@ -458,7 +557,7 @@
                 
                 // SUBSTITUIR todos os itens
                 state.items = newItems;
-                state.filteredItems = [...newItems];
+                applySortingAndFiltering();
                 saveToLocalStorage();
                 
                 state.importLoading = false;
@@ -471,30 +570,6 @@
                 state.importLoading = false;
                 render();
             }
-        }
-
-        // 🔍 FILTRAR ITENS (SEM RENDERIZAR)
-        function filterItems() {
-            const term = state.searchTerm.toLowerCase().trim();
-            
-            if (!term) {
-                state.filteredItems = [...state.items];
-            } else {
-                state.filteredItems = state.items.filter(item => 
-                    item.codigo.toLowerCase().includes(term) ||
-                    item.nome.toLowerCase().includes(term) ||
-                    item.plataforma.toLowerCase().includes(term) ||
-                    (item.observacoes && item.observacoes.toLowerCase().includes(term))
-                );
-            }
-        }
-
-        // 🎯 FUNÇÃO DE PESQUISA CORRIGIDA - SEM FOCAR AUTOMATICAMENTE
-        function handleSearchInput(value) {
-            state.searchTerm = value;
-            state.searchFocused = false; // Não forçar foco
-            filterItems();
-            render();
         }
 
         // 📥 BAIXAR MODELO
@@ -596,7 +671,8 @@
                                         placeholder="🔍 Pesquisar por código, produto, plataforma ou status..."
                                         value="${state.searchTerm}"
                                         oninput="handleSearchInput(this.value)"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none transition-colors"
+                                        autocomplete="off"
                                     >
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
@@ -623,6 +699,11 @@
                             ${state.searchTerm ? `
                                 <div class="mt-3 text-sm text-gray-600">
                                     ${state.filteredItems.length} resultado(s) para "${state.searchTerm}"
+                                    ${state.sortField !== 'codigo' || state.sortDirection !== 'asc' ? `
+                                        <span class="ml-2 text-purple-600">
+                                            • Ordenado por: ${state.sortField} (${state.sortDirection === 'asc' ? 'crescente' : 'decrescente'})
+                                        </span>
+                                    ` : ''}
                                 </div>
                             ` : ''}
                         </div>
@@ -658,11 +739,21 @@
                                     <table class="w-full">
                                         <thead class="bg-purple-600 text-white">
                                             <tr>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Código</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">🖥️ Plataforma</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Status das Unidades</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('codigo')">
+                                                    Código ${getSortIcon('codigo')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('nome')">
+                                                    Produto ${getSortIcon('nome')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('quantidade')">
+                                                    Quantidade ${getSortIcon('quantidade')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('plataforma')">
+                                                    🖥️ Plataforma ${getSortIcon('plataforma')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('observacoes')">
+                                                    Status das Unidades ${getSortIcon('observacoes')}
+                                                </th>
                                                 ${state.isEstoquista ? `
                                                     <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
                                                 ` : ''}
@@ -841,9 +932,6 @@
                     </div>
                 </div>
             `;
-
-            // REMOVI O CÓDIGO QUE FORÇAVA O FOCO NO CAMPO DE PESQUISA
-            // Isso estava causando o problema do teclado abrindo e fechando
         }
 
         // INICIAR APLICAÇÃO
