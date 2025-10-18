@@ -41,6 +41,7 @@
             activeModal: null,
             importLoading: false,
             searchTerm: '',
+            searchInputValue: '', // Valor atual do input (não aplicado ainda)
             filteredItems: [],
             isEstoquista: false,
             editingItem: null,
@@ -48,7 +49,6 @@
             lastUpdate: null,
             connectionError: false,
             syncInProgress: false,
-            searchFocused: false,
             sortField: 'codigo',
             sortDirection: 'asc'
         };
@@ -247,11 +247,32 @@
             });
         }
 
-        // 🎯 FUNÇÃO DE PESQUISA CORRIGIDA
+        // 🎯 FUNÇÃO DE PESQUISA CORRIGIDA - SÓ ATUALIZA O VALOR DO INPUT
         function handleSearchInput(value) {
-            state.searchTerm = value;
+            state.searchInputValue = value; // Apenas atualiza o valor do input
+            render();
+        }
+
+        // 🔍 EXECUTAR PESQUISA (APENAS QUANDO PRESSIONAR ENTER)
+        function executeSearch() {
+            state.searchTerm = state.searchInputValue; // Aplica a pesquisa
             applySortingAndFiltering();
             render();
+        }
+
+        // 🔍 LIMPAR PESQUISA
+        function clearSearch() {
+            state.searchInputValue = '';
+            state.searchTerm = '';
+            applySortingAndFiltering();
+            render();
+        }
+
+        // 🎯 MANIPULAR TECLA ENTER
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                executeSearch();
+            }
         }
 
         // 📋 ORDENAR POR CAMPO
@@ -664,16 +685,29 @@
                         <!-- BARRA DE PESQUISA E AÇÕES -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex flex-col md:flex-row gap-4">
-                                <div class="flex-1">
+                                <div class="flex-1 relative">
                                     <input 
                                         id="searchInput"
                                         type="text" 
-                                        placeholder="🔍 Pesquisar por código, produto, plataforma ou status..."
-                                        value="${state.searchTerm}"
+                                        placeholder="🔍 Pesquisar por código, produto, plataforma ou status... (Pressione Enter para buscar)"
+                                        value="${state.searchInputValue}"
                                         oninput="handleSearchInput(this.value)"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none transition-colors"
+                                        onkeypress="handleKeyPress(event)"
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none transition-colors pr-24"
                                         autocomplete="off"
                                     >
+                                    <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-2">
+                                        ${state.searchInputValue ? `
+                                            <button onclick="clearSearch()" 
+                                                class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm transition-colors">
+                                                Limpar
+                                            </button>
+                                        ` : ''}
+                                        <button onclick="executeSearch()" 
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm transition-colors">
+                                            Buscar
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
                                     ${state.isEstoquista ? `
@@ -704,6 +738,9 @@
                                             • Ordenado por: ${state.sortField} (${state.sortDirection === 'asc' ? 'crescente' : 'decrescente'})
                                         </span>
                                     ` : ''}
+                                    <button onclick="clearSearch()" class="ml-2 text-red-600 hover:text-red-800 underline text-xs">
+                                        Limpar pesquisa
+                                    </button>
                                 </div>
                             ` : ''}
                         </div>
