@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Localizador de Produtos - 41º S3</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .loading-spinner {
             animation: spin 1s linear infinite;
@@ -46,6 +47,8 @@
         let state = {
             items: [],
             loading: true,
+            activeModal: null,
+            importLoading: false,
             searchTerm: '',
             filteredItems: [],
             isEstoquista: false,
@@ -56,12 +59,13 @@
             syncInProgress: false,
             sortField: 'codigo',
             sortDirection: 'asc',
+            searchTimeout: null,
             lastSync: null
         };
 
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
-            console.log('🚀 Iniciando sistema com sincronização REAL...');
+            console.log('🚀 Iniciando sistema completo com sincronização REAL...');
             
             await checkUserRole();
             await loadFromGoogleSheets();
@@ -101,6 +105,8 @@
 
         // 📊 CARREGAR DO GOOGLE SHEETS
         async function loadFromGoogleSheets() {
+            if (state.syncInProgress) return;
+            
             try {
                 console.log('📊 Buscando dados atualizados...');
                 
@@ -421,6 +427,25 @@
             }, 300);
         }
 
+        function handleSearchKeyPress(event) {
+            if (event.key === 'Enter') {
+                const value = event.target.value;
+                state.searchTerm = value;
+                
+                clearTimeout(state.searchTimeout);
+                applySortingAndFiltering();
+                render();
+                
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.setSelectionRange(value.length, value.length);
+                    }
+                }, 10);
+            }
+        }
+
         function clearSearch() {
             state.searchTerm = '';
             applySortingAndFiltering();
@@ -432,6 +457,25 @@
                     searchInput.focus();
                 }
             }, 10);
+        }
+
+        // 📋 ORDENAR POR CAMPO
+        function sortBy(field) {
+            if (state.sortField === field) {
+                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sortField = field;
+                state.sortDirection = 'asc';
+            }
+            applySortingAndFiltering();
+            render();
+        }
+
+        function getSortIcon(field) {
+            if (state.sortField !== field) {
+                return '↕️';
+            }
+            return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
         }
 
         // 💾 LOCALSTORAGE
@@ -449,7 +493,273 @@
             console.log('💾 Dados salvos no localStorage');
         }
 
-        // 🎯 RENDER
+        // ➕ ADICIONAR NOVO PRODUTO
+        function addNewProduct() {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem adicionar produtos.');
+                return;
+            }
+            
+            state.editingItem = {
+                id: 'new_' + Date.now(),
+                codigo: '',
+                nome: '',
+                quantidade: 0,
+                plataforma: '',
+                observacoes: '',
+                data_entrada: new Date().toISOString().split('T')[0],
+                updated_at: new Date().toISOString()
+            };
+            state.isNewProduct = true;
+            render();
+        }
+
+        // ✏️ EDITAR PRODUTO
+        function editItem(item) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem editar produtos.');
+                return;
+            }
+            
+            state.editingItem = { ...item };
+            state.isNewProduct = false;
+            render();
+        }
+
+        // 💾 SALVAR PRODUTO (COM SINCRONIZAÇÃO)
+        async function saveProduct() {
+            try {
+                if (!state.editingItem.codigo || !state.editingItem.nome) {
+                    alert('❌ Código e nome são obrigatórios!');
+                    return;
+                }
+                
+                if (state.isNewProduct) {
+                    // Adicionar novo produto
+                    state.items.unshift(state.editingItem);
+                    alert('✅ Produto adicionado! Sincronizando...');
+                    
+                    // Sincronizar planilha completa via CSV
+                    downloadUpdatedCSV();
+                } else {
+                    // Atualizar produto existente
+                    const index = state.items.findIndex(item => item.id === state.editingItem.id);
+                    if (index !== -1) {
+                        state.items[index] = {
+                            ...state.editingItem,
+                            updated_at: new Date().toISOString()
+                        };
+                        
+                        // Sincronizar quantidade no Sheets
+                        await syncWithGoogleSheets(state.editingItem);
+                        alert('✅ Produto atualizado e sincronizado!');
+                    }
+                }
+                
+                applySortingAndFiltering();
+                saveToLocalStorage();
+                
+                state.editingItem = null;
+                state.isNewProduct = false;
+                render();
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar produto:', error);
+                alert('Erro ao salvar produto: ' + error.message);
+            }
+        }
+
+        // ❌ CANCELAR EDIÇÃO
+        function cancelEdit() {
+            state.editingItem = null;
+            state.isNewProduct = false;
+            render();
+        }
+
+        // 🗑️ EXCLUIR PRODUTO (COM SINCRONIZAÇÃO)
+        async function deleteItem(id) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem excluir produtos.');
+                return;
+            }
+            
+            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+            
+            state.items = state.items.filter(item => item.id !== id);
+            state.filteredItems = state.filteredItems.filter(item => item.id !== id);
+            saveToLocalStorage();
+            
+            // Sincronizar com Google Sheets via CSV
+            downloadUpdatedCSV();
+            
+            render();
+            alert('✅ Produto excluído! Faça o upload do CSV no Google Sheets.');
+        }
+
+        // 📊 FORMATAR OBSERVAÇÕES
+        function formatObservacoes(observacoes) {
+            if (!observacoes) {
+                return '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs border border-gray-200">Sem informações</span>';
+            }
+
+            const partes = observacoes.split(/[,\.]| e /).filter(part => part.trim());
+            
+            return partes.map(parte => {
+                const texto = parte.trim();
+                let cor = 'bg-gray-100 text-gray-800 border-gray-200';
+                
+                if (texto.toLowerCase().includes('venda') || texto.toLowerCase().includes('disponível')) {
+                    cor = 'bg-green-100 text-green-800 border-green-200';
+                } else if (texto.toLowerCase().includes('assistência') || texto.toLowerCase().includes('conserto')) {
+                    cor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                } else if (texto.toLowerCase().includes('mostruário') || texto.toLowerCase().includes('vitrine')) {
+                    cor = 'bg-blue-100 text-blue-800 border-blue-200';
+                } else if (texto.toLowerCase().includes('uso') || texto.toLowerCase().includes('loja')) {
+                    cor = 'bg-purple-100 text-purple-800 border-purple-200';
+                } else if (texto.toLowerCase().includes('embalado') || texto.toLowerCase().includes('caixa')) {
+                    cor = 'bg-orange-100 text-orange-800 border-orange-200';
+                } else if (texto.toLowerCase().includes('separado') || texto.toLowerCase().includes('reserva')) {
+                    cor = 'bg-red-100 text-red-800 border-red-200';
+                }
+
+                return `<span class="px-2 py-1 ${cor} rounded text-xs border mb-1 inline-block mr-1" title="${texto}">
+                    ${texto}
+                </span>`;
+            }).join('');
+        }
+
+        // 📥 IMPORTAR EXCEL
+        async function importFromExcel(event) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem importar planilhas.');
+                return;
+            }
+
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                state.importLoading = true;
+                render();
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        
+                        processImportedData(jsonData);
+                        
+                    } catch (error) {
+                        alert('Erro ao ler arquivo: ' + error.message);
+                        state.importLoading = false;
+                        render();
+                    }
+                };
+                
+                reader.readAsArrayBuffer(file);
+                
+            } catch (error) {
+                alert('Erro na importação: ' + error.message);
+                state.importLoading = false;
+                render();
+            }
+        }
+
+        // 🔄 PROCESSAR DADOS IMPORTADOS
+        function processImportedData(data) {
+            try {
+                let importedCount = 0;
+                const newItems = [];
+                
+                for (let i = 0; i < data.length; i++) {
+                    try {
+                        const item = data[i];
+                        const mappedItem = {
+                            id: 'import_' + Date.now() + '_' + i,
+                            codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
+                            nome: String(item.NOME || item.Nome || item.PRODUTO || item.Produto || item.nome || '').trim(),
+                            quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 0,
+                            plataforma: String(item.PLATAFORMA || item.Plataforma || item.plataforma || 'Não informado').trim(),
+                            observacoes: String(item.OBS || item.Observações || item.observacoes || '').trim(),
+                            data_entrada: new Date().toISOString().split('T')[0],
+                            updated_at: new Date().toISOString()
+                        };
+                        
+                        if (mappedItem.codigo && mappedItem.nome) {
+                            newItems.push(mappedItem);
+                            importedCount++;
+                        }
+                        
+                    } catch (itemError) {
+                        console.warn(`Erro no item ${i}:`, itemError);
+                    }
+                }
+                
+                // SUBSTITUIR todos os itens
+                state.items = newItems;
+                applySortingAndFiltering();
+                saveToLocalStorage();
+                
+                state.importLoading = false;
+                render();
+                
+                alert(`✅ ${importedCount} produtos importados!\n\n💡 Use "Sincronizar Planilha" para salvar no Google Sheets.`);
+                
+            } catch (error) {
+                alert('Erro ao processar dados: ' + error.message);
+                state.importLoading = false;
+                render();
+            }
+        }
+
+        // 📥 BAIXAR MODELO
+        function downloadTemplate() {
+            try {
+                const templateData = [
+                    {
+                        'CODIGO': 'ROUP-001',
+                        'NOME': 'Roupeiro Dallas BR',
+                        'QUANTIDADE': '2',
+                        'PLATAFORMA': 'Setor Móveis - Corredor A',
+                        'OBS': '1 disponível para venda, 1 embalado'
+                    },
+                    {
+                        'CODIGO': 'CEL-002', 
+                        'NOME': 'Smartphone Samsung',
+                        'QUANTIDADE': '3',
+                        'PLATAFORMA': 'Prateleira Eletrônicos',
+                        'OBS': '2 para venda, 1 em assistência técnica'
+                    }
+                ];
+                
+                const ws = XLSX.utils.json_to_sheet(templateData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Estoque");
+                XLSX.writeFile(wb, 'modelo_importacao.xlsx');
+                alert('📋 Modelo baixado!');
+                
+            } catch (error) {
+                alert('Erro ao baixar modelo');
+            }
+        }
+
+        // 🎯 FUNÇÕES DE UI
+        function openModal(type) {
+            state.activeModal = type;
+            render();
+        }
+
+        function closeModal() {
+            state.activeModal = null;
+            state.importLoading = false;
+            render();
+        }
+
+        // 🎯 RENDER COMPLETO
         function render() {
             if (state.loading) {
                 return;
@@ -469,7 +779,7 @@
                                     </div>
                                     <div>
                                         <h1 class="text-2xl font-bold text-gray-900">Localizador de Produtos</h1>
-                                        <p class="text-gray-600">41º S3 - Sincronização REAL</p>
+                                        <p class="text-gray-600">41º S3 - Sistema Completo</p>
                                         <div class="flex items-center gap-2 mt-1">
                                             <span class="text-sm ${state.isEstoquista ? 'text-green-600 font-bold' : 'text-blue-600'}">
                                                 ${state.isEstoquista ? '👨‍💼 MODO ESTOQUISTA' : '👤 MODO VENDEDOR'}
@@ -497,11 +807,17 @@
                                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
                                         🔄 Atualizar
                                     </button>
+                                    ${state.isEstoquista ? `
+                                        <button onclick="downloadUpdatedCSV()" 
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                            📊 Sincronizar
+                                        </button>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BARRA DE PESQUISA -->
+                        <!-- BARRA DE PESQUISA E AÇÕES -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex flex-col md:flex-row gap-4">
                                 <div class="flex-1">
@@ -512,23 +828,49 @@
                                             placeholder="🔍 Pesquisar por código, produto, plataforma ou status..."
                                             value="${state.searchTerm}"
                                             oninput="handleSearchInput(event)"
+                                            onkeypress="handleSearchKeyPress(event)"
                                             class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none transition-colors pr-32"
                                             autocomplete="off"
                                         >
-                                        <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-2">
                                             ${state.searchTerm ? `
                                                 <button onclick="clearSearch()" 
                                                     class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-1">
                                                     🗑️ Limpar
                                                 </button>
                                             ` : ''}
+                                            <button onclick="handleSearchKeyPress({key: 'Enter', target: document.getElementById('searchInput')})" 
+                                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-1">
+                                                🔍 Buscar
+                                            </button>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="flex gap-2 flex-wrap">
+                                    ${state.isEstoquista ? `
+                                        <button onclick="addNewProduct()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                            ➕ Adicionar
+                                        </button>
+                                        <button onclick="openModal('import')" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                            📥 Importar
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="downloadTemplate()" 
+                                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
+                                        📋 Modelo
+                                    </button>
                                 </div>
                             </div>
                             ${state.searchTerm ? `
                                 <div class="mt-3 text-sm text-gray-600">
                                     ${state.filteredItems.length} resultado(s) para "${state.searchTerm}"
+                                    ${state.sortField !== 'codigo' || state.sortDirection !== 'asc' ? `
+                                        <span class="ml-2 text-purple-600">
+                                            • Ordenado por: ${state.sortField} (${state.sortDirection === 'asc' ? 'crescente' : 'decrescente'})
+                                        </span>
+                                    ` : ''}
                                 </div>
                             ` : ''}
                         </div>
@@ -539,7 +881,19 @@
                                 <div class="text-center py-16">
                                     <div class="text-8xl mb-6 text-purple-600">📦</div>
                                     <h3 class="text-2xl font-semibold text-gray-600 mb-3">Estoque vazio</h3>
-                                    <p class="text-gray-500">${state.connectionError ? 'Erro ao carregar planilha' : 'Adicione produtos para começar'}</p>
+                                    <p class="text-gray-500 mb-6">${state.connectionError ? 'Erro ao carregar planilha' : 'Adicione produtos para começar'}</p>
+                                    ${state.isEstoquista ? `
+                                        <div class="flex gap-2 justify-center flex-wrap">
+                                            <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                                                ➕ Adicionar Produto
+                                            </button>
+                                            <button onclick="openModal('import')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                                                📥 Importar Planilha
+                                            </button>
+                                        </div>
+                                    ` : `
+                                        <p class="text-sm text-gray-500">Aguarde o estoquista carregar os produtos</p>
+                                    `}
                                 </div>
                             ` : state.filteredItems.length === 0 ? `
                                 <div class="text-center py-16">
@@ -552,11 +906,24 @@
                                     <table class="w-full">
                                         <thead class="bg-purple-600 text-white">
                                             <tr>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Código</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Produto</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Quantidade</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Plataforma</th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold">Status</th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('codigo')">
+                                                    Código ${getSortIcon('codigo')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('nome')">
+                                                    Produto ${getSortIcon('nome')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('quantidade')">
+                                                    Quantidade ${getSortIcon('quantidade')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('plataforma')">
+                                                    🖥️ Plataforma ${getSortIcon('plataforma')}
+                                                </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('observacoes')">
+                                                    Status das Unidades ${getSortIcon('observacoes')}
+                                                </th>
+                                                ${state.isEstoquista ? `
+                                                    <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
+                                                ` : ''}
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
@@ -589,11 +956,30 @@
                                                         </div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="text-sm font-bold text-green-700">${item.plataforma}</div>
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="text-lg">🖥️</span>
+                                                            <div class="text-sm font-bold text-green-700">${item.plataforma}</div>
+                                                        </div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="text-sm text-gray-600">${item.observacoes || 'Sem informações'}</div>
+                                                        <div class="flex flex-wrap gap-1 max-w-md">
+                                                            ${formatObservacoes(item.observacoes)}
+                                                        </div>
                                                     </td>
+                                                    ${state.isEstoquista ? `
+                                                        <td class="px-4 py-3">
+                                                            <div class="flex gap-2">
+                                                                <button onclick="editItem(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
+                                                                    class="text-blue-600 hover:text-blue-800 font-medium text-sm bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors">
+                                                                    Editar
+                                                                </button>
+                                                                <button onclick="deleteItem('${item.id}')" 
+                                                                    class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors">
+                                                                    Excluir
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    ` : ''}
                                                 </tr>
                                             `).join('')}
                                         </tbody>
@@ -601,6 +987,116 @@
                                 </div>
                             `}
                         </div>
+
+                        <!-- MODAL EDIÇÃO/ADICIONAR -->
+                        ${state.editingItem ? `
+                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                                <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                                    <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
+                                        <h2 class="text-xl font-bold">${state.isNewProduct ? 'Adicionar Novo Produto' : 'Editar Produto'}</h2>
+                                    </div>
+                                    <div class="p-6">
+                                        <div class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+                                                    <input type="text" 
+                                                        value="${state.editingItem.codigo}"
+                                                        oninput="state.editingItem.codigo = this.value"
+                                                        placeholder="Ex: ROUP-001"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade Total *</label>
+                                                    <input type="number" 
+                                                        value="${state.editingItem.quantidade}"
+                                                        oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
+                                                <input type="text" 
+                                                    value="${state.editingItem.nome}"
+                                                    oninput="state.editingItem.nome = this.value"
+                                                    placeholder="Ex: Roupeiro Dallas BR"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">🖥️ Plataforma *</label>
+                                                <input type="text" 
+                                                    value="${state.editingItem.plataforma}"
+                                                    oninput="state.editingItem.plataforma = this.value"
+                                                    placeholder="Ex: Setor Móveis - Corredor A"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Status das Unidades (OBS)</label>
+                                                <textarea 
+                                                    oninput="state.editingItem.observacoes = this.value"
+                                                    placeholder="Ex: 1 disponível para venda, 1 embalado"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none"
+                                                    rows="3">${state.editingItem.observacoes || ''}</textarea>
+                                                <div class="text-xs text-gray-500 mt-2 space-y-1">
+                                                    <div>💡 <strong>Exemplos de uso:</strong></div>
+                                                    <div>• "1 disponível para venda, 1 embalado"</div>
+                                                    <div>• "2 para venda, 1 em assistência técnica"</div>
+                                                    <div>• "1 mostruário, 2 uso da loja"</div>
+                                                    <div>• "1 separado para cliente, 1 em caixa"</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
+                                        <button onclick="cancelEdit()" 
+                                            class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
+                                            Cancelar
+                                        </button>
+                                        <button onclick="saveProduct()" 
+                                            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors">
+                                            ${state.isNewProduct ? 'Adicionar Produto' : 'Salvar Alterações'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- MODAL IMPORTAR -->
+                        ${state.activeModal === 'import' ? `
+                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                                <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                                    <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
+                                        <h2 class="text-xl font-bold">Importar Planilha</h2>
+                                    </div>
+                                    <div class="p-6">
+                                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                                            <div class="text-4xl mb-4 text-purple-600">📤</div>
+                                            <h3 class="font-semibold text-gray-900 mb-2">Selecione a planilha</h3>
+                                            <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
+                                            <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block transition-colors">
+                                                ${state.importLoading ? `
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                                        <span>Processando...</span>
+                                                    </div>
+                                                ` : 'Selecionar Planilha'}
+                                                <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="p-6 border-t border-gray-200 flex justify-between">
+                                        <button onclick="downloadTemplate()" 
+                                            class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors">
+                                            📋 Baixar Modelo
+                                        </button>
+                                        <button onclick="closeModal()" 
+                                            class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
+                                            Fechar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
 
                         <!-- STATUS DO SISTEMA -->
                         <div class="mt-6 text-center">
@@ -612,7 +1108,7 @@
                                 </button>
                             </p>
                             <p class="text-xs text-gray-400 mt-2">
-                                🚀 Alterações são salvas automaticamente no Google Sheets • Modo: ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}
+                                🚀 Alterações de quantidade são salvas automaticamente • Modo: ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}
                             </p>
                         </div>
                     </div>
@@ -629,7 +1125,7 @@
         }
 
         // INICIAR APLICAÇÃO
-        console.log('🚀 Iniciando sistema com sincronização REAL...');
+        console.log('🚀 Iniciando sistema completo com sincronização REAL...');
         
         const safetyTimeout = setTimeout(() => {
             if (state.loading) {
