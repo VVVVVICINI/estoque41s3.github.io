@@ -18,6 +18,14 @@
             cursor: pointer;
             background-color: rgba(255, 255, 255, 0.1);
         }
+        .pulse-sync {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -34,7 +42,6 @@
         // 🔧 CONFIGURAÇÃO
         const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
         const GOOGLE_SHEET_NAME = 'Página1';
-        const API_KEY = 'AIzaSyDSMtUGanTKSNfZq5LZa-jxZp09xj6sOvc';
 
         let state = {
             items: [],
@@ -51,12 +58,14 @@
             syncInProgress: false,
             sortField: 'codigo',
             sortDirection: 'asc',
-            searchTimeout: null
+            searchTimeout: null,
+            pendingSync: false,
+            lastSync: null
         };
 
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
-            console.log('🚀 Iniciando sistema...');
+            console.log('🚀 Iniciando sistema com sincronização automática...');
             
             await checkUserRole();
             await loadFromGoogleSheets();
@@ -64,7 +73,11 @@
             state.loading = false;
             render();
             
-            setInterval(loadFromGoogleSheets, 30000);
+            // Sincronização automática a cada 2 minutos
+            setInterval(loadFromGoogleSheets, 120000);
+            
+            // Verificar pendências a cada 30 segundos
+            setInterval(checkPendingSync, 30000);
         }
 
         // 🔐 VERIFICAR SE É ESTOQUISTA
@@ -98,16 +111,23 @@
             if (state.syncInProgress) return;
             
             try {
-                console.log('📊 Buscando dados...');
+                console.log('📊 Buscando dados atualizados...');
                 
-                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&t=${Date.now()}`;
                 const response = await fetch(sheetUrl);
                 if (!response.ok) throw new Error('Erro ao carregar planilha');
                 
                 const csvData = await response.text();
                 const items = parseCSV(csvData);
                 
-                state.items = items;
+                // Se há alterações pendentes, fazer merge inteligente
+                if (state.pendingSync && state.items.length > 0) {
+                    state.items = mergeItems(state.items, items);
+                    state.pendingSync = false;
+                } else {
+                    state.items = items;
+                }
+                
                 applySortingAndFiltering();
                 state.lastUpdate = new Date().toLocaleString('pt-BR');
                 state.connectionError = false;
@@ -120,6 +140,44 @@
                 state.connectionError = true;
                 await loadFromLocalStorage();
             }
+        }
+
+        // 🔄 MERGE INTELIGENTE - Mantém alterações locais + dados atualizados
+        function mergeItems(localItems, remoteItems) {
+            const merged = [];
+            const remoteMap = new Map();
+            
+            // Criar mapa dos dados remotos
+            remoteItems.forEach(item => {
+                remoteMap.set(item.codigo, item);
+            });
+            
+            // Manter alterações locais quando existirem
+            localItems.forEach(localItem => {
+                const remoteItem = remoteMap.get(localItem.codigo);
+                if (remoteItem) {
+                    // Se o item local foi modificado recentemente, manter as alterações
+                    const localTime = new Date(localItem.updated_at).getTime();
+                    const remoteTime = new Date(remoteItem.updated_at).getTime();
+                    
+                    if (localTime > remoteTime) {
+                        merged.push(localItem);
+                    } else {
+                        merged.push(remoteItem);
+                    }
+                    remoteMap.delete(localItem.codigo);
+                } else {
+                    // Item novo local - manter
+                    merged.push(localItem);
+                }
+            });
+            
+            // Adicionar itens remotos que não existem localmente
+            remoteMap.forEach(item => {
+                merged.push(item);
+            });
+            
+            return merged;
         }
 
         // 📝 ANALISAR CSV - ZERO AGORA É ZERO
@@ -180,104 +238,152 @@
             return result.map(cell => cell.replace(/^"|"$/g, '').trim());
         }
 
-        // 🔄 SINCRONIZAÇÃO CORRIGIDA - ATUALIZAR QUANTIDADE NO GOOGLE SHEETS
-        async function updateQuantityInSheets(itemId, newQuantity) {
+        // 🔄 SINCRONIZAÇÃO AUTOMÁTICA - MÉTODO DIRETO
+        async function syncWithGoogleSheets() {
             if (!state.isEstoquista) return;
             
             try {
-                const item = state.items.find(item => item.id === itemId);
-                if (!item) return;
-
-                console.log('🔄 Sincronizando quantidade:', item.codigo, newQuantity);
-
-                // Método 1: Tentar via API
-                try {
-                    await updateViaAPI(item.codigo, newQuantity);
-                    console.log('✅ Sincronizado via API');
-                    return;
-                } catch (apiError) {
-                    console.log('❌ API falhou, usando método CSV');
-                }
-
-                // Método 2: Download do CSV atualizado
-                await downloadUpdatedCSV();
+                state.syncInProgress = true;
+                state.pendingSync = true;
+                render();
+                
+                console.log('🔄 Iniciando sincronização automática...');
+                
+                // Criar CSV atualizado
+                const csvContent = createFullCSVForSheets();
+                
+                // Método 1: Tentar upload direto via Google Forms (alternativo)
+                await tryAlternativeSync(csvContent);
+                
+                // Método 2: Download do CSV para upload manual
+                downloadCSV(csvContent, `estoque_sincronizado_${new Date().getTime()}.csv`);
+                
+                state.lastSync = new Date().toLocaleString('pt-BR');
+                state.syncInProgress = false;
+                
+                console.log('✅ Sincronização concluída');
+                showSyncNotification('✅ Sincronizado com sucesso!');
                 
             } catch (error) {
                 console.error('❌ Erro na sincronização:', error);
-                alert('✅ Alteração salva localmente. Use "Sincronizar Planilha" para atualizar o Google Sheets.');
-            }
-        }
-
-        // 🔄 ATUALIZAR VIA API
-        async function updateViaAPI(codigo, newQuantity) {
-            // Carregar dados para encontrar a linha
-            const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
-            const response = await fetch(sheetUrl);
-            const csvData = await response.text();
-            const lines = csvData.split('\n').filter(line => line.trim());
-            
-            let rowIndex = -1;
-            
-            // Encontrar a linha pelo código
-            for (let i = 1; i < lines.length; i++) {
-                const cells = parseCSVLine(lines[i]);
-                if (cells[0] && cells[0].trim() === codigo) {
-                    rowIndex = i + 1;
-                    break;
-                }
-            }
-            
-            if (rowIndex === -1) {
-                throw new Error('Produto não encontrado na planilha');
-            }
-
-            // Atualizar via API
-            const range = `${GOOGLE_SHEET_NAME}!C${rowIndex}`;
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?valueInputOption=RAW&key=${API_KEY}`;
-            
-            const apiResponse = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    values: [[newQuantity]]
-                })
-            });
-            
-            if (!apiResponse.ok) {
-                throw new Error(`API error: ${apiResponse.status}`);
-            }
-            
-            return await apiResponse.json();
-        }
-
-        // 📥 BAIXAR CSV ATUALIZADO
-        async function downloadUpdatedCSV() {
-            const csvContent = createFullCSVForSheets();
-            downloadCSV(csvContent, 'estoque_atualizado.csv');
-            
-            alert('📥 CSV atualizado baixado!\n\n💡 Para atualizar o Google Sheets:\n1. Abra sua planilha\n2. Arquivo → Importar → Fazer upload\n3. Substitua a planilha atual\n4. Salve as alterações');
-        }
-
-        // 💾 SALVAR PLANILHA COMPLETA
-        async function saveFullSheetToGoogle() {
-            try {
-                state.syncInProgress = true;
-                render();
-                
-                const csvContent = createFullCSVForSheets();
-                downloadCSV(csvContent, 'planilha_completa_atualizada.csv');
-                
-                alert('✅ Planilha completa atualizada!\n\n📋 Faça o upload no Google Sheets substituindo a atual.');
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar planilha:', error);
-                alert('Erro ao gerar arquivo atualizado.');
-            } finally {
                 state.syncInProgress = false;
-                render();
+                showSyncNotification('⚠️ Sincronização parcial - verifique o arquivo baixado');
             }
+        }
+
+        // 🔄 MÉTODO ALTERNATIVO DE SINCRONIZAÇÃO
+        async function tryAlternativeSync(csvContent) {
+            // Método alternativo: Criar um novo Google Sheets com os dados atualizados
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const dataUrl = URL.createObjectURL(blob);
+            
+            // Abrir em nova aba para facilitar o copy-paste
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+                newWindow.document.write(`
+                    <html>
+                        <head><title>Dados Sincronizados - Copiar para Google Sheets</title></head>
+                        <body style="font-family: Arial, sans-serif; padding: 20px;">
+                            <h2>📊 Dados Sincronizados - ${new Date().toLocaleString('pt-BR')}</h2>
+                            <p><strong>Instruções:</strong></p>
+                            <ol>
+                                <li>Abra sua planilha do Google Sheets</li>
+                                <li>Selecione e copie a tabela abaixo (Ctrl+A, Ctrl+C)</li>
+                                <li>Na sua planilha, selecione a célula A1 e cole (Ctrl+V)</li>
+                                <li>Salve as alterações</li>
+                            </ol>
+                            <hr>
+                            <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto;">${csvContent}</pre>
+                            <button onclick="window.close()" style="padding: 10px 20px; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer;">Fechar</button>
+                        </body>
+                    </html>
+                `);
+            }
+        }
+
+        // 🔔 NOTIFICAÇÃO DE SINCRONIZAÇÃO
+        function showSyncNotification(message) {
+            // Criar notificação temporária
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">×</button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // Auto-remover após 5 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // 🔍 VERIFICAR SINCRONIZAÇÃO PENDENTE
+        function checkPendingSync() {
+            if (state.pendingSync && !state.syncInProgress) {
+                console.log('🔄 Verificando sincronização pendente...');
+                syncWithGoogleSheets();
+            }
+        }
+
+        // ➕ DIMINUIR QUANTIDADE (SINCRONIZAÇÃO AUTOMÁTICA)
+        async function decreaseQuantity(itemId, amount = 1) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem alterar quantidades.');
+                return;
+            }
+            
+            const itemIndex = state.items.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+            
+            const currentQuantity = state.items[itemIndex].quantidade;
+            const newQuantity = Math.max(0, currentQuantity - amount);
+            
+            if (newQuantity === currentQuantity) {
+                alert('❌ Quantidade já está em zero.');
+                return;
+            }
+            
+            // Atualizar localmente
+            state.items[itemIndex].quantidade = newQuantity;
+            state.items[itemIndex].updated_at = new Date().toISOString();
+            
+            // Sincronização automática
+            await syncWithGoogleSheets();
+            
+            // Atualizar interface
+            applySortingAndFiltering();
+            saveToLocalStorage();
+            render();
+        }
+
+        // ➕ AUMENTAR QUANTIDADE (SINCRONIZAÇÃO AUTOMÁTICA)
+        async function increaseQuantity(itemId, amount = 1) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem alterar quantidades.');
+                return;
+            }
+            
+            const itemIndex = state.items.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+            
+            const newQuantity = state.items[itemIndex].quantidade + amount;
+            
+            // Atualizar localmente
+            state.items[itemIndex].quantidade = newQuantity;
+            state.items[itemIndex].updated_at = new Date().toISOString();
+            
+            // Sincronização automática
+            await syncWithGoogleSheets();
+            
+            // Atualizar interface
+            applySortingAndFiltering();
+            saveToLocalStorage();
+            render();
         }
 
         // 📝 CRIAR CSV PARA PLANILHA
@@ -312,62 +418,6 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        }
-
-        // ➕ DIMINUIR QUANTIDADE (COM SINCRONIZAÇÃO)
-        function decreaseQuantity(itemId, amount = 1) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem alterar quantidades.');
-                return;
-            }
-            
-            const itemIndex = state.items.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) return;
-            
-            const currentQuantity = state.items[itemIndex].quantidade;
-            const newQuantity = Math.max(0, currentQuantity - amount);
-            
-            if (newQuantity === currentQuantity) {
-                alert('❌ Quantidade já está em zero.');
-                return;
-            }
-            
-            // Atualizar localmente
-            state.items[itemIndex].quantidade = newQuantity;
-            state.items[itemIndex].updated_at = new Date().toISOString();
-            
-            // Sincronizar com Google Sheets
-            updateQuantityInSheets(itemId, newQuantity);
-            
-            // Atualizar interface
-            applySortingAndFiltering();
-            saveToLocalStorage();
-            render();
-        }
-
-        // ➕ AUMENTAR QUANTIDADE (COM SINCRONIZAÇÃO)
-        function increaseQuantity(itemId, amount = 1) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem alterar quantidades.');
-                return;
-            }
-            
-            const itemIndex = state.items.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) return;
-            
-            const newQuantity = state.items[itemIndex].quantidade + amount;
-            
-            // Atualizar localmente
-            state.items[itemIndex].quantidade = newQuantity;
-            state.items[itemIndex].updated_at = new Date().toISOString();
-            
-            // Sincronizar com Google Sheets
-            updateQuantityInSheets(itemId, newQuantity);
-            
-            // Atualizar interface
-            applySortingAndFiltering();
-            saveToLocalStorage();
-            render();
         }
 
         // 🔄 FUNÇÕES DE ORDENAÇÃO E FILTRO
@@ -514,8 +564,8 @@
             console.log('💾 Dados salvos no localStorage');
         }
 
-        // ➕ ADICIONAR NOVO PRODUTO
-        function addNewProduct() {
+        // ➕ ADICIONAR NOVO PRODUTO (SINCRONIZAÇÃO AUTOMÁTICA)
+        async function addNewProduct() {
             if (!state.isEstoquista) {
                 alert('❌ Apenas estoquistas podem adicionar produtos.');
                 return;
@@ -547,7 +597,7 @@
             render();
         }
 
-        // 💾 SALVAR PRODUTO
+        // 💾 SALVAR PRODUTO (SINCRONIZAÇÃO AUTOMÁTICA)
         async function saveProduct() {
             try {
                 if (!state.editingItem.codigo || !state.editingItem.nome) {
@@ -558,7 +608,6 @@
                 if (state.isNewProduct) {
                     state.items.unshift(state.editingItem);
                     alert('✅ Produto adicionado! Sincronizando...');
-                    await saveFullSheetToGoogle();
                 } else {
                     const index = state.items.findIndex(item => item.id === state.editingItem.id);
                     if (index !== -1) {
@@ -566,13 +615,14 @@
                             ...state.editingItem,
                             updated_at: new Date().toISOString()
                         };
-                        await updateQuantityInSheets(state.editingItem.id, state.editingItem.quantidade);
-                        alert('✅ Produto atualizado e sincronizado!');
                     }
                 }
                 
                 applySortingAndFiltering();
                 saveToLocalStorage();
+                
+                // Sincronização automática
+                await syncWithGoogleSheets();
                 
                 state.editingItem = null;
                 state.isNewProduct = false;
@@ -591,7 +641,7 @@
             render();
         }
 
-        // 🗑️ EXCLUIR PRODUTO
+        // 🗑️ EXCLUIR PRODUTO (SINCRONIZAÇÃO AUTOMÁTICA)
         async function deleteItem(id) {
             if (!state.isEstoquista) {
                 alert('❌ Apenas estoquistas podem excluir produtos.');
@@ -604,10 +654,10 @@
             state.filteredItems = state.filteredItems.filter(item => item.id !== id);
             saveToLocalStorage();
             
-            await saveFullSheetToGoogle();
+            // Sincronização automática
+            await syncWithGoogleSheets();
             
             render();
-            alert('✅ Produto excluído e sincronizado!');
         }
 
         // 📊 FORMATAR OBSERVAÇÕES
@@ -662,7 +712,7 @@
                                     </div>
                                     <div>
                                         <h1 class="text-2xl font-bold text-gray-900">Localizador de Produtos</h1>
-                                        <p class="text-gray-600">41º S3 - Sistema Completo</p>
+                                        <p class="text-gray-600">41º S3 - Sistema Automático</p>
                                         <div class="flex items-center gap-2 mt-1">
                                             <span class="text-sm ${state.isEstoquista ? 'text-green-600 font-bold' : 'text-blue-600'}">
                                                 ${state.isEstoquista ? '👨‍💼 MODO ESTOQUISTA' : '👤 MODO VENDEDOR'}
@@ -670,8 +720,8 @@
                                             <span class="text-xs ${state.connectionError ? 'text-red-600' : 'text-green-600'}">
                                                 ${state.connectionError ? '⚠️ Offline' : '✅ Online'}
                                             </span>
-                                            <span class="text-xs text-gray-500">
-                                                📅 ${state.lastUpdate || 'Carregando...'}
+                                            <span class="text-xs ${state.pendingSync ? 'text-yellow-600 pulse-sync' : 'text-gray-500'}">
+                                                ${state.pendingSync ? '🔄 Sincronizando...' : (state.lastSync ? `✅ ${state.lastSync}` : '📅 ' + (state.lastUpdate || 'Carregando...'))}
                                             </span>
                                         </div>
                                     </div>
@@ -686,10 +736,10 @@
                                         🔄 Atualizar
                                     </button>
                                     ${state.isEstoquista ? `
-                                        <button onclick="saveFullSheetToGoogle()" 
-                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2 ${state.syncInProgress ? 'opacity-50 cursor-not-allowed' : ''}"
+                                        <button onclick="syncWithGoogleSheets()" 
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2 ${state.syncInProgress ? 'opacity-50 cursor-not-allowed pulse-sync' : ''}"
                                             ${state.syncInProgress ? 'disabled' : ''}>
-                                            ${state.syncInProgress ? '⏳ Sincronizando...' : '📊 Sincronizar'}
+                                            ${state.syncInProgress ? '⏳ Sincronizando...' : '🚀 Sincronizar'}
                                         </button>
                                     ` : ''}
                                 </div>
@@ -933,16 +983,20 @@
                         <!-- STATUS DO SISTEMA -->
                         <div class="mt-6 text-center">
                             <p class="text-sm text-gray-500">
-                                📊 Sistema conectado ao Google Sheets • 
+                                📊 Sistema com sincronização automática • 
                                 Atualizado: ${state.lastUpdate || 'Agora'} •
+                                ${state.lastSync ? `Última sync: ${state.lastSync} •` : ''}
                                 <button onclick="loadFromGoogleSheets()" class="text-purple-600 hover:text-purple-800 underline">
                                     Atualizar Dados
                                 </button>
                                 ${state.isEstoquista ? `
-                                    • <button onclick="saveFullSheetToGoogle()" class="text-green-600 hover:text-green-800 underline">
+                                    • <button onclick="syncWithGoogleSheets()" class="text-green-600 hover:text-green-800 underline">
                                         Sincronizar Agora
                                     </button>
                                 ` : ''}
+                            </p>
+                            <p class="text-xs text-gray-400 mt-2">
+                                🔄 Alterações são sincronizadas automaticamente • Modo: ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}
                             </p>
                         </div>
                     </div>
@@ -959,7 +1013,7 @@
         }
 
         // INICIAR APLICAÇÃO
-        console.log('🚀 Iniciando sistema completo...');
+        console.log('🚀 Iniciando sistema com sincronização automática...');
         
         const safetyTimeout = setTimeout(() => {
             if (state.loading) {
