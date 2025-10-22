@@ -31,10 +31,11 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DA SUA PLANILHA
+        // 🔧 CONFIGURAÇÃO DA API DO GOOGLE SHEETS
         const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
         const GOOGLE_SHEET_NAME = 'Página1';
-        
+        const API_KEY = 'AIzaSyDGR2Nm3kSs5ehG3swtxhDHJY-fu5DOM7A'; // ✅ SUA CHAVE AQUI
+
         let state = {
             items: [],
             loading: true,
@@ -50,13 +51,12 @@
             syncInProgress: false,
             sortField: 'codigo',
             sortDirection: 'asc',
-            searchTimeout: null,
-            maintainFocus: false // Nova flag para manter foco
+            searchTimeout: null
         };
 
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
-            console.log('🚀 Iniciando sistema completo com Google Sheets...');
+            console.log('🚀 Iniciando sistema completo com Google Sheets API...');
             
             await checkUserRole();
             await loadFromGoogleSheets();
@@ -94,52 +94,51 @@
             console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
         }
 
-        // 📊 CARREGAR DO GOOGLE SHEETS - COLUNAS 1, 2, 3, 4, 5
+        // 📊 CARREGAR DO GOOGLE SHEETS VIA API
         async function loadFromGoogleSheets() {
             if (state.syncInProgress) return;
             
             try {
-                console.log('📊 Buscando dados da planilha...');
+                console.log('📊 Buscando dados via API...');
                 
-                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
+                const range = `${GOOGLE_SHEET_NAME}!A:E`;
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?key=${API_KEY}`;
                 
-                const response = await fetch(sheetUrl);
+                const response = await fetch(url);
                 if (!response.ok) throw new Error('Erro ao carregar planilha');
                 
-                const csvData = await response.text();
-                const items = parseCSV(csvData);
+                const data = await response.json();
+                const items = parseSheetData(data.values);
                 
                 state.items = items;
                 applySortingAndFiltering();
                 state.lastUpdate = new Date().toLocaleString('pt-BR');
                 state.connectionError = false;
                 
-                console.log('✅ Dados carregados:', items.length, 'itens');
+                console.log('✅ Dados carregados via API:', items.length, 'itens');
                 render();
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar do Google Sheets:', error);
-                state.connectionError = true;
-                await loadFromLocalStorage();
+                console.error('❌ Erro ao carregar via API:', error);
+                await loadFromPublicCSV();
             }
         }
 
-        // 📝 ANALISAR CSV - COLUNAS 1, 2, 3, 4, 5
-        function parseCSV(csvText) {
-            const lines = csvText.split('\n').filter(line => line.trim());
+        // 📝 ANALISAR DADOS DA API - ZERO AGORA É ZERO!
+        function parseSheetData(rows) {
+            if (!rows || rows.length < 2) return [];
+            
             const items = [];
             
-            for (let i = 1; i < lines.length; i++) {
+            for (let i = 1; i < rows.length; i++) {
                 try {
-                    const cells = parseCSVLine(lines[i]);
+                    const row = rows[i];
                     
-                    // NOVAS COLUNAS: 
-                    // 1=Código, 2=Nome(Produto), 3=Quantidade, 4=Plataforma, 5=OBS(Status)
-                    const codigo = (cells[0] || '').toString().trim();
-                    const nome = (cells[1] || '').toString().trim();
-                    const quantidade = parseInt(cells[2]) || 1;
-                    const plataforma = (cells[3] || 'Não informado').toString().trim();
-                    const observacoes = (cells[4] || '').toString().trim(); // 5ª coluna (índice 4)
+                    const codigo = (row[0] || '').toString().trim();
+                    const nome = (row[1] || '').toString().trim();
+                    const quantidade = parseInt(row[2]) || 0; // ✅ ZERO AGORA É 0!
+                    const plataforma = (row[3] || 'Não informado').toString().trim();
+                    const observacoes = (row[4] || '').toString().trim();
                     
                     if (codigo && nome) {
                         items.push({
@@ -150,7 +149,71 @@
                             plataforma: plataforma,
                             observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString()
+                            updated_at: new Date().toISOString(),
+                            rowIndex: i + 1
+                        });
+                    }
+                } catch (error) {
+                    console.warn(`Erro na linha ${i + 1}:`, error);
+                }
+            }
+            
+            return items;
+        }
+
+        // 📊 FALLBACK: CARREGAR DO CSV PÚBLICO
+        async function loadFromPublicCSV() {
+            try {
+                console.log('🔄 Tentando carregar via CSV público...');
+                
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
+                const response = await fetch(sheetUrl);
+                if (!response.ok) throw new Error('Erro ao carregar CSV');
+                
+                const csvData = await response.text();
+                const items = parseCSV(csvData);
+                
+                state.items = items;
+                applySortingAndFiltering();
+                state.lastUpdate = new Date().toLocaleString('pt-BR') + ' (CSV)';
+                state.connectionError = false;
+                
+                console.log('✅ Dados carregados via CSV:', items.length, 'itens');
+                render();
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar do CSV:', error);
+                state.connectionError = true;
+                await loadFromLocalStorage();
+            }
+        }
+
+        // 📝 ANALISAR CSV - ZERO AGORA É ZERO!
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            const items = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                try {
+                    const cells = parseCSVLine(lines[i]);
+                    
+                    const codigo = (cells[0] || '').toString().trim();
+                    const nome = (cells[1] || '').toString().trim();
+                    const quantidade = parseInt(cells[2]) || 0; // ✅ ZERO AGORA É 0!
+                    const plataforma = (cells[3] || 'Não informado').toString().trim();
+                    const observacoes = (cells[4] || '').toString().trim();
+                    
+                    if (codigo && nome) {
+                        items.push({
+                            id: 'item_' + i + '_' + Date.now(),
+                            codigo: codigo,
+                            nome: nome,
+                            quantidade: quantidade,
+                            plataforma: plataforma,
+                            observacoes: observacoes,
+                            data_entrada: new Date().toISOString().split('T')[0],
+                            updated_at: new Date().toISOString(),
+                            rowIndex: i + 1
                         });
                     }
                 } catch (error) {
@@ -184,16 +247,185 @@
             return result.map(cell => cell.replace(/^"|"$/g, '').trim());
         }
 
-        // 🔄 APLICAR ORDENAÇÃO E FILTRO
-        function applySortingAndFiltering() {
-            // Primeiro filtrar
-            filterItems();
+        // 🔄 ATUALIZAR QUANTIDADE NO GOOGLE SHEETS (SINCRONIZAÇÃO AUTOMÁTICA)
+        async function updateQuantityInSheets(itemId, newQuantity) {
+            if (!state.isEstoquista) return;
             
-            // Depois ordenar
+            try {
+                const item = state.items.find(item => item.id === itemId);
+                if (!item) {
+                    console.warn('Item não encontrado:', itemId);
+                    return;
+                }
+                
+                console.log('🔄 Atualizando quantidade no Sheets:', item.codigo, newQuantity);
+                
+                if (item.rowIndex) {
+                    await updateSheetCell(item.rowIndex, 2, newQuantity);
+                } else {
+                    await saveFullSheetToGoogle();
+                }
+                
+                console.log('✅ Quantidade atualizada no Sheets:', item.codigo, newQuantity);
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar quantidade no Sheets:', error);
+                alert('⚠️ Quantidade atualizada localmente, mas erro no Sheets. Use "Sincronizar Planilha" manualmente.');
+            }
+        }
+
+        // 📝 ATUALIZAR CÉLULA ESPECÍFICA NO SHEETS
+        async function updateSheetCell(row, col, value) {
+            const range = `${GOOGLE_SHEET_NAME}!${getColumnLetter(col)}${row}`;
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?valueInputOption=RAW&key=${API_KEY}`;
+            
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    values: [[value]]
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        }
+
+        // 🔤 CONVERTER ÍNDICE DA COLUNA PARA LETRA
+        function getColumnLetter(columnIndex) {
+            let letter = '';
+            while (columnIndex >= 0) {
+                letter = String.fromCharCode(65 + (columnIndex % 26)) + letter;
+                columnIndex = Math.floor(columnIndex / 26) - 1;
+            }
+            return letter;
+        }
+
+        // 💾 SALVAR PLANILHA COMPLETA NO GOOGLE SHEETS
+        async function saveFullSheetToGoogle() {
+            try {
+                state.syncInProgress = true;
+                render();
+                
+                console.log('💾 Salvando planilha completa no Google Sheets...');
+                
+                const range = `${GOOGLE_SHEET_NAME}!A:E`;
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?valueInputOption=RAW&key=${API_KEY}`;
+                
+                const data = prepareSheetData();
+                
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        values: data
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('✅ Planilha salva com sucesso:', result);
+                
+                alert('✅ Planilha sincronizada com sucesso!');
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar planilha:', error);
+                alert('❌ Erro ao sincronizar: ' + error.message);
+            } finally {
+                state.syncInProgress = false;
+                render();
+            }
+        }
+
+        // 📊 PREPARAR DADOS PARA A PLANILHA
+        function prepareSheetData() {
+            const data = [
+                ['CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS']
+            ];
+            
+            state.items.forEach(item => {
+                data.push([
+                    item.codigo,
+                    item.nome,
+                    item.quantidade,
+                    item.plataforma,
+                    item.observacoes || ''
+                ]);
+            });
+            
+            return data;
+        }
+
+        // ➕ DIMINUIR QUANTIDADE (COM SINCRONIZAÇÃO)
+        function decreaseQuantity(itemId, amount = 1) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem alterar quantidades.');
+                return;
+            }
+            
+            const itemIndex = state.items.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+            
+            const currentQuantity = state.items[itemIndex].quantidade;
+            const newQuantity = Math.max(0, currentQuantity - amount);
+            
+            if (newQuantity === currentQuantity) {
+                alert('❌ Quantidade já está em zero.');
+                return;
+            }
+            
+            state.items[itemIndex].quantidade = newQuantity;
+            state.items[itemIndex].updated_at = new Date().toISOString();
+            
+            updateQuantityInSheets(itemId, newQuantity);
+            
+            applySortingAndFiltering();
+            saveToLocalStorage();
+            render();
+            
+            alert(`✅ Quantidade diminuída para ${newQuantity}`);
+        }
+
+        // ➕ AUMENTAR QUANTIDADE (COM SINCRONIZAÇÃO)
+        function increaseQuantity(itemId, amount = 1) {
+            if (!state.isEstoquista) {
+                alert('❌ Apenas estoquistas podem alterar quantidades.');
+                return;
+            }
+            
+            const itemIndex = state.items.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+            
+            const newQuantity = state.items[itemIndex].quantidade + amount;
+            
+            state.items[itemIndex].quantidade = newQuantity;
+            state.items[itemIndex].updated_at = new Date().toISOString();
+            
+            updateQuantityInSheets(itemId, newQuantity);
+            
+            applySortingAndFiltering();
+            saveToLocalStorage();
+            render();
+            
+            alert(`✅ Quantidade aumentada para ${newQuantity}`);
+        }
+
+        // 🔄 FUNÇÕES EXISTENTES
+        function applySortingAndFiltering() {
+            filterItems();
             sortItems();
         }
 
-        // 🔍 FILTRAR ITENS
         function filterItems() {
             const term = state.searchTerm.toLowerCase().trim();
             
@@ -209,7 +441,6 @@
             }
         }
 
-        // 📊 ORDENAR ITENS
         function sortItems() {
             state.filteredItems.sort((a, b) => {
                 let valueA, valueB;
@@ -248,61 +479,49 @@
             });
         }
 
-        // 🎯 FUNÇÃO DE PESQUISA SIMPLIFICADA
+        // 🔍 FUNÇÕES DE PESQUISA
         function handleSearchInput(event) {
             const value = event.target.value;
             state.searchTerm = value;
             
-            // Limpa timeout anterior
             clearTimeout(state.searchTimeout);
-            
-            // Aplica busca com debounce
             state.searchTimeout = setTimeout(() => {
                 applySortingAndFiltering();
                 render();
-                // Mantém o foco após renderização
                 setTimeout(() => {
                     const searchInput = document.getElementById('searchInput');
                     if (searchInput) {
                         searchInput.focus();
-                        // Mantém a posição do cursor
                         searchInput.setSelectionRange(value.length, value.length);
                     }
                 }, 10);
             }, 300);
         }
 
-        // 🔍 EXECUTAR PESQUISA IMEDIATA (QUANDO PRESSIONAR ENTER)
         function handleSearchKeyPress(event) {
             if (event.key === 'Enter') {
                 const value = event.target.value;
                 state.searchTerm = value;
                 
-                // Limpa timeout anterior
                 clearTimeout(state.searchTimeout);
-                
                 applySortingAndFiltering();
                 render();
                 
-                // Mantém o foco após renderização
                 setTimeout(() => {
                     const searchInput = document.getElementById('searchInput');
                     if (searchInput) {
                         searchInput.focus();
-                        // Mantém a posição do cursor
                         searchInput.setSelectionRange(value.length, value.length);
                     }
                 }, 10);
             }
         }
 
-        // 🔍 LIMPAR PESQUISA
         function clearSearch() {
             state.searchTerm = '';
             applySortingAndFiltering();
             render();
             
-            // Mantém o foco após limpar
             setTimeout(() => {
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) {
@@ -314,10 +533,8 @@
         // 📋 ORDENAR POR CAMPO
         function sortBy(field) {
             if (state.sortField === field) {
-                // Se já está ordenando por este campo, inverte a direção
                 state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
             } else {
-                // Se é um campo novo, define como ascendente
                 state.sortField = field;
                 state.sortDirection = 'asc';
             }
@@ -325,7 +542,6 @@
             render();
         }
 
-        // 📊 OBTER ÍCONE DE ORDENAÇÃO
         function getSortIcon(field) {
             if (state.sortField !== field) {
                 return '↕️';
@@ -333,72 +549,7 @@
             return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
         }
 
-        // 💾 SALVAR NO GOOGLE SHEETS (ATUALIZAR PLANILHA)
-        async function saveToGoogleSheets() {
-            if (!state.isEstoquista) return;
-            
-            try {
-                state.syncInProgress = true;
-                render();
-                
-                console.log('💾 Preparando dados para salvar no Google Sheets...');
-                
-                // Criar CSV no formato da sua planilha (5 colunas)
-                const csvContent = createFullCSVForSheets();
-                
-                // Baixar CSV atualizado
-                downloadCSV(csvContent, 'planilha_atualizada.csv');
-                
-                alert(`✅ Planilha atualizada!\n\n📋 O que fazer agora:\n\n1. 📂 Baixe o arquivo "planilha_atualizada.csv"\n2. 📊 Abra sua planilha no Google Sheets\n3. 🗂️ Vá em Arquivo → Importar → Fazer upload\n4. 🔄 Substitua a planilha atual\n5. 💾 Salve as alterações\n\n🔄 Todos os vendedores verão as mudanças automaticamente!`);
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar no Google Sheets:', error);
-                alert('Erro ao atualizar planilha: ' + error.message);
-            } finally {
-                state.syncInProgress = false;
-                render();
-            }
-        }
-
-        // 📝 CRIAR CSV COMPLETO PARA PLANILHA (5 COLUNAS)
-        function createFullCSVForSheets() {
-            // Cabeçalho com 5 colunas
-            const headers = [
-                'CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS'
-            ];
-            
-            let csvContent = headers.join(',') + '\n';
-            
-            state.items.forEach(item => {
-                const row = [
-                    `"${item.codigo}"`,           // Coluna 1
-                    `"${item.nome}"`,             // Coluna 2
-                    item.quantidade,             // Coluna 3
-                    `"${item.plataforma}"`,      // Coluna 4
-                    `"${item.observacoes || ''}"` // Coluna 5 (OBS)
-                ];
-                csvContent += row.join(',') + '\n';
-            });
-            
-            return csvContent;
-        }
-
-        // 📥 BAIXAR CSV
-        function downloadCSV(content, filename) {
-            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // 💾 CARREGAR DO LOCALSTORAGE (FALLBACK)
+        // 💾 LOCALSTORAGE
         async function loadFromLocalStorage() {
             const savedItems = localStorage.getItem('estoque_compartilhado');
             if (savedItems) {
@@ -408,7 +559,6 @@
             }
         }
 
-        // 💾 SALVAR NO LOCALSTORAGE
         function saveToLocalStorage() {
             localStorage.setItem('estoque_compartilhado', JSON.stringify(state.items));
             console.log('💾 Dados salvos no localStorage');
@@ -425,7 +575,7 @@
                 id: 'new_' + Date.now(),
                 codigo: '',
                 nome: '',
-                quantidade: 1,
+                quantidade: 0,
                 plataforma: '',
                 observacoes: '',
                 data_entrada: new Date().toISOString().split('T')[0],
@@ -447,7 +597,7 @@
             render();
         }
 
-        // 💾 SALVAR PRODUTO (NOVO OU EDIÇÃO) E ATUALIZAR PLANILHA
+        // 💾 SALVAR PRODUTO
         async function saveProduct() {
             try {
                 if (!state.editingItem.codigo || !state.editingItem.nome) {
@@ -456,19 +606,19 @@
                 }
                 
                 if (state.isNewProduct) {
-                    // Adicionar novo produto
                     state.items.unshift(state.editingItem);
-                    alert('✅ Produto adicionado!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
+                    alert('✅ Produto adicionado! Sincronizando com Google Sheets...');
+                    await saveFullSheetToGoogle();
                 } else {
-                    // Atualizar produto existente
                     const index = state.items.findIndex(item => item.id === state.editingItem.id);
                     if (index !== -1) {
                         state.items[index] = {
                             ...state.editingItem,
                             updated_at: new Date().toISOString()
                         };
+                        await updateQuantityInSheets(state.editingItem.id, state.editingItem.quantidade);
+                        alert('✅ Produto atualizado e sincronizado!');
                     }
-                    alert('✅ Produto atualizado!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
                 }
                 
                 applySortingAndFiltering();
@@ -503,24 +653,25 @@
             state.items = state.items.filter(item => item.id !== id);
             state.filteredItems = state.filteredItems.filter(item => item.id !== id);
             saveToLocalStorage();
+            
+            await saveFullSheetToGoogle();
+            
             render();
-            alert('✅ Produto excluído!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.');
+            alert('✅ Produto excluído e sincronizado!');
         }
 
-        // 📊 FORMATAR OBSERVAÇÕES PARA EXIBIÇÃO
+        // 📊 FORMATAR OBSERVAÇÕES
         function formatObservacoes(observacoes) {
             if (!observacoes) {
                 return '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs border border-gray-200">Sem informações</span>';
             }
 
-            // Dividir por vírgulas, pontos, ou "e"
             const partes = observacoes.split(/[,\.]| e /).filter(part => part.trim());
             
             return partes.map(parte => {
                 const texto = parte.trim();
                 let cor = 'bg-gray-100 text-gray-800 border-gray-200';
                 
-                // Definir cores baseadas no conteúdo
                 if (texto.toLowerCase().includes('venda') || texto.toLowerCase().includes('disponível')) {
                     cor = 'bg-green-100 text-green-800 border-green-200';
                 } else if (texto.toLowerCase().includes('assistência') || texto.toLowerCase().includes('conserto')) {
@@ -541,141 +692,9 @@
             }).join('');
         }
 
-        // 📥 IMPORTAR EXCEL
-        async function importFromExcel(event) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem importar planilhas.');
-                return;
-            }
-
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                state.importLoading = true;
-                render();
-                
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                        
-                        processImportedData(jsonData);
-                        
-                    } catch (error) {
-                        alert('Erro ao ler arquivo: ' + error.message);
-                        state.importLoading = false;
-                        render();
-                    }
-                };
-                
-                reader.readAsArrayBuffer(file);
-                
-            } catch (error) {
-                alert('Erro na importação: ' + error.message);
-                state.importLoading = false;
-                render();
-            }
-        }
-
-        // 🔄 PROCESSAR DADOS IMPORTADOS
-        function processImportedData(data) {
-            try {
-                let importedCount = 0;
-                const newItems = [];
-                
-                for (let i = 0; i < data.length; i++) {
-                    try {
-                        const item = data[i];
-                        const mappedItem = {
-                            id: 'import_' + Date.now() + '_' + i,
-                            codigo: String(item.CODIGO || item.Código || item.codigo || '').trim(),
-                            nome: String(item.NOME || item.Nome || item.PRODUTO || item.Produto || item.nome || '').trim(),
-                            quantidade: parseInt(item.QUANTIDADE || item.Quantidade || item.quantidade) || 1,
-                            plataforma: String(item.PLATAFORMA || item.Plataforma || item.plataforma || 'Não informado').trim(),
-                            observacoes: String(item.OBS || item.Observações || item.observacoes || '').trim(),
-                            data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString()
-                        };
-                        
-                        if (mappedItem.codigo && mappedItem.nome) {
-                            newItems.push(mappedItem);
-                            importedCount++;
-                        }
-                        
-                    } catch (itemError) {
-                        console.warn(`Erro no item ${i}:`, itemError);
-                    }
-                }
-                
-                // SUBSTITUIR todos os itens
-                state.items = newItems;
-                applySortingAndFiltering();
-                saveToLocalStorage();
-                
-                state.importLoading = false;
-                render();
-                
-                alert(`✅ ${importedCount} produtos importados!\n\n💡 Use "Atualizar Planilha" para salvar no Google Sheets.`);
-                
-            } catch (error) {
-                alert('Erro ao processar dados: ' + error.message);
-                state.importLoading = false;
-                render();
-            }
-        }
-
-        // 📥 BAIXAR MODELO
-        function downloadTemplate() {
-            try {
-                const templateData = [
-                    {
-                        'CODIGO': 'ROUP-001',
-                        'NOME': 'Roupeiro Dallas BR',
-                        'QUANTIDADE': '2',
-                        'PLATAFORMA': 'Setor Móveis - Corredor A',
-                        'OBS': '1 disponível para venda, 1 embalado'
-                    },
-                    {
-                        'CODIGO': 'CEL-002', 
-                        'NOME': 'Smartphone Samsung',
-                        'QUANTIDADE': '3',
-                        'PLATAFORMA': 'Prateleira Eletrônicos',
-                        'OBS': '2 para venda, 1 em assistência técnica'
-                    }
-                ];
-                
-                const ws = XLSX.utils.json_to_sheet(templateData);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Estoque");
-                XLSX.writeFile(wb, 'modelo_importacao.xlsx');
-                alert('📋 Modelo baixado!');
-                
-            } catch (error) {
-                alert('Erro ao baixar modelo');
-            }
-        }
-
-        // 🎯 FUNÇÕES DE UI
-        function openModal(type) {
-            state.activeModal = type;
-            render();
-        }
-
-        function closeModal() {
-            state.activeModal = null;
-            state.importLoading = false;
-            render();
-        }
-
+        // 🎯 RENDER COM CONTROLES DE QUANTIDADE
         function render() {
-            if (state.loading) {
-                return;
-            }
+            if (state.loading) return;
 
             document.getElementById('app').innerHTML = `
                 <div class="min-h-screen p-4 bg-gray-50">
@@ -714,11 +733,18 @@
                                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
                                         🔄 Atualizar
                                     </button>
+                                    ${state.isEstoquista ? `
+                                        <button onclick="saveFullSheetToGoogle()" 
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2 ${state.syncInProgress ? 'opacity-50 cursor-not-allowed' : ''}"
+                                            ${state.syncInProgress ? 'disabled' : ''}>
+                                            ${state.syncInProgress ? '⏳ Sincronizando...' : '📊 Sincronizar'}
+                                        </button>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BARRA DE PESQUISA E AÇÕES -->
+                        <!-- BARRA DE PESQUISA -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex flex-col md:flex-row gap-4">
                                 <div class="flex-1">
@@ -746,9 +772,6 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="text-xs text-gray-500 mt-2">
-                                        💡 Digite livremente - o foco será mantido automaticamente
-                                    </div>
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
                                     ${state.isEstoquista ? `
@@ -756,29 +779,12 @@
                                             class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
                                             ➕ Adicionar
                                         </button>
-                                        <button onclick="openModal('import')" 
-                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                            📥 Importar
-                                        </button>
-                                        <button onclick="saveToGoogleSheets()" 
-                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                            📊 Atualizar Planilha
-                                        </button>
                                     ` : ''}
-                                    <button onclick="downloadTemplate()" 
-                                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors whitespace-nowrap">
-                                        📋 Modelo
-                                    </button>
                                 </div>
                             </div>
                             ${state.searchTerm ? `
                                 <div class="mt-3 text-sm text-gray-600">
                                     ${state.filteredItems.length} resultado(s) para "${state.searchTerm}"
-                                    ${state.sortField !== 'codigo' || state.sortDirection !== 'asc' ? `
-                                        <span class="ml-2 text-purple-600">
-                                            • Ordenado por: ${state.sortField} (${state.sortDirection === 'asc' ? 'crescente' : 'decrescente'})
-                                        </span>
-                                    ` : ''}
                                 </div>
                             ` : ''}
                         </div>
@@ -789,25 +795,16 @@
                                 <div class="text-center py-16">
                                     <div class="text-8xl mb-6 text-purple-600">📦</div>
                                     <h3 class="text-2xl font-semibold text-gray-600 mb-3">Estoque vazio</h3>
-                                    <p class="text-gray-500 mb-6">${state.connectionError ? 'Erro ao carregar planilha' : 'Adicione produtos para começar'}</p>
                                     ${state.isEstoquista ? `
-                                        <div class="flex gap-2 justify-center flex-wrap">
-                                            <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
-                                                ➕ Adicionar Produto
-                                            </button>
-                                            <button onclick="openModal('import')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
-                                                📥 Importar Planilha
-                                            </button>
-                                        </div>
-                                    ` : `
-                                        <p class="text-sm text-gray-500">Aguarde o estoquista carregar os produtos</p>
-                                    `}
+                                        <button onclick="addNewProduct()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                                            ➕ Adicionar Produto
+                                        </button>
+                                    ` : ''}
                                 </div>
                             ` : state.filteredItems.length === 0 ? `
                                 <div class="text-center py-16">
                                     <div class="text-6xl mb-6 text-gray-400">🔍</div>
                                     <h3 class="text-xl font-semibold text-gray-600 mb-3">Nenhum produto encontrado</h3>
-                                    <p class="text-gray-500">Tente buscar por outro termo</p>
                                 </div>
                             ` : `
                                 <div class="overflow-x-auto">
@@ -827,11 +824,9 @@
                                                     🖥️ Plataforma ${getSortIcon('plataforma')}
                                                 </th>
                                                 <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('observacoes')">
-                                                    Status das Unidades ${getSortIcon('observacoes')}
+                                                    Status ${getSortIcon('observacoes')}
                                                 </th>
-                                                ${state.isEstoquista ? `
-                                                    <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
-                                                ` : ''}
+                                                ${state.isEstoquista ? `<th class="px-4 py-3 text-left text-sm font-bold">Ações</th>` : ''}
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
@@ -844,15 +839,27 @@
                                                         <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
-                                                            ${item.quantidade}
-                                                        </span>
+                                                        <div class="flex items-center gap-2">
+                                                            ${state.isEstoquista ? `
+                                                                <button onclick="decreaseQuantity('${item.id}')" 
+                                                                    class="w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold transition-colors ${item.quantidade === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                                                                    ${item.quantidade === 0 ? 'disabled' : ''}>
+                                                                    -
+                                                                </button>
+                                                            ` : ''}
+                                                            <span class="px-3 py-1 ${item.quantidade === 0 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} rounded-full text-sm font-bold min-w-12 text-center">
+                                                                ${item.quantidade}
+                                                            </span>
+                                                            ${state.isEstoquista ? `
+                                                                <button onclick="increaseQuantity('${item.id}')" 
+                                                                    class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold transition-colors">
+                                                                    +
+                                                                </button>
+                                                            ` : ''}
+                                                        </div>
                                                     </td>
                                                     <td class="px-4 py-3">
-                                                        <div class="flex items-center gap-2">
-                                                            <span class="text-lg">🖥️</span>
-                                                            <div class="text-sm font-bold text-green-700">${item.plataforma}</div>
-                                                        </div>
+                                                        <div class="text-sm font-bold text-green-700">${item.plataforma}</div>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <div class="flex flex-wrap gap-1 max-w-md">
@@ -881,7 +888,7 @@
                             `}
                         </div>
 
-                        <!-- MODAL EDIÇÃO/ADICIONAR -->
+                        <!-- MODAL EDIÇÃO -->
                         ${state.editingItem ? `
                             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                                 <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -900,7 +907,7 @@
                                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                                 </div>
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade Total *</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
                                                     <input type="number" 
                                                         value="${state.editingItem.quantidade}"
                                                         oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
@@ -924,19 +931,12 @@
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none">
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Status das Unidades (OBS)</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Status (OBS)</label>
                                                 <textarea 
                                                     oninput="state.editingItem.observacoes = this.value"
                                                     placeholder="Ex: 1 disponível para venda, 1 embalado"
                                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-400 focus:outline-none"
                                                     rows="3">${state.editingItem.observacoes || ''}</textarea>
-                                                <div class="text-xs text-gray-500 mt-2 space-y-1">
-                                                    <div>💡 <strong>Exemplos de uso:</strong></div>
-                                                    <div>• "1 disponível para venda, 1 embalado"</div>
-                                                    <div>• "2 para venda, 1 em assistência técnica"</div>
-                                                    <div>• "1 mostruário, 2 uso da loja"</div>
-                                                    <div>• "1 separado para cliente, 1 em caixa"</div>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -947,73 +947,36 @@
                                         </button>
                                         <button onclick="saveProduct()" 
                                             class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors">
-                                            ${state.isNewProduct ? 'Adicionar Produto' : 'Salvar Alterações'}
+                                            ${state.isNewProduct ? 'Adicionar' : 'Salvar'}
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         ` : ''}
 
-                        <!-- MODAL IMPORTAR -->
-                        ${state.activeModal === 'import' ? `
-                            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                                <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                                    <div class="bg-purple-600 text-white px-6 py-4 rounded-t-2xl">
-                                        <h2 class="text-xl font-bold">Importar Planilha</h2>
-                                    </div>
-                                    <div class="p-6">
-                                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                                            <div class="text-4xl mb-4 text-purple-600">📤</div>
-                                            <h3 class="font-semibold text-gray-900 mb-2">Selecione a planilha</h3>
-                                            <p class="text-sm text-gray-600 mb-4">Formatos: .xlsx, .xls, .csv</p>
-                                            <label class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer inline-block transition-colors">
-                                                ${state.importLoading ? `
-                                                    <div class="flex items-center gap-2">
-                                                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                                                        <span>Processando...</span>
-                                                    </div>
-                                                ` : 'Selecionar Planilha'}
-                                                <input type="file" accept=".xlsx,.xls,.csv" onchange="importFromExcel(event)" class="hidden" ${state.importLoading ? 'disabled' : ''}>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="p-6 border-t border-gray-200 flex justify-between">
-                                        <button onclick="downloadTemplate()" 
-                                            class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors">
-                                            📋 Baixar Modelo
-                                        </button>
-                                        <button onclick="closeModal()" 
-                                            class="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-medium transition-colors">
-                                            Fechar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <!-- STATUS DO SISTEMA -->
+                        <!-- STATUS -->
                         <div class="mt-6 text-center">
                             <p class="text-sm text-gray-500">
-                                📊 Sistema conectado ao Google Sheets • 
+                                📊 Sistema conectado ao Google Sheets API • 
                                 Atualizado: ${state.lastUpdate || 'Agora'} •
                                 <button onclick="loadFromGoogleSheets()" class="text-purple-600 hover:text-purple-800 underline">
                                     Atualizar Dados
                                 </button>
-                            </p>
-                            <p class="text-xs text-gray-400 mt-2">
-                                Lendo colunas: Código (1ª) • Nome (2ª) • Quantidade (3ª) • Plataforma (4ª) • OBS (5ª)
+                                ${state.isEstoquista ? `
+                                    • <button onclick="saveFullSheetToGoogle()" class="text-green-600 hover:text-green-800 underline">
+                                        Sincronizar Agora
+                                    </button>
+                                ` : ''}
                             </p>
                         </div>
                     </div>
                 </div>
             `;
 
-            // SEMPRE mantém o foco na barra de pesquisa após renderização
             setTimeout(() => {
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) {
                     searchInput.focus();
-                    // Mantém a posição do cursor no final do texto
                     searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
                 }
             }, 10);
