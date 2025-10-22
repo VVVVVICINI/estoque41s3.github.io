@@ -31,7 +31,7 @@
     </div>
 
     <script>
-        // 🔧 CONFIGURAÇÃO COM SUA API KEY
+        // 🔧 CONFIGURAÇÃO
         const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
         const GOOGLE_SHEET_NAME = 'Página1';
         const API_KEY = 'AIzaSyDSMtUGanTKSNfZq5LZa-jxZp09xj6sOvc';
@@ -51,13 +51,12 @@
             syncInProgress: false,
             sortField: 'codigo',
             sortDirection: 'asc',
-            searchTimeout: null,
-            apiEnabled: true
+            searchTimeout: null
         };
 
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
-            console.log('🚀 Iniciando sistema completo com Google Sheets API...');
+            console.log('🚀 Iniciando sistema...');
             
             await checkUserRole();
             await loadFromGoogleSheets();
@@ -65,7 +64,6 @@
             state.loading = false;
             render();
             
-            // Atualizar a cada 30 segundos
             setInterval(loadFromGoogleSheets, 30000);
         }
 
@@ -95,112 +93,36 @@
             console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
         }
 
-        // 📊 CARREGAR DO GOOGLE SHEETS VIA API
+        // 📊 CARREGAR DO GOOGLE SHEETS
         async function loadFromGoogleSheets() {
             if (state.syncInProgress) return;
             
             try {
-                console.log('📊 Buscando dados via API...');
-                
-                const range = `${GOOGLE_SHEET_NAME}!A:E`;
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?key=${API_KEY}`;
-                
-                const response = await fetch(url);
-                
-                if (response.status === 401) {
-                    throw new Error('API Key com problema - usando modo CSV');
-                }
-                
-                if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                const items = parseSheetData(data.values);
-                
-                state.items = items;
-                applySortingAndFiltering();
-                state.lastUpdate = new Date().toLocaleString('pt-BR');
-                state.connectionError = false;
-                state.apiEnabled = true;
-                
-                console.log('✅ Dados carregados via API:', items.length, 'itens');
-                render();
-                
-            } catch (error) {
-                console.error('❌ Erro ao carregar via API:', error);
-                // Fallback para CSV público
-                await loadFromPublicCSV();
-            }
-        }
-
-        // 📝 ANALISAR DADOS DA API - ZERO AGORA É ZERO
-        function parseSheetData(rows) {
-            if (!rows || rows.length < 2) return [];
-            
-            const items = [];
-            
-            for (let i = 1; i < rows.length; i++) {
-                try {
-                    const row = rows[i];
-                    
-                    // COLUNAS: 0=Código, 1=Nome, 2=Quantidade, 3=Plataforma, 4=OBS
-                    const codigo = (row[0] || '').toString().trim();
-                    const nome = (row[1] || '').toString().trim();
-                    const quantidade = parseInt(row[2]) || 0; // ✅ ZERO agora é 0
-                    const plataforma = (row[3] || 'Não informado').toString().trim();
-                    const observacoes = (row[4] || '').toString().trim();
-                    
-                    if (codigo && nome) {
-                        items.push({
-                            id: 'item_' + i + '_' + Date.now(),
-                            codigo: codigo,
-                            nome: nome,
-                            quantidade: quantidade,
-                            plataforma: plataforma,
-                            observacoes: observacoes,
-                            data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString(),
-                            rowIndex: i + 1
-                        });
-                    }
-                } catch (error) {
-                    console.warn(`Erro na linha ${i + 1}:`, error);
-                }
-            }
-            
-            return items;
-        }
-
-        // 📊 FALLBACK: CARREGAR DO CSV PÚBLICO
-        async function loadFromPublicCSV() {
-            try {
-                console.log('🔄 Tentando carregar via CSV público...');
+                console.log('📊 Buscando dados...');
                 
                 const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
                 const response = await fetch(sheetUrl);
-                if (!response.ok) throw new Error('Erro ao carregar CSV');
+                if (!response.ok) throw new Error('Erro ao carregar planilha');
                 
                 const csvData = await response.text();
                 const items = parseCSV(csvData);
                 
                 state.items = items;
                 applySortingAndFiltering();
-                state.lastUpdate = new Date().toLocaleString('pt-BR') + ' (CSV)';
+                state.lastUpdate = new Date().toLocaleString('pt-BR');
                 state.connectionError = false;
-                state.apiEnabled = false;
                 
-                console.log('✅ Dados carregados via CSV:', items.length, 'itens');
+                console.log('✅ Dados carregados:', items.length, 'itens');
                 render();
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar do CSV:', error);
+                console.error('❌ Erro ao carregar:', error);
                 state.connectionError = true;
                 await loadFromLocalStorage();
             }
         }
 
-        // 📝 ANALISAR CSV (FALLBACK) - ZERO AGORA É ZERO
+        // 📝 ANALISAR CSV - ZERO AGORA É ZERO
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
             const items = [];
@@ -224,8 +146,7 @@
                             plataforma: plataforma,
                             observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString(),
-                            rowIndex: i + 1
+                            updated_at: new Date().toISOString()
                         });
                     }
                 } catch (error) {
@@ -259,126 +180,138 @@
             return result.map(cell => cell.replace(/^"|"$/g, '').trim());
         }
 
-        // 🔄 ATUALIZAR QUANTIDADE NO GOOGLE SHEETS (SINCRONIZAÇÃO AUTOMÁTICA)
+        // 🔄 SINCRONIZAÇÃO CORRIGIDA - ATUALIZAR QUANTIDADE NO GOOGLE SHEETS
         async function updateQuantityInSheets(itemId, newQuantity) {
             if (!state.isEstoquista) return;
             
             try {
-                // Encontrar o item
                 const item = state.items.find(item => item.id === itemId);
-                if (!item) {
-                    console.warn('Item não encontrado:', itemId);
+                if (!item) return;
+
+                console.log('🔄 Sincronizando quantidade:', item.codigo, newQuantity);
+
+                // Método 1: Tentar via API
+                try {
+                    await updateViaAPI(item.codigo, newQuantity);
+                    console.log('✅ Sincronizado via API');
                     return;
+                } catch (apiError) {
+                    console.log('❌ API falhou, usando método CSV');
                 }
-                
-                console.log('🔄 Atualizando quantidade no Sheets:', item.codigo, newQuantity);
-                
-                // Se temos o rowIndex, atualizar via API
-                if (item.rowIndex && state.apiEnabled) {
-                    await updateSheetCell(item.rowIndex, 2, newQuantity); // Coluna C (índice 2)
-                } else {
-                    // Se não temos rowIndex ou API não funciona, atualizar a planilha completa
-                    await saveFullSheetToGoogle();
-                }
-                
-                console.log('✅ Quantidade atualizada no Sheets:', item.codigo, newQuantity);
+
+                // Método 2: Download do CSV atualizado
+                await downloadUpdatedCSV();
                 
             } catch (error) {
-                console.error('❌ Erro ao atualizar quantidade no Sheets:', error);
-                alert('⚠️ Quantidade atualizada localmente, mas erro no Sheets. Use "Sincronizar Planilha" manualmente.');
+                console.error('❌ Erro na sincronização:', error);
+                alert('✅ Alteração salva localmente. Use "Sincronizar Planilha" para atualizar o Google Sheets.');
             }
         }
 
-        // 📝 ATUALIZAR CÉLULA ESPECÍFICA NO SHEETS
-        async function updateSheetCell(row, col, value) {
-            const range = `${GOOGLE_SHEET_NAME}!${getColumnLetter(col)}${row}`;
+        // 🔄 ATUALIZAR VIA API
+        async function updateViaAPI(codigo, newQuantity) {
+            // Carregar dados para encontrar a linha
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}`;
+            const response = await fetch(sheetUrl);
+            const csvData = await response.text();
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            let rowIndex = -1;
+            
+            // Encontrar a linha pelo código
+            for (let i = 1; i < lines.length; i++) {
+                const cells = parseCSVLine(lines[i]);
+                if (cells[0] && cells[0].trim() === codigo) {
+                    rowIndex = i + 1;
+                    break;
+                }
+            }
+            
+            if (rowIndex === -1) {
+                throw new Error('Produto não encontrado na planilha');
+            }
+
+            // Atualizar via API
+            const range = `${GOOGLE_SHEET_NAME}!C${rowIndex}`;
             const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?valueInputOption=RAW&key=${API_KEY}`;
             
-            const response = await fetch(url, {
+            const apiResponse = await fetch(url, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    values: [[value]]
+                    values: [[newQuantity]]
                 })
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (!apiResponse.ok) {
+                throw new Error(`API error: ${apiResponse.status}`);
             }
             
-            return await response.json();
+            return await apiResponse.json();
         }
 
-        // 🔤 CONVERTER ÍNDICE DA COLUNA PARA LETRA
-        function getColumnLetter(columnIndex) {
-            let letter = '';
-            while (columnIndex >= 0) {
-                letter = String.fromCharCode(65 + (columnIndex % 26)) + letter;
-                columnIndex = Math.floor(columnIndex / 26) - 1;
-            }
-            return letter;
+        // 📥 BAIXAR CSV ATUALIZADO
+        async function downloadUpdatedCSV() {
+            const csvContent = createFullCSVForSheets();
+            downloadCSV(csvContent, 'estoque_atualizado.csv');
+            
+            alert('📥 CSV atualizado baixado!\n\n💡 Para atualizar o Google Sheets:\n1. Abra sua planilha\n2. Arquivo → Importar → Fazer upload\n3. Substitua a planilha atual\n4. Salve as alterações');
         }
 
-        // 💾 SALVAR PLANILHA COMPLETA NO GOOGLE SHEETS
+        // 💾 SALVAR PLANILHA COMPLETA
         async function saveFullSheetToGoogle() {
             try {
                 state.syncInProgress = true;
                 render();
                 
-                console.log('💾 Salvando planilha completa no Google Sheets...');
+                const csvContent = createFullCSVForSheets();
+                downloadCSV(csvContent, 'planilha_completa_atualizada.csv');
                 
-                const range = `${GOOGLE_SHEET_NAME}!A:E`;
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${range}?valueInputOption=RAW&key=${API_KEY}`;
-                
-                const data = prepareSheetData();
-                
-                const response = await fetch(url, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        values: data
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                console.log('✅ Planilha salva com sucesso:', result);
-                
-                alert('✅ Planilha sincronizada com sucesso!');
+                alert('✅ Planilha completa atualizada!\n\n📋 Faça o upload no Google Sheets substituindo a atual.');
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar planilha:', error);
-                alert('❌ Erro ao sincronizar: ' + error.message);
+                alert('Erro ao gerar arquivo atualizado.');
             } finally {
                 state.syncInProgress = false;
                 render();
             }
         }
 
-        // 📊 PREPARAR DADOS PARA A PLANILHA
-        function prepareSheetData() {
-            const data = [
-                ['CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS']
-            ];
+        // 📝 CRIAR CSV PARA PLANILHA
+        function createFullCSVForSheets() {
+            const headers = ['CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS'];
+            let csvContent = headers.join(',') + '\n';
             
             state.items.forEach(item => {
-                data.push([
-                    item.codigo,
-                    item.nome,
+                const row = [
+                    `"${item.codigo}"`,
+                    `"${item.nome}"`, 
                     item.quantidade,
-                    item.plataforma,
-                    item.observacoes || ''
-                ]);
+                    `"${item.plataforma}"`,
+                    `"${item.observacoes || ''}"`
+                ];
+                csvContent += row.join(',') + '\n';
             });
             
-            return data;
+            return csvContent;
+        }
+
+        // 📥 BAIXAR CSV
+        function downloadCSV(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // ➕ DIMINUIR QUANTIDADE (COM SINCRONIZAÇÃO)
@@ -410,8 +343,6 @@
             applySortingAndFiltering();
             saveToLocalStorage();
             render();
-            
-            alert(`✅ Quantidade diminuída para ${newQuantity}`);
         }
 
         // ➕ AUMENTAR QUANTIDADE (COM SINCRONIZAÇÃO)
@@ -437,8 +368,6 @@
             applySortingAndFiltering();
             saveToLocalStorage();
             render();
-            
-            alert(`✅ Quantidade aumentada para ${newQuantity}`);
         }
 
         // 🔄 FUNÇÕES DE ORDENAÇÃO E FILTRO
@@ -570,7 +499,7 @@
             return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
         }
 
-        // 💾 LOCALSTORAGE (backup)
+        // 💾 LOCALSTORAGE
         async function loadFromLocalStorage() {
             const savedItems = localStorage.getItem('estoque_compartilhado');
             if (savedItems) {
@@ -585,7 +514,7 @@
             console.log('💾 Dados salvos no localStorage');
         }
 
-        // ➕ ADICIONAR NOVO PRODUTO (COM SINCRONIZAÇÃO)
+        // ➕ ADICIONAR NOVO PRODUTO
         function addNewProduct() {
             if (!state.isEstoquista) {
                 alert('❌ Apenas estoquistas podem adicionar produtos.');
@@ -596,7 +525,7 @@
                 id: 'new_' + Date.now(),
                 codigo: '',
                 nome: '',
-                quantidade: 0, // Começa com 0
+                quantidade: 0,
                 plataforma: '',
                 observacoes: '',
                 data_entrada: new Date().toISOString().split('T')[0],
@@ -618,7 +547,7 @@
             render();
         }
 
-        // 💾 SALVAR PRODUTO (COM SINCRONIZAÇÃO)
+        // 💾 SALVAR PRODUTO
         async function saveProduct() {
             try {
                 if (!state.editingItem.codigo || !state.editingItem.nome) {
@@ -627,22 +556,16 @@
                 }
                 
                 if (state.isNewProduct) {
-                    // Adicionar novo produto
                     state.items.unshift(state.editingItem);
-                    alert('✅ Produto adicionado! Sincronizando com Google Sheets...');
-                    
-                    // Sincronizar planilha completa
+                    alert('✅ Produto adicionado! Sincronizando...');
                     await saveFullSheetToGoogle();
                 } else {
-                    // Atualizar produto existente
                     const index = state.items.findIndex(item => item.id === state.editingItem.id);
                     if (index !== -1) {
                         state.items[index] = {
                             ...state.editingItem,
                             updated_at: new Date().toISOString()
                         };
-                        
-                        // Sincronizar quantidade no Sheets
                         await updateQuantityInSheets(state.editingItem.id, state.editingItem.quantidade);
                         alert('✅ Produto atualizado e sincronizado!');
                     }
@@ -668,7 +591,7 @@
             render();
         }
 
-        // 🗑️ EXCLUIR PRODUTO (COM SINCRONIZAÇÃO)
+        // 🗑️ EXCLUIR PRODUTO
         async function deleteItem(id) {
             if (!state.isEstoquista) {
                 alert('❌ Apenas estoquistas podem excluir produtos.');
@@ -681,7 +604,6 @@
             state.filteredItems = state.filteredItems.filter(item => item.id !== id);
             saveToLocalStorage();
             
-            // Sincronizar com Google Sheets
             await saveFullSheetToGoogle();
             
             render();
@@ -720,7 +642,7 @@
             }).join('');
         }
 
-        // 🎯 RENDER (ATUALIZADO COM CONTROLES DE QUANTIDADE)
+        // 🎯 RENDER
         function render() {
             if (state.loading) {
                 return;
@@ -747,9 +669,6 @@
                                             </span>
                                             <span class="text-xs ${state.connectionError ? 'text-red-600' : 'text-green-600'}">
                                                 ${state.connectionError ? '⚠️ Offline' : '✅ Online'}
-                                            </span>
-                                            <span class="text-xs ${state.apiEnabled ? 'text-green-600' : 'text-yellow-600'}">
-                                                ${state.apiEnabled ? '🔗 API Conectada' : '📄 Modo CSV'}
                                             </span>
                                             <span class="text-xs text-gray-500">
                                                 📅 ${state.lastUpdate || 'Carregando...'}
@@ -1014,7 +933,7 @@
                         <!-- STATUS DO SISTEMA -->
                         <div class="mt-6 text-center">
                             <p class="text-sm text-gray-500">
-                                📊 Sistema ${state.apiEnabled ? 'conectado via API' : 'modo CSV'} • 
+                                📊 Sistema conectado ao Google Sheets • 
                                 Atualizado: ${state.lastUpdate || 'Agora'} •
                                 <button onclick="loadFromGoogleSheets()" class="text-purple-600 hover:text-purple-800 underline">
                                     Atualizar Dados
@@ -1024,10 +943,6 @@
                                         Sincronizar Agora
                                     </button>
                                 ` : ''}
-                            </p>
-                            <p class="text-xs text-gray-400 mt-2">
-                                🔄 ${state.apiEnabled ? 'Sincronização automática ativa' : 'Modo leitura - use Sincronizar para salvar'} • 
-                                Modo: ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}
                             </p>
                         </div>
                     </div>
