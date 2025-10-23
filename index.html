@@ -26,6 +26,11 @@
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
+        .logo-preview {
+            max-height: 64px;
+            max-width: 192px;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -60,13 +65,15 @@
             sortField: 'codigo',
             sortDirection: 'asc',
             searchTimeout: null,
-            lastSync: null
+            lastSync: null,
+            customLogo: null
         };
 
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
             console.log('🚀 Iniciando sistema completo...');
             
+            await loadCustomLogo();
             await checkUserRole();
             await loadFromGoogleSheets();
             
@@ -75,6 +82,88 @@
             
             // Atualizar a cada 2 minutos
             setInterval(loadFromGoogleSheets, 120000);
+        }
+
+        // 🖼️ CARREGAR LOGO PERSONALIZADA
+        async function loadCustomLogo() {
+            const savedLogo = localStorage.getItem('estoque_custom_logo');
+            if (savedLogo) {
+                state.customLogo = savedLogo;
+            }
+        }
+
+        // 🖼️ SALVAR LOGO PERSONALIZADA
+        function saveCustomLogo(logoData) {
+            state.customLogo = logoData;
+            localStorage.setItem('estoque_custom_logo', logoData);
+        }
+
+        // 🖼️ REMOVER LOGO PERSONALIZADA
+        function removeCustomLogo() {
+            state.customLogo = null;
+            localStorage.removeItem('estoque_custom_logo');
+            render();
+        }
+
+        // 📤 UPLOAD DE IMAGEM
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Verificar se é uma imagem
+            if (!file.type.match('image.*')) {
+                alert('❌ Por favor, selecione apenas arquivos de imagem.');
+                return;
+            }
+
+            // Verificar tamanho do arquivo (máximo 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('❌ A imagem deve ter no máximo 2MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const imageData = e.target.result;
+                saveCustomLogo(imageData);
+                render();
+                showNotification('✅ Logo atualizada com sucesso!');
+            };
+            
+            reader.onerror = function() {
+                alert('❌ Erro ao carregar a imagem.');
+            };
+            
+            reader.readAsDataURL(file);
+            
+            // Limpar o input para permitir selecionar o mesmo arquivo novamente
+            event.target.value = '';
+        }
+
+        // 🖼️ RENDERIZAR LOGO
+        function renderLogo() {
+            if (state.customLogo) {
+                return `
+                    <div class="w-48 h-16 flex items-center justify-center relative group">
+                        <img src="${state.customLogo}" alt="Logo Personalizada" class="logo-preview">
+                        ${state.isEstoquista ? `
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <button onclick="removeCustomLogo()" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
+                                    Remover
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                // Logo padrão
+                return `
+                    <div class="w-48 h-16 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-white font-bold text-xl">
+                        SUPER BRUNO
+                    </div>
+                `;
+            }
         }
 
         // 🔐 VERIFICAR SE É ESTOQUISTA
@@ -623,10 +712,8 @@
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                                 <div class="flex items-center gap-4">
-                                    <!-- LOGO SUPER BRUNO ATACADO -->
-                                    <div class="w-48 h-16 flex items-center justify-center">
-                                        <img src="images (1) (1) (1).png" alt="SUPER BRUNO ATACADO" class="h-full w-auto object-contain">
-                                    </div>
+                                    <!-- LOGO -->
+                                    ${renderLogo()}
                                     <div>
                                         <h1 class="text-2xl font-bold text-gray-900">Localizador de Produtos</h1>
                                         <p class="text-gray-600">Sistema Completo de Estoque</p>
@@ -655,6 +742,19 @@
                                         🔄 Atualizar
                                     </button>
                                     ${state.isEstoquista ? `
+                                        <div class="relative">
+                                            <input 
+                                                type="file" 
+                                                id="logoUpload" 
+                                                accept="image/*" 
+                                                onchange="handleImageUpload(event)"
+                                                class="hidden"
+                                            >
+                                            <button onclick="document.getElementById('logoUpload').click()" 
+                                                class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                                🖼️ Logo
+                                            </button>
+                                        </div>
                                         <button onclick="downloadUpdatedCSV()" 
                                             class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
                                             📊 Sincronizar
