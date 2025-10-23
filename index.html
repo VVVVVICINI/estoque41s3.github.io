@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Localizador de Produtos - SUPER BRUNO ATACADO</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -30,6 +31,13 @@
             max-height: 64px;
             max-width: 192px;
             object-fit: contain;
+        }
+        .favicon-preview {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -66,7 +74,8 @@
             sortDirection: 'asc',
             searchTimeout: null,
             lastSync: null,
-            customLogo: null
+            customLogo: null,
+            customFavicon: null
         };
 
         // 🔄 INICIALIZAÇÃO
@@ -74,6 +83,7 @@
             console.log('🚀 Iniciando sistema completo...');
             
             await loadCustomLogo();
+            await loadCustomFavicon();
             await checkUserRole();
             await loadFromGoogleSheets();
             
@@ -105,8 +115,64 @@
             render();
         }
 
+        // 🔵 CARREGAR FAVICON PERSONALIZADO
+        async function loadCustomFavicon() {
+            const savedFavicon = localStorage.getItem('estoque_custom_favicon');
+            if (savedFavicon) {
+                state.customFavicon = savedFavicon;
+                updateFavicon(savedFavicon);
+            }
+        }
+
+        // 🔵 SALVAR FAVICON PERSONALIZADO
+        function saveCustomFavicon(faviconData) {
+            state.customFavicon = faviconData;
+            localStorage.setItem('estoque_custom_favicon', faviconData);
+            updateFavicon(faviconData);
+        }
+
+        // 🔵 REMOVER FAVICON PERSONALIZADO
+        function removeCustomFavicon() {
+            state.customFavicon = null;
+            localStorage.removeItem('estoque_custom_favicon');
+            resetFavicon();
+            render();
+        }
+
+        // 🔵 ATUALIZAR FAVICON NA PÁGINA
+        function updateFavicon(faviconData) {
+            // Remove favicons existentes
+            const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+            existingFavicons.forEach(favicon => favicon.remove());
+            
+            // Adiciona novo favicon
+            const newFavicon = document.createElement('link');
+            newFavicon.rel = 'icon';
+            newFavicon.href = faviconData;
+            document.head.appendChild(newFavicon);
+
+            // Adiciona também para Apple devices
+            const appleFavicon = document.createElement('link');
+            appleFavicon.rel = 'apple-touch-icon';
+            appleFavicon.href = faviconData;
+            document.head.appendChild(appleFavicon);
+        }
+
+        // 🔵 RESETAR FAVICON PADRÃO
+        function resetFavicon() {
+            // Remove favicons existentes
+            const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+            existingFavicons.forEach(favicon => favicon.remove());
+            
+            // Adiciona favicon padrão (emoji de caixa)
+            const defaultFavicon = document.createElement('link');
+            defaultFavicon.rel = 'icon';
+            defaultFavicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>";
+            document.head.appendChild(defaultFavicon);
+        }
+
         // 📤 UPLOAD DE IMAGEM
-        function handleImageUpload(event) {
+        function handleImageUpload(event, type = 'logo') {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -126,9 +192,14 @@
             
             reader.onload = function(e) {
                 const imageData = e.target.result;
-                saveCustomLogo(imageData);
+                if (type === 'logo') {
+                    saveCustomLogo(imageData);
+                    showNotification('✅ Logo atualizada com sucesso!');
+                } else if (type === 'favicon') {
+                    saveCustomFavicon(imageData);
+                    showNotification('✅ Favicon atualizado com sucesso!');
+                }
                 render();
-                showNotification('✅ Logo atualizada com sucesso!');
             };
             
             reader.onerror = function() {
@@ -161,6 +232,28 @@
                 return `
                     <div class="w-48 h-16 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-white font-bold text-xl">
                         SUPER BRUNO
+                    </div>
+                `;
+            }
+        }
+
+        // 🔵 RENDERIZAR PREVIEW DO FAVICON
+        function renderFaviconPreview() {
+            if (state.customFavicon) {
+                return `
+                    <div class="flex items-center gap-2 relative group">
+                        <img src="${state.customFavicon}" alt="Favicon" class="favicon-preview">
+                        <span class="text-xs text-gray-600">Favicon Atual</span>
+                        <button onclick="removeCustomFavicon()" class="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                            ×
+                        </button>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="flex items-center gap-2">
+                        <div class="favicon-preview bg-gray-100 flex items-center justify-center text-sm">📦</div>
+                        <span class="text-xs text-gray-600">Favicon Padrão</span>
                     </div>
                 `;
             }
@@ -732,38 +825,56 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="text-right">
-                                        <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                        <div class="text-sm text-gray-600">produtos carregados</div>
-                                    </div>
-                                    <button onclick="loadFromGoogleSheets()" 
-                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                        🔄 Atualizar
-                                    </button>
-                                    ${state.isEstoquista ? `
-                                        <div class="relative">
-                                            <input 
-                                                type="file" 
-                                                id="logoUpload" 
-                                                accept="image/*" 
-                                                onchange="handleImageUpload(event)"
-                                                class="hidden"
-                                            >
-                                            <button onclick="document.getElementById('logoUpload').click()" 
-                                                class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                                🖼️ Logo
-                                            </button>
+                                <div class="flex flex-col gap-2">
+                                    <!-- PREVIEW DO FAVICON -->
+                                    ${state.isEstoquista ? renderFaviconPreview() : ''}
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-right">
+                                            <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
+                                            <div class="text-sm text-gray-600">produtos carregados</div>
                                         </div>
-                                        <button onclick="downloadUpdatedCSV()" 
-                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                            📊 Sincronizar
+                                        <button onclick="loadFromGoogleSheets()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                            🔄 Atualizar
                                         </button>
-                                        <button onclick="addNewProduct()" 
-                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                            ➕ Adicionar
-                                        </button>
-                                    ` : ''}
+                                        ${state.isEstoquista ? `
+                                            <div class="relative">
+                                                <input 
+                                                    type="file" 
+                                                    id="logoUpload" 
+                                                    accept="image/*" 
+                                                    onchange="handleImageUpload(event, 'logo')"
+                                                    class="hidden"
+                                                >
+                                                <button onclick="document.getElementById('logoUpload').click()" 
+                                                    class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                                    🖼️ Logo
+                                                </button>
+                                            </div>
+                                            <div class="relative">
+                                                <input 
+                                                    type="file" 
+                                                    id="faviconUpload" 
+                                                    accept="image/*" 
+                                                    onchange="handleImageUpload(event, 'favicon')"
+                                                    class="hidden"
+                                                >
+                                                <button onclick="document.getElementById('faviconUpload').click()" 
+                                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                                    🔵 Favicon
+                                                </button>
+                                            </div>
+                                            <button onclick="downloadUpdatedCSV()" 
+                                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                                📊 Sincronizar
+                                            </button>
+                                            <button onclick="addNewProduct()" 
+                                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
+                                                ➕ Adicionar
+                                            </button>
+                                        ` : ''}
+                                    </div>
                                 </div>
                             </div>
                         </div>
