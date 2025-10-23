@@ -39,6 +39,14 @@
             border: 1px solid #e5e7eb;
             border-radius: 4px;
         }
+        .time-ago {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+        .recent-update {
+            background-color: #f0f9ff;
+            border-left: 3px solid #3b82f6;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -92,6 +100,56 @@
             
             // Atualizar a cada 2 minutos
             setInterval(loadFromGoogleSheets, 120000);
+        }
+
+        // 🕒 FUNÇÃO PARA CALCULAR TEMPO DECORRIDO
+        function getTimeAgo(timestamp) {
+            if (!timestamp) return 'Nunca atualizado';
+            
+            const now = new Date();
+            const past = new Date(timestamp);
+            const diffInSeconds = Math.floor((now - past) / 1000);
+            
+            if (diffInSeconds < 60) {
+                return 'Agora mesmo';
+            } else if (diffInSeconds < 3600) {
+                const minutes = Math.floor(diffInSeconds / 60);
+                return `Há ${minutes} min${minutes > 1 ? 's' : ''}`;
+            } else if (diffInSeconds < 86400) {
+                const hours = Math.floor(diffInSeconds / 3600);
+                return `Há ${hours} h${hours > 1 ? 's' : ''}`;
+            } else if (diffInSeconds < 2592000) {
+                const days = Math.floor(diffInSeconds / 86400);
+                return `Há ${days} dia${days > 1 ? 's' : ''}`;
+            } else {
+                const months = Math.floor(diffInSeconds / 2592000);
+                return `Há ${months} mes${months > 1 ? 'es' : ''}`;
+            }
+        }
+
+        // 🕒 FUNÇÃO PARA FORMATAR DATA COMPLETA
+        function formatFullDate(timestamp) {
+            if (!timestamp) return 'Data não disponível';
+            
+            const date = new Date(timestamp);
+            return date.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 🕒 VERIFICAR SE É ATUALIZAÇÃO RECENTE (últimas 24 horas)
+        function isRecentUpdate(timestamp) {
+            if (!timestamp) return false;
+            
+            const now = new Date();
+            const past = new Date(timestamp);
+            const diffInHours = (now - past) / (1000 * 3600);
+            
+            return diffInHours < 24;
         }
 
         // 🖼️ CARREGAR LOGO PERSONALIZADA
@@ -337,7 +395,8 @@
                             plataforma: plataforma,
                             observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString()
+                            updated_at: new Date().toISOString(),
+                            last_modified: new Date().toISOString() // Timestamp inicial
                         });
                     }
                 } catch (error) {
@@ -442,6 +501,7 @@
             // Atualizar localmente
             state.items[itemIndex].quantidade = newQuantity;
             state.items[itemIndex].updated_at = new Date().toISOString();
+            state.items[itemIndex].last_modified = new Date().toISOString(); // Atualizar timestamp
             
             // Sincronizar (não espera resposta)
             syncWithGoogleSheets(state.items[itemIndex]);
@@ -466,6 +526,7 @@
             // Atualizar localmente
             state.items[itemIndex].quantidade = newQuantity;
             state.items[itemIndex].updated_at = new Date().toISOString();
+            state.items[itemIndex].last_modified = new Date().toISOString(); // Atualizar timestamp
             
             // Sincronizar (não espera resposta)
             syncWithGoogleSheets(state.items[itemIndex]);
@@ -540,6 +601,10 @@
                     case 'observacoes':
                         valueA = (a.observacoes || '').toLowerCase();
                         valueB = (b.observacoes || '').toLowerCase();
+                        break;
+                    case 'last_modified':
+                        valueA = new Date(a.last_modified || a.updated_at);
+                        valueB = new Date(b.last_modified || b.updated_at);
                         break;
                     default:
                         valueA = a.codigo.toLowerCase();
@@ -655,7 +720,8 @@
                 plataforma: '',
                 observacoes: '',
                 data_entrada: new Date().toISOString().split('T')[0],
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                last_modified: new Date().toISOString()
             };
             state.isNewProduct = true;
             render();
@@ -682,6 +748,7 @@
                 }
                 
                 if (state.isNewProduct) {
+                    state.editingItem.last_modified = new Date().toISOString();
                     state.items.unshift(state.editingItem);
                     alert('✅ Produto adicionado!');
                 } else {
@@ -689,7 +756,8 @@
                     if (index !== -1) {
                         state.items[index] = {
                             ...state.editingItem,
-                            updated_at: new Date().toISOString()
+                            updated_at: new Date().toISOString(),
+                            last_modified: new Date().toISOString() // Atualizar timestamp
                         };
                         alert('✅ Produto atualizado!');
                     }
@@ -766,7 +834,7 @@
 
         // 📥 BAIXAR CSV ATUALIZADO
         function downloadUpdatedCSV() {
-            const headers = ['CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS'];
+            const headers = ['CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS', 'ULTIMA_ATUALIZACAO'];
             let csvContent = headers.join(',') + '\n';
             
             state.items.forEach(item => {
@@ -775,7 +843,8 @@
                     `"${item.nome}"`, 
                     item.quantidade,
                     `"${item.plataforma}"`,
-                    `"${item.observacoes || ''}"`
+                    `"${item.observacoes || ''}"`,
+                    `"${formatFullDate(item.last_modified || item.updated_at)}"`
                 ];
                 csvContent += row.join(',') + '\n';
             });
@@ -946,6 +1015,9 @@
                                                 <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('observacoes')">
                                                     Status ${getSortIcon('observacoes')}
                                                 </th>
+                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('last_modified')">
+                                                    📅 Última Alteração ${getSortIcon('last_modified')}
+                                                </th>
                                                 ${state.isEstoquista ? `
                                                     <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
                                                 ` : ''}
@@ -953,7 +1025,7 @@
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
                                             ${state.filteredItems.map(item => `
-                                                <tr class="hover:bg-gray-50 transition-colors">
+                                                <tr class="hover:bg-gray-50 transition-colors ${isRecentUpdate(item.last_modified || item.updated_at) ? 'recent-update' : ''}">
                                                     <td class="px-4 py-3">
                                                         <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
                                                     </td>
@@ -986,6 +1058,16 @@
                                                     <td class="px-4 py-3">
                                                         <div class="flex flex-wrap gap-1 max-w-md">
                                                             ${formatObservacoes(item.observacoes)}
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex flex-col">
+                                                            <span class="text-sm text-gray-700" title="${formatFullDate(item.last_modified || item.updated_at)}">
+                                                                ${getTimeAgo(item.last_modified || item.updated_at)}
+                                                            </span>
+                                                            ${isRecentUpdate(item.last_modified || item.updated_at) ? `
+                                                                <span class="text-xs text-blue-600 font-medium">🔄 Atualizado recentemente</span>
+                                                            ` : ''}
                                                         </div>
                                                     </td>
                                                     ${state.isEstoquista ? `
