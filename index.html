@@ -8,6 +8,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* Cores personalizadas da SUPER BRUNO ATACADO */
+        :root {
+            --primary-red: #a00b08;
+            --primary-yellow: #f4cf08;
+            --primary-beige: #d8cfc4;
+            --primary-dark-red: #4d0505;
+            --primary-purple: #9c7c84;
+        }
+        
         .loading-spinner {
             animation: spin 1s linear infinite;
         }
@@ -45,7 +54,134 @@
         }
         .recent-update {
             background-color: #f0f9ff;
-            border-left: 3px solid #3b82f6;
+            border-left: 3px solid var(--primary-red);
+        }
+        .user-modified {
+            background-color: rgba(244, 207, 8, 0.1);
+            border-left: 3px solid var(--primary-yellow);
+        }
+        
+        /* Estilos personalizados com as cores da marca */
+        .brand-bg-primary {
+            background-color: var(--primary-red);
+        }
+        .brand-bg-secondary {
+            background-color: var(--primary-yellow);
+        }
+        .brand-bg-light {
+            background-color: var(--primary-beige);
+        }
+        .brand-bg-dark {
+            background-color: var(--primary-dark-red);
+        }
+        .brand-bg-accent {
+            background-color: var(--primary-purple);
+        }
+        .brand-text-primary {
+            color: var(--primary-red);
+        }
+        .brand-text-secondary {
+            color: var(--primary-yellow);
+        }
+        .brand-text-light {
+            color: var(--primary-beige);
+        }
+        .brand-text-dark {
+            color: var(--primary-dark-red);
+        }
+        .brand-text-accent {
+            color: var(--primary-purple);
+        }
+        .brand-border-primary {
+            border-color: var(--primary-red);
+        }
+        .brand-border-secondary {
+            border-color: var(--primary-yellow);
+        }
+        
+        /* Gradientes personalizados */
+        .brand-gradient {
+            background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
+        }
+        .brand-gradient-light {
+            background: linear-gradient(135deg, var(--primary-beige) 0%, #f5f2ee 100%);
+        }
+        .brand-gradient-yellow {
+            background: linear-gradient(135deg, var(--primary-yellow) 0%, #f8de5e 100%);
+        }
+        
+        /* Botões personalizados */
+        .btn-primary {
+            background-color: var(--primary-red);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-dark-red);
+        }
+        .btn-secondary {
+            background-color: var(--primary-yellow);
+            color: var(--primary-dark-red);
+        }
+        .btn-secondary:hover {
+            background-color: #e6bf07;
+        }
+        .btn-accent {
+            background-color: var(--primary-purple);
+            color: white;
+        }
+        .btn-accent:hover {
+            background-color: #8a6c74;
+        }
+        
+        /* Cards e elementos de UI */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(160, 11, 8, 0.1);
+            border: 1px solid rgba(160, 11, 8, 0.1);
+        }
+        
+        .table-header {
+            background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
+            color: white;
+        }
+        
+        .status-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-available {
+            background-color: rgba(76, 175, 80, 0.1);
+            color: #2e7d32;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .status-maintenance {
+            background-color: rgba(255, 152, 0, 0.1);
+            color: #ef6c00;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+        
+        .status-showcase {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: #1565c0;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+        
+        .status-reserved {
+            background-color: rgba(244, 67, 54, 0.1);
+            color: #c62828;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+        
+        .status-default {
+            background-color: rgba(158, 158, 158, 0.1);
+            color: #424242;
+            border: 1px solid rgba(158, 158, 158, 0.3);
         }
     </style>
 </head>
@@ -141,14 +277,16 @@
             });
         }
 
-        // 🕒 VERIFICAR SE É ATUALIZAÇÃO RECENTE (últimas 24 horas)
-        function isRecentUpdate(timestamp) {
+        // 🕒 VERIFICAR SE É ATUALIZAÇÃO DO USUÁRIO (últimas 24 horas)
+        function isUserModified(timestamp) {
             if (!timestamp) return false;
             
             const now = new Date();
             const past = new Date(timestamp);
             const diffInHours = (now - past) / (1000 * 3600);
             
+            // Só mostra como "modificado pelo usuário" se foi nas últimas 24 horas
+            // E se não foi uma atualização automática do sistema
             return diffInHours < 24;
         }
 
@@ -286,10 +424,13 @@
                     </div>
                 `;
             } else {
-                // Logo padrão
+                // Logo padrão com as cores da marca
                 return `
-                    <div class="w-48 h-16 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-white font-bold text-xl">
-                        SUPER BRUNO
+                    <div class="brand-gradient rounded-xl p-2 text-white font-bold text-xl flex items-center justify-center h-16 w-48 shadow-md">
+                        <div class="flex items-center">
+                            <span class="text-white">SUPER</span>
+                            <span class="text-yellow-300 ml-1">BRUNO</span>
+                        </div>
                     </div>
                 `;
             }
@@ -356,7 +497,18 @@
                 }
                 
                 const csvData = await response.text();
-                state.items = parseCSV(csvData);
+                const newItems = parseCSV(csvData);
+                
+                // Preservar os timestamps de modificação do usuário dos itens existentes
+                state.items.forEach(existingItem => {
+                    const newItem = newItems.find(item => item.codigo === existingItem.codigo);
+                    if (newItem && existingItem.user_modified) {
+                        newItem.user_modified = existingItem.user_modified;
+                        newItem.last_modified = existingItem.last_modified;
+                    }
+                });
+                
+                state.items = newItems;
                 applySortingAndFiltering();
                 state.lastUpdate = new Date().toLocaleString('pt-BR');
                 state.connectionError = false;
@@ -396,7 +548,8 @@
                             observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
                             updated_at: new Date().toISOString(),
-                            last_modified: new Date().toISOString() // Timestamp inicial
+                            last_modified: null, // Só será preenchido quando o usuário modificar
+                            user_modified: false // Flag para indicar se foi modificação do usuário
                         });
                     }
                 } catch (error) {
@@ -498,10 +651,11 @@
                 return;
             }
             
-            // Atualizar localmente
+            // Atualizar localmente - MARCA COMO MODIFICAÇÃO DO USUÁRIO
             state.items[itemIndex].quantidade = newQuantity;
             state.items[itemIndex].updated_at = new Date().toISOString();
-            state.items[itemIndex].last_modified = new Date().toISOString(); // Atualizar timestamp
+            state.items[itemIndex].last_modified = new Date().toISOString();
+            state.items[itemIndex].user_modified = true;
             
             // Sincronizar (não espera resposta)
             syncWithGoogleSheets(state.items[itemIndex]);
@@ -523,10 +677,11 @@
             
             const newQuantity = state.items[itemIndex].quantidade + amount;
             
-            // Atualizar localmente
+            // Atualizar localmente - MARCA COMO MODIFICAÇÃO DO USUÁRIO
             state.items[itemIndex].quantidade = newQuantity;
             state.items[itemIndex].updated_at = new Date().toISOString();
-            state.items[itemIndex].last_modified = new Date().toISOString(); // Atualizar timestamp
+            state.items[itemIndex].last_modified = new Date().toISOString();
+            state.items[itemIndex].user_modified = true;
             
             // Sincronizar (não espera resposta)
             syncWithGoogleSheets(state.items[itemIndex]);
@@ -542,7 +697,7 @@
             
             const notification = document.createElement('div');
             const isError = message.includes('❌');
-            notification.className = `notification fixed top-4 right-4 ${isError ? 'bg-red-600' : 'bg-green-600'} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+            notification.className = `notification fixed top-4 right-4 ${isError ? 'bg-red-600' : 'btn-primary'} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
             notification.innerHTML = `
                 <div class="flex items-center gap-2">
                     <span>${message}</span>
@@ -603,8 +758,8 @@
                         valueB = (b.observacoes || '').toLowerCase();
                         break;
                     case 'last_modified':
-                        valueA = new Date(a.last_modified || a.updated_at);
-                        valueB = new Date(b.last_modified || b.updated_at);
+                        valueA = new Date(a.last_modified || 0);
+                        valueB = new Date(b.last_modified || 0);
                         break;
                     default:
                         valueA = a.codigo.toLowerCase();
@@ -721,7 +876,8 @@
                 observacoes: '',
                 data_entrada: new Date().toISOString().split('T')[0],
                 updated_at: new Date().toISOString(),
-                last_modified: new Date().toISOString()
+                last_modified: new Date().toISOString(),
+                user_modified: true // Nova adição é considerada modificação do usuário
             };
             state.isNewProduct = true;
             render();
@@ -749,6 +905,7 @@
                 
                 if (state.isNewProduct) {
                     state.editingItem.last_modified = new Date().toISOString();
+                    state.editingItem.user_modified = true;
                     state.items.unshift(state.editingItem);
                     alert('✅ Produto adicionado!');
                 } else {
@@ -757,7 +914,8 @@
                         state.items[index] = {
                             ...state.editingItem,
                             updated_at: new Date().toISOString(),
-                            last_modified: new Date().toISOString() // Atualizar timestamp
+                            last_modified: new Date().toISOString(), // Atualizar timestamp
+                            user_modified: true // Marcar como modificação do usuário
                         };
                         alert('✅ Produto atualizado!');
                     }
@@ -803,339 +961,382 @@
         // 📊 FORMATAR OBSERVAÇÕES
         function formatObservacoes(observacoes) {
             if (!observacoes) {
-                return '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs border border-gray-200">Sem informações</span>';
+                return '<span class="status-tag status-default">Sem informações</span>';
             }
 
             const partes = observacoes.split(/[,\.]| e /).filter(part => part.trim());
             
             return partes.map(parte => {
                 const texto = parte.trim();
-                let cor = 'bg-gray-100 text-gray-800 border-gray-200';
+                let statusClass = 'status-default';
                 
-                if (texto.toLowerCase().includes('venda') || texto.toLowerCase().includes('disponível')) {
-                    cor = 'bg-green-100 text-green-800 border-green-200';
-                } else if (texto.toLowerCase().includes('assistência') || texto.toLowerCase().includes('conserto')) {
-                    cor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                } else if (texto.toLowerCase().includes('mostruário') || texto.toLowerCase().includes('vitrine')) {
-                    cor = 'bg-blue-100 text-blue-800 border-blue-200';
-                } else if (texto.toLowerCase().includes('uso') || texto.toLowerCase().includes('loja')) {
-                    cor = 'bg-purple-100 text-purple-800 border-purple-200';
-                } else if (texto.toLowerCase().includes('embalado') || texto.toLowerCase().includes('caixa')) {
-                    cor = 'bg-orange-100 text-orange-800 border-orange-200';
-                } else if (texto.toLowerCase().includes('separado') || texto.toLowerCase().includes('reserva')) {
-                    cor = 'bg-red-100 text-red-800 border-red-200';
+                if (texto.toLowerCase().includes('vitrine') || texto.toLowerCase().includes('mostruário')) {
+                    statusClass = 'status-showcase';
+                } else if (texto.toLowerCase().includes('reservado')) {
+                    statusClass = 'status-reserved';
+                } else if (texto.toLowerCase().includes('manutenção')) {
+                    statusClass = 'status-maintenance';
+                } else if (texto.toLowerCase().includes('disponível')) {
+                    statusClass = 'status-available';
                 }
-
-                return `<span class="px-2 py-1 ${cor} rounded text-xs border mb-1 inline-block mr-1" title="${texto}">
-                    ${texto}
-                </span>`;
+                
+                return `<span class="status-tag ${statusClass} mr-1 mb-1">${texto}</span>`;
             }).join('');
         }
 
-        // 📥 BAIXAR CSV ATUALIZADO
-        function downloadUpdatedCSV() {
-            const headers = ['CODIGO', 'NOME', 'QUANTIDADE', 'PLATAFORMA', 'OBS', 'ULTIMA_ATUALIZACAO'];
-            let csvContent = headers.join(',') + '\n';
-            
-            state.items.forEach(item => {
-                const row = [
-                    `"${item.codigo}"`,
-                    `"${item.nome}"`, 
-                    item.quantidade,
-                    `"${item.plataforma}"`,
-                    `"${item.observacoes || ''}"`,
-                    `"${formatFullDate(item.last_modified || item.updated_at)}"`
-                ];
-                csvContent += row.join(',') + '\n';
-            });
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute('href', url);
-            link.setAttribute('download', `estoque_atualizado_${new Date().getTime()}.csv`);
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showNotification('📥 CSV baixado! Faça upload no Google Sheets.');
-        }
-
-        // 🎯 RENDER COMPLETO
+        // 🎨 RENDERIZAÇÃO PRINCIPAL
         function render() {
             if (state.loading) return;
-
-            document.getElementById('app').innerHTML = `
-                <div class="min-h-screen p-4 bg-gray-50">
-                    <div class="max-w-7xl mx-auto">
-                        <!-- CABEÇALHO -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                                <div class="flex items-center gap-4">
-                                    <!-- LOGO -->
-                                    ${renderLogo()}
-                                    <div>
-                                        <h1 class="text-2xl font-bold text-gray-900">Localizador de Produtos</h1>
-                                        <p class="text-gray-600">Sistema Completo de Estoque</p>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-sm ${state.isEstoquista ? 'text-green-600 font-bold' : 'text-blue-600'}">
-                                                ${state.isEstoquista ? '👨‍💼 MODO ESTOQUISTA' : '👤 MODO VENDEDOR'}
-                                            </span>
-                                            <span class="text-xs ${state.connectionError ? 'text-red-600' : 'text-green-600'}">
-                                                ${state.connectionError ? '⚠️ Offline' : '✅ Online'}
-                                            </span>
-                                            ${state.lastSync ? `
-                                                <span class="text-xs text-gray-500">
-                                                    📅 ${state.lastSync}
-                                                </span>
-                                            ` : ''}
-                                        </div>
-                                    </div>
+            
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <!-- HEADER -->
+                <header class="brand-gradient shadow-lg">
+                    <div class="container mx-auto px-4 py-4">
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div class="flex items-center gap-4">
+                                ${renderLogo()}
+                                <h1 class="text-white text-xl md:text-2xl font-bold">Sistema de Estoque</h1>
+                            </div>
+                            
+                            <div class="flex flex-col md:flex-row items-center gap-4">
+                                <div class="flex items-center gap-2 text-white">
+                                    <span class="text-sm">👤 ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}</span>
                                 </div>
-                                <div class="flex flex-col gap-2">
-                                    <!-- PREVIEW DO FAVICON -->
-                                    ${state.isEstoquista ? renderFaviconPreview() : ''}
+                                
+                                <div class="flex items-center gap-2">
+                                    <button onclick="loadFromGoogleSheets()" 
+                                            class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                                        ${state.syncInProgress ? '<div class="loading-spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>' : '🔄'}
+                                        Atualizar
+                                    </button>
                                     
-                                    <div class="flex items-center gap-2">
-                                        <div class="text-right">
-                                            <div class="text-2xl font-bold text-purple-600">${state.items.length}</div>
-                                            <div class="text-sm text-gray-600">produtos carregados</div>
-                                        </div>
-                                        <button onclick="loadFromGoogleSheets()" 
-                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                            🔄 Atualizar
+                                    ${state.isEstoquista ? `
+                                        <button onclick="addNewProduct()" 
+                                                class="btn-accent px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                                            ➕ Novo
                                         </button>
-                                        ${state.isEstoquista ? `
-                                            <div class="relative">
-                                                <input 
-                                                    type="file" 
-                                                    id="logoUpload" 
-                                                    accept="image/*" 
-                                                    onchange="handleImageUpload(event, 'logo')"
-                                                    class="hidden"
-                                                >
-                                                <button onclick="document.getElementById('logoUpload').click()" 
-                                                    class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                                    🖼️ Logo
-                                                </button>
-                                            </div>
-                                            <div class="relative">
-                                                <input 
-                                                    type="file" 
-                                                    id="faviconUpload" 
-                                                    accept="image/*" 
-                                                    onchange="handleImageUpload(event, 'favicon')"
-                                                    class="hidden"
-                                                >
-                                                <button onclick="document.getElementById('faviconUpload').click()" 
-                                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                                    🔵 Favicon
-                                                </button>
-                                            </div>
-                                            <button onclick="downloadUpdatedCSV()" 
-                                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                                📊 Sincronizar
-                                            </button>
-                                            <button onclick="addNewProduct()" 
-                                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                                                ➕ Adicionar
-                                            </button>
-                                        ` : ''}
-                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </header>
 
-                        <!-- BARRA DE PESQUISA -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                            <div class="relative">
-                                <input 
-                                    id="searchInput"
-                                    type="text" 
-                                    placeholder="🔍 Pesquisar por código, produto, plataforma ou status..."
-                                    value="${state.searchTerm}"
-                                    oninput="handleSearchInput(event)"
-                                    onkeypress="handleSearchKeyPress(event)"
-                                    class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none transition-colors pr-32"
-                                    autocomplete="off"
-                                >
-                                <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-2">
-                                    ${state.searchTerm ? `
-                                        <button onclick="clearSearch()" 
-                                            class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-1">
-                                            🗑️ Limpar
-                                        </button>
-                                    ` : ''}
-                                    <button onclick="handleSearchKeyPress({key: 'Enter', target: document.getElementById('searchInput')})" 
-                                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-1">
-                                        🔍 Buscar
-                                    </button>
+                <!-- MAIN CONTENT -->
+                <main class="container mx-auto px-4 py-6">
+                    <!-- STATUS BAR -->
+                    <div class="card p-4 mb-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium">📦 Total de itens:</span>
+                                    <span class="brand-text-primary font-bold">${state.items.length}</span>
                                 </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium">🔍 Itens filtrados:</span>
+                                    <span class="brand-text-primary font-bold">${state.filteredItems.length}</span>
+                                </div>
+                                
+                                ${state.lastUpdate ? `
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-medium">🕒 Última atualização:</span>
+                                        <span class="brand-text-dark font-bold">${state.lastUpdate}</span>
+                                    </div>
+                                ` : ''}
                             </div>
-                            ${state.searchTerm ? `
-                                <div class="mt-3 text-sm text-gray-600">
-                                    ${state.filteredItems.length} resultado(s) para "${state.searchTerm}"
+                            
+                            ${state.isEstoquista ? `
+                                <div class="flex items-center gap-2">
+                                    <button onclick="state.activeModal = 'settings'; render()" 
+                                            class="btn-secondary px-3 py-1 rounded-lg text-sm flex items-center gap-1 transition-all">
+                                        ⚙️ Configurações
+                                    </button>
                                 </div>
                             ` : ''}
                         </div>
+                    </div>
 
-                        <!-- LISTA DE PRODUTOS -->
-                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                            ${state.items.length === 0 ? `
-                                <div class="text-center py-16">
-                                    <div class="text-8xl mb-6 text-purple-600">📦</div>
-                                    <h3 class="text-2xl font-semibold text-gray-600 mb-3">Estoque vazio</h3>
-                                    <p class="text-gray-500">${state.connectionError ? 'Erro ao carregar planilha' : 'Adicione produtos para começar'}</p>
-                                </div>
-                            ` : state.filteredItems.length === 0 ? `
-                                <div class="text-center py-16">
-                                    <div class="text-6xl mb-6 text-gray-400">🔍</div>
-                                    <h3 class="text-xl font-semibold text-gray-600 mb-3">Nenhum produto encontrado</h3>
-                                    <p class="text-gray-500">Tente buscar por outro termo</p>
-                                </div>
-                            ` : `
-                                <div class="overflow-x-auto">
-                                    <table class="w-full">
-                                        <thead class="bg-purple-600 text-white">
-                                            <tr>
-                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('codigo')">
-                                                    Código ${getSortIcon('codigo')}
-                                                </th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('nome')">
-                                                    Produto ${getSortIcon('nome')}
-                                                </th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('quantidade')">
-                                                    Quantidade ${getSortIcon('quantidade')}
-                                                </th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('plataforma')">
-                                                    🖥️ Plataforma ${getSortIcon('plataforma')}
-                                                </th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('observacoes')">
-                                                    Status ${getSortIcon('observacoes')}
-                                                </th>
-                                                <th class="px-4 py-3 text-left text-sm font-bold sortable" onclick="sortBy('last_modified')">
-                                                    📅 Última Alteração ${getSortIcon('last_modified')}
-                                                </th>
-                                                ${state.isEstoquista ? `
-                                                    <th class="px-4 py-3 text-left text-sm font-bold">Ações</th>
-                                                ` : ''}
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-200">
-                                            ${state.filteredItems.map(item => `
-                                                <tr class="hover:bg-gray-50 transition-colors ${isRecentUpdate(item.last_modified || item.updated_at) ? 'recent-update' : ''}">
-                                                    <td class="px-4 py-3">
-                                                        <div class="text-sm font-bold text-purple-600">${item.codigo}</div>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <div class="text-sm font-semibold text-gray-900">${item.nome}</div>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <div class="flex items-center gap-2">
-                                                            ${state.isEstoquista ? `
-                                                                <button onclick="decreaseQuantity('${item.id}')" 
-                                                                    class="w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold transition-colors ${item.quantidade === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
-                                                                    ${item.quantidade === 0 ? 'disabled' : ''}>
-                                                                    -
-                                                                </button>
-                                                            ` : ''}
-                                                            <span class="px-3 py-1 ${item.quantidade === 0 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} rounded-full text-sm font-bold min-w-12 text-center">
-                                                                ${item.quantidade}
-                                                            </span>
-                                                            ${state.isEstoquista ? `
-                                                                <button onclick="increaseQuantity('${item.id}')" 
-                                                                    class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold transition-colors">
-                                                                    +
-                                                                </button>
-                                                            ` : ''}
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <div class="text-sm font-bold text-green-700">${item.plataforma}</div>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <div class="flex flex-wrap gap-1 max-w-md">
-                                                            ${formatObservacoes(item.observacoes)}
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <div class="flex flex-col">
-                                                            <span class="text-sm text-gray-700" title="${formatFullDate(item.last_modified || item.updated_at)}">
-                                                                ${getTimeAgo(item.last_modified || item.updated_at)}
-                                                            </span>
-                                                            ${isRecentUpdate(item.last_modified || item.updated_at) ? `
-                                                                <span class="text-xs text-blue-600 font-medium">🔄 Atualizado recentemente</span>
-                                                            ` : ''}
-                                                        </div>
-                                                    </td>
-                                                    ${state.isEstoquista ? `
-                                                        <td class="px-4 py-3">
-                                                            <div class="flex gap-2">
-                                                                <button onclick="editItem(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                                                    class="text-blue-600 hover:text-blue-800 font-medium text-sm bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors">
-                                                                    Editar
-                                                                </button>
-                                                                <button onclick="deleteItem('${item.id}')" 
-                                                                    class="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors">
-                                                                    Excluir
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    ` : ''}
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            `}
-                        </div>
-
-                        <!-- STATUS -->
-                        <div class="mt-6 text-center">
-                            <p class="text-sm text-gray-500">
-                                📊 Sistema conectado ao Google Sheets • 
-                                Atualizado: ${state.lastUpdate} •
-                                <button onclick="loadFromGoogleSheets()" class="text-purple-600 hover:text-purple-800 underline">
-                                    Atualizar Dados
+                    <!-- SEARCH BAR -->
+                    <div class="card p-4 mb-6">
+                        <div class="relative">
+                            <input type="text" 
+                                   id="searchInput"
+                                   placeholder="🔍 Pesquisar por código, nome, plataforma ou observações..."
+                                   value="${state.searchTerm}"
+                                   oninput="handleSearchInput(event)"
+                                   onkeypress="handleSearchKeyPress(event)"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            
+                            ${state.searchTerm ? `
+                                <button onclick="clearSearch()" 
+                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                    ❌
                                 </button>
-                            </p>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <!-- PRODUCTS TABLE -->
+                    <div class="card overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('codigo')">
+                                            Código ${getSortIcon('codigo')}
+                                        </th>
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('nome')">
+                                            Nome ${getSortIcon('nome')}
+                                        </th>
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('quantidade')">
+                                            Quantidade ${getSortIcon('quantidade')}
+                                        </th>
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('plataforma')">
+                                            Plataforma ${getSortIcon('plataforma')}
+                                        </th>
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('observacoes')">
+                                            Observações ${getSortIcon('observacoes')}
+                                        </th>
+                                        ${state.isEstoquista ? `
+                                            <th class="px-4 py-3 text-left sortable" onclick="sortBy('last_modified')">
+                                                Última Modificação ${getSortIcon('last_modified')}
+                                            </th>
+                                            <th class="px-4 py-3 text-center">Ações</th>
+                                        ` : ''}
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${state.filteredItems.length === 0 ? `
+                                        <tr>
+                                            <td colspan="${state.isEstoquista ? 7 : 5}" class="px-4 py-8 text-center text-gray-500">
+                                                ${state.searchTerm ? 'Nenhum produto encontrado para sua pesquisa.' : 'Nenhum produto cadastrado.'}
+                                            </td>
+                                        </tr>
+                                    ` : ''}
+                                    
+                                    ${state.filteredItems.map(item => `
+                                        <tr class="hover:bg-gray-50 transition-colors ${isUserModified(item.last_modified) ? 'user-modified' : ''}">
+                                            <td class="px-4 py-3 font-mono text-sm brand-text-dark font-bold">${item.codigo}</td>
+                                            <td class="px-4 py-3">
+                                                <div class="font-medium">${item.nome}</div>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-bold ${item.quantidade === 0 ? 'text-red-600' : 'text-green-600'}">
+                                                        ${item.quantidade}
+                                                    </span>
+                                                    ${state.isEstoquista ? `
+                                                        <div class="flex gap-1">
+                                                            <button onclick="decreaseQuantity('${item.id}')" 
+                                                                    class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded flex items-center justify-center text-xs transition-colors">
+                                                                -
+                                                            </button>
+                                                            <button onclick="increaseQuantity('${item.id}')" 
+                                                                    class="w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded flex items-center justify-center text-xs transition-colors">
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                                                    ${item.plataforma}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex flex-wrap gap-1">
+                                                    ${formatObservacoes(item.observacoes)}
+                                                </div>
+                                            </td>
+                                            ${state.isEstoquista ? `
+                                                <td class="px-4 py-3 text-sm text-gray-600">
+                                                    ${item.last_modified ? `
+                                                        <div>
+                                                            <div>${formatFullDate(item.last_modified)}</div>
+                                                            <div class="time-ago">${getTimeAgo(item.last_modified)}</div>
+                                                        </div>
+                                                    ` : 'Nunca modificado'}
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <div class="flex justify-center gap-2">
+                                                        <button onclick="editItem(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
+                                                                class="btn-secondary px-3 py-1 rounded text-sm transition-colors">
+                                                            ✏️
+                                                        </button>
+                                                        <button onclick="deleteItem('${item.id}')" 
+                                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            ` : ''}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- MODAIS -->
+                ${state.activeModal === 'settings' ? renderSettingsModal() : ''}
+                ${state.editingItem ? renderEditModal() : ''}
+            `;
+        }
+
+        // ⚙️ MODAL DE CONFIGURAÇÕES
+        function renderSettingsModal() {
+            return `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold brand-text-dark">⚙️ Configurações</h2>
+                            <button onclick="state.activeModal = null; render()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <!-- LOGO PERSONALIZADA -->
+                            <div>
+                                <h3 class="font-medium mb-2">🖼️ Logo Personalizada</h3>
+                                <div class="flex items-center gap-4 mb-2">
+                                    ${renderLogo()}
+                                </div>
+                                <div class="flex gap-2">
+                                    <label class="btn-secondary px-3 py-2 rounded cursor-pointer text-sm">
+                                        📁 Escolher Logo
+                                        <input type="file" accept="image/*" 
+                                               onchange="handleImageUpload(event, 'logo')" 
+                                               class="hidden">
+                                    </label>
+                                    ${state.customLogo ? `
+                                        <button onclick="removeCustomLogo()" 
+                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded text-sm">
+                                            🗑️ Remover
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Recomendado: PNG transparente, max. 2MB</p>
+                            </div>
+                            
+                            <!-- FAVICON PERSONALIZADO -->
+                            <div>
+                                <h3 class="font-medium mb-2">🔵 Favicon Personalizado</h3>
+                                <div class="flex items-center gap-4 mb-2">
+                                    ${renderFaviconPreview()}
+                                </div>
+                                <div class="flex gap-2">
+                                    <label class="btn-secondary px-3 py-2 rounded cursor-pointer text-sm">
+                                        📁 Escolher Favicon
+                                        <input type="file" accept="image/*" 
+                                               onchange="handleImageUpload(event, 'favicon')" 
+                                               class="hidden">
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Recomendado: Quadrado, 32x32px, max. 2MB</p>
+                            </div>
+                            
+                            <div class="pt-4 border-t">
+                                <button onclick="state.activeModal = null; render()" 
+                                        class="btn-primary w-full py-2 rounded-lg font-medium">
+                                    Fechar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
-
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
-                }
-            }, 10);
         }
 
-        // INICIAR COM TIMEOUT DE SEGURANÇA
-        const safetyTimeout = setTimeout(() => {
-            if (state.loading) {
-                state.loading = false;
-                state.connectionError = true;
-                render();
-                console.log('⚠️ Timeout - Carregando dados do localStorage');
-                loadFromLocalStorage();
-            }
-        }, 8000);
+        // ✏️ MODAL DE EDIÇÃO
+        function renderEditModal() {
+            const item = state.editingItem;
+            
+            return `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold brand-text-dark">
+                                ${state.isNewProduct ? '➕ Novo Produto' : '✏️ Editar Produto'}
+                            </h2>
+                            <button onclick="cancelEdit()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+                                <input type="text" 
+                                       value="${item.codigo}"
+                                       oninput="state.editingItem.codigo = this.value"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="Ex: BR001">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                                <input type="text" 
+                                       value="${item.nome}"
+                                       oninput="state.editingItem.nome = this.value"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="Ex: Smartphone Samsung">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                                <input type="number" 
+                                       value="${item.quantidade}"
+                                       oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       min="0">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Plataforma</label>
+                                <input type="text" 
+                                       value="${item.plataforma}"
+                                       oninput="state.editingItem.plataforma = this.value"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="Ex: Mercado Livre, Shopee">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                                <textarea 
+                                    oninput="state.editingItem.observacoes = this.value"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    rows="3"
+                                    placeholder="Ex: Vitrine, Reservado, Manutenção">${item.observacoes || ''}</textarea>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Separe por vírgulas: "Vitrine, Reservado, Manutenção"
+                                </p>
+                            </div>
+                            
+                            <div class="flex gap-2 pt-4">
+                                <button onclick="saveProduct()" 
+                                        class="btn-primary flex-1 py-2 rounded-lg font-medium">
+                                    💾 Salvar
+                                </button>
+                                <button onclick="cancelEdit()" 
+                                        class="bg-gray-500 hover:bg-gray-600 text-white flex-1 py-2 rounded-lg font-medium">
+                                    ❌ Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-        initApp().then(() => {
-            clearTimeout(safetyTimeout);
-        }).catch(error => {
-            console.error('❌ Erro na inicialização:', error);
-            clearTimeout(safetyTimeout);
-            state.loading = false;
-            state.connectionError = true;
-            render();
-            loadFromLocalStorage();
-        });
+        // 🚀 INICIAR APLICATIVO
+        initApp();
     </script>
 </body>
 </html>
