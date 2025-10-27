@@ -154,28 +154,41 @@
             font-weight: 600;
         }
         
-        .status-available {
-            background-color: rgba(76, 175, 80, 0.1);
-            color: #2e7d32;
-            border: 1px solid rgba(76, 175, 80, 0.3);
+        /* NOVAS CORES PARA OS STATUS */
+        .status-mostruario {
+            background-color: rgba(156, 124, 132, 0.2); /* Roxo suave */
+            color: #7a5c63;
+            border: 1px solid rgba(156, 124, 132, 0.4);
         }
         
-        .status-maintenance {
-            background-color: rgba(255, 152, 0, 0.1);
-            color: #ef6c00;
-            border: 1px solid rgba(255, 152, 0, 0.3);
+        .status-embalado {
+            background-color: rgba(52, 152, 219, 0.2); /* Azul */
+            color: #1a5276;
+            border: 1px solid rgba(52, 152, 219, 0.4);
         }
         
-        .status-showcase {
-            background-color: rgba(33, 150, 243, 0.1);
-            color: #1565c0;
-            border: 1px solid rgba(33, 150, 243, 0.3);
+        .status-frentedeloja {
+            background-color: rgba(46, 204, 113, 0.2); /* Verde */
+            color: #186a3b;
+            border: 1px solid rgba(46, 204, 113, 0.4);
         }
         
-        .status-reserved {
-            background-color: rgba(244, 67, 54, 0.1);
-            color: #c62828;
-            border: 1px solid rgba(244, 67, 54, 0.3);
+        .status-separadocd {
+            background-color: rgba(241, 196, 15, 0.2); /* Amarelo */
+            color: #7d6608;
+            border: 1px solid rgba(241, 196, 15, 0.4);
+        }
+        
+        .status-montagem {
+            background-color: rgba(155, 89, 182, 0.2); /* Roxo */
+            color: #6c3483;
+            border: 1px solid rgba(155, 89, 182, 0.4);
+        }
+        
+        .status-assistencia {
+            background-color: rgba(231, 76, 60, 0.2); /* Vermelho */
+            color: #943126;
+            border: 1px solid rgba(231, 76, 60, 0.4);
         }
         
         .status-default {
@@ -958,7 +971,7 @@
             alert('✅ Produto excluído!');
         }
 
-        // 📊 FORMATAR OBSERVAÇÕES
+        // 📊 FORMATAR OBSERVAÇÕES - ATUALIZADO COM NOVAS CORES
         function formatObservacoes(observacoes) {
             if (!observacoes) {
                 return '<span class="status-tag status-default">Sem informações</span>';
@@ -967,20 +980,35 @@
             const partes = observacoes.split(/[,\.]| e /).filter(part => part.trim());
             
             return partes.map(parte => {
-                const texto = parte.trim();
+                const texto = parte.trim().toLowerCase();
                 let statusClass = 'status-default';
                 
-                if (texto.toLowerCase().includes('vitrine') || texto.toLowerCase().includes('mostruário')) {
-                    statusClass = 'status-showcase';
-                } else if (texto.toLowerCase().includes('reservado')) {
-                    statusClass = 'status-reserved';
-                } else if (texto.toLowerCase().includes('manutenção')) {
-                    statusClass = 'status-maintenance';
-                } else if (texto.toLowerCase().includes('disponível')) {
-                    statusClass = 'status-available';
+                // Mostruário
+                if (texto.includes('mostruario') || texto.includes('mostruário') || texto.includes('mostruarios') || texto.includes('mostruários')) {
+                    statusClass = 'status-mostruario';
                 }
-                
-                return `<span class="status-tag ${statusClass} mr-1 mb-1">${texto}</span>`;
+                // Embalado
+                else if (texto.includes('embalado') || texto.includes('embalados') || texto.includes('caixa') || texto.includes('caixas')) {
+                    statusClass = 'status-embalado';
+                }
+                // Frente de loja
+                else if (texto.includes('frente') || texto.includes('loja') || texto.includes('vitrine') || texto.includes('exposição') || texto.includes('exposicao')) {
+                    statusClass = 'status-frentedeloja';
+                }
+                // Separado para CD
+                else if (texto.includes('separado') || texto.includes('cd') || texto.includes('centro') || texto.includes('distribuição') || texto.includes('distribuicao')) {
+                    statusClass = 'status-separadocd';
+                }
+                // Montagem
+                else if (texto.includes('montar') || texto.includes('montagem') || texto.includes('montado') || texto.includes('montados')) {
+                    statusClass = 'status-montagem';
+                }
+                // Assistência
+                else if (texto.includes('assistencia') || texto.includes('assistência') || texto.includes('conserto') || texto.includes('reparo') || texto.includes('manutenção') || texto.includes('manutencao')) {
+                    statusClass = 'status-assistencia';
+                }
+
+                return `<span class="status-tag ${statusClass} mr-1 mb-1">${parte.trim()}</span>`;
             }).join('');
         }
 
@@ -1313,9 +1341,9 @@
                                     oninput="state.editingItem.observacoes = this.value"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     rows="3"
-                                    placeholder="Ex: Vitrine, Reservado, Manutenção">${item.observacoes || ''}</textarea>
+                                    placeholder="Ex: Mostruario, Embalado, Frente de Loja, Separado p/CD, Montagem, Assistencia">${item.observacoes || ''}</textarea>
                                 <p class="text-xs text-gray-500 mt-1">
-                                    Separe por vírgulas: "Vitrine, Reservado, Manutenção"
+                                    Separe por vírgulas: "Mostruario, Embalado, Frente de Loja"
                                 </p>
                             </div>
                             
