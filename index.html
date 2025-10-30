@@ -169,33 +169,33 @@
         
         /* NOVAS CORES PARA OS STATUS */
         .status-mostruario {
-            background-color: rgba(156, 124, 132, 0.2); /* Roxo suave */
-            color: #7a5c63;
-            border: 1px solid rgba(156, 124, 132, 0.4);
+            background-color: rgba(244, 207, 8, 0.2); /* Amarelo da marca */
+            color: #7d6608;
+            border: 1px solid rgba(244, 207, 8, 0.4);
         }
         
         .status-embalado {
-            background-color: rgba(52, 152, 219, 0.2); /* Azul */
-            color: #1a5276;
-            border: 1px solid rgba(52, 152, 219, 0.4);
-        }
-        
-        .status-frentedeloja {
             background-color: rgba(46, 204, 113, 0.2); /* Verde */
             color: #186a3b;
             border: 1px solid rgba(46, 204, 113, 0.4);
         }
         
-        .status-separadocd {
-            background-color: rgba(241, 196, 15, 0.2); /* Amarelo */
-            color: #7d6608;
-            border: 1px solid rgba(241, 196, 15, 0.4);
+        .status-frentedeloja {
+            background-color: rgba(52, 152, 219, 0.2); /* Azul */
+            color: #1a5276;
+            border: 1px solid rgba(52, 152, 219, 0.4);
         }
         
-        .status-montagem {
+        .status-separadocd {
             background-color: rgba(155, 89, 182, 0.2); /* Roxo */
             color: #6c3483;
             border: 1px solid rgba(155, 89, 182, 0.4);
+        }
+        
+        .status-montagem {
+            background-color: rgba(0, 0, 0, 0.2); /* Preto */
+            color: #000000;
+            border: 1px solid rgba(0, 0, 0, 0.4);
         }
         
         .status-assistencia {
@@ -1334,11 +1334,11 @@
                 const texto = parte.trim().toLowerCase();
                 let statusClass = 'status-default';
                 
-                // Mostruário
+                // Mostruário - AMARELO
                 if (texto.includes('mostruario') || texto.includes('mostruário') || texto.includes('mostruarios') || texto.includes('mostruários')) {
                     statusClass = 'status-mostruario';
                 }
-                // Embalado
+                // Embalado - VERDE
                 else if (texto.includes('embalado') || texto.includes('embalados') || texto.includes('caixa') || texto.includes('caixas')) {
                     statusClass = 'status-embalado';
                 }
@@ -1350,7 +1350,7 @@
                 else if (texto.includes('separado') || texto.includes('cd') || texto.includes('centro') || texto.includes('distribuição') || texto.includes('distribuicao')) {
                     statusClass = 'status-separadocd';
                 }
-                // Montagem
+                // Montagem - PRETO
                 else if (texto.includes('montar') || texto.includes('montagem') || texto.includes('montado') || texto.includes('montados')) {
                     statusClass = 'status-montagem';
                 }
