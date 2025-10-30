@@ -1,0 +1,24 @@
+{
+  "name": "Estoque Super Bruno",
+  "short_name": "SuperBruno",
+  "description": "Sistema de controle de estoque da Super Bruno Atacado",
+  "start_url": "/estoque41s3.github.io/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#a00b08",
+  "orientation": "portrait",
+  "scope": "/estoque41s3.github.io/",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
