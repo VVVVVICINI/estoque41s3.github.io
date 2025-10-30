@@ -4,30 +4,19 @@
     <meta charset="UTF-8">
     <title>Localizador de Produtos - SUPER BRUNO ATACADO</title>
 
-    <!-- PWA CONFIG - VERSÃO CORRIGIDA -->
+    <!-- PWA CONFIG -->
     <meta name="theme-color" content="#a00b08">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Super Bruno">
-    <meta name="application-name" content="Super Bruno">
-    <meta name="msapplication-starturl" content="./">
-    <meta name="msapplication-TileColor" content="#a00b08">
-    <meta name="msapplication-tap-highlight" content="no">
-
-    <!-- Viewport otimizado para mobile -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-    <!-- Manifest com crossorigin -->
-    <link rel="manifest" href="./manifest.json" crossorigin="use-credentials">
+    <link rel="manifest" href="./manifest.json">
 
     <!-- Ícones PWA -->
     <link rel="icon" type="image/png" href="./icons/icon-192x192.png">
     <link rel="apple-touch-icon" href="./icons/icon-192x192.png">
 
-    <!-- Preload de recursos críticos -->
-    <link rel="preload" href="https://cdn.tailwindcss.com" as="script" crossorigin>
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" as="script" crossorigin>
+    <!-- Viewport otimizado para mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1520,145 +1509,18 @@
         // 🚀 INICIAR APLICATIVO
         initApp();
 
-        // Service Worker Registration para PWA - VERSÃO CORRIGIDA
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                    console.log('🔄 Tentando registrar Service Worker...');
-                    
-                    navigator.serviceWorker.register('./sw.js', { 
-                        scope: './',
-                        updateViaCache: 'none'
-                    })
+        // Service Worker Registration para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js')
                     .then(function(registration) {
-                        console.log('✅ ServiceWorker registrado com sucesso:', registration.scope);
-                        
-                        // Verificar se há atualizações
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            console.log('🔄 Nova versão do Service Worker encontrada!');
-                            
-                            newWorker.addEventListener('statechange', () => {
-                                console.log('📱 Estado do Service Worker:', newWorker.state);
-                                
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('🎉 Nova versão pronta para uso!');
-                                    showNotification('🔄 Nova versão disponível! Recarregue a página para atualizar.');
-                                }
-                            });
-                        });
-
-                        // Verificar se há uma atualização imediatamente
-                        registration.update();
+                        console.log('ServiceWorker registration successful');
                     })
                     .catch(function(error) {
-                        console.log('❌ Falha no registro do ServiceWorker:', error);
-                        
-                        // Tentar fallback sem scope específico
-                        navigator.serviceWorker.register('./sw.js')
-                            .then(function(registration) {
-                                console.log('✅ ServiceWorker registrado (fallback):', registration.scope);
-                            })
-                            .catch(function(fallbackError) {
-                                console.log('❌ Falha no registro fallback:', fallbackError);
-                            });
+                        console.log('ServiceWorker registration failed');
                     });
-                });
-
-                // Ouvinte para controlar quando o SW está pronto
-                navigator.serviceWorker.ready.then((registration) => {
-                    console.log('🎉 Aplicativo pronto para funcionar offline!');
-                    console.log('📦 Cache ativo:', registration);
-                });
-
-                // Ouvinte para mudanças de controller (nova versão carregada)
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    console.log('🔄 Controller do Service Worker mudou - nova versão ativa!');
-                    window.location.reload();
-                });
-            } else {
-                console.log('❌ Service Worker não suportado neste navegador');
-            }
+            });
         }
-
-        // Registrar Service Worker
-        registerServiceWorker();
-
-        // Função para forçar atualização do Service Worker
-        function updateServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.ready.then((registration) => {
-                    registration.update().then(() => {
-                        console.log('🔄 Service Worker atualizado forçadamente');
-                        showNotification('✅ Aplicativo atualizado!');
-                    });
-                });
-            }
-        }
-
-        // Detectar se está rodando como PWA/APK
-        function detectPWA() {
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-            const isInWebView = navigator.userAgent.includes('wv') || 
-                                navigator.userAgent.includes('WebView');
-            
-            if (isStandalone || isInWebView) {
-                console.log('📱 Executando como App PWA/APK');
-                document.body.classList.add('pwa-mode');
-                
-                // Otimizações específicas para APK
-                if (isInWebView) {
-                    console.log('🌐 Detectado WebView (APK)');
-                    // Desativa zoom em WebView se necessário
-                    const viewport = document.querySelector('meta[name="viewport"]');
-                    if (viewport) {
-                        viewport.setAttribute('content', 
-                            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-                    }
-                }
-            } else {
-                console.log('🌐 Executando no navegador');
-            }
-        }
-
-        // Executar detecção de PWA
-        detectPWA();
-
-        // Testar funcionalidades PWA
-        function testPWAFeatures() {
-            console.log('🧪 Testando funcionalidades PWA:');
-            
-            // Verificar service worker
-            if ('serviceWorker' in navigator) {
-                console.log('✅ Service Worker suportado');
-            } else {
-                console.log('❌ Service Worker não suportado');
-            }
-            
-            // Verificar cache
-            if ('caches' in window) {
-                console.log('✅ Cache API suportada');
-            } else {
-                console.log('❌ Cache API não suportada');
-            }
-            
-            // Verificar se está instalado
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                console.log('✅ Rodando como PWA instalado');
-            } else {
-                console.log('🌐 Rodando no navegador');
-            }
-            
-            // Verificar storage
-            if ('localStorage' in window) {
-                console.log('✅ localStorage suportado');
-            } else {
-                console.log('❌ localStorage não suportado');
-            }
-        }
-
-        // Executar testes (opcional - pode remover em produção)
-        setTimeout(testPWAFeatures, 2000);
     </script>
 </body>
 </html>
