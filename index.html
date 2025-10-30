@@ -335,7 +335,7 @@
             importLoading: false,
             searchTerm: '',
             filteredItems: [],
-            isEstoquista: false,
+            isEstoquista: null, // Alterado para null inicialmente
             editingItem: null,
             isNewProduct: false,
             lastUpdate: null,
@@ -349,6 +349,111 @@
             customFavicon: null
         };
 
+        // 🌐 OBTER IP DO CLIENTE (SIMPLIFICADO)
+        async function getClientIP() {
+            try {
+                // Tentar obter IP via API externa
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                // Fallback: usar um identificador único baseado em userAgent e outros fatores
+                const fallbackId = btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
+                return 'local_' + fallbackId.substring(0, 16);
+            }
+        }
+
+        // 🔐 VERIFICAR SE É ESTOQUISTA (APENAS PRIMEIRA VEZ POR IP)
+        async function checkUserRole() {
+            const userIP = await getClientIP();
+            const userRoleKey = 'estoque_user_role_' + userIP;
+            const savedRole = localStorage.getItem(userRoleKey);
+            
+            if (savedRole) {
+                state.isEstoquista = savedRole === 'estoquista';
+                console.log('👤 Modo carregado:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
+                return true; // Já tem papel definido
+            }
+            
+            // Se não tem papel definido, mostrar modal de seleção
+            showRoleSelectionModal();
+            return false; // Ainda não tem papel definido
+        }
+
+        // 🎯 MODAL DE SELEÇÃO DE PAPEL
+        function showRoleSelectionModal() {
+            const modalHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-xl w-full max-w-sm mx-auto">
+                        <div class="p-6 text-center">
+                            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span class="text-2xl">👋</span>
+                            </div>
+                            
+                            <h2 class="text-xl font-bold text-gray-800 mb-2">Bem-vindo!</h2>
+                            <p class="text-gray-600 mb-6">Qual é a sua função na empresa?</p>
+                            
+                            <div class="space-y-3">
+                                <button onclick="selectUserRole('vendedor')" 
+                                        class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 px-6 rounded-lg font-semibold text-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+                                    🛒 VENDEDOR
+                                </button>
+                                
+                                <button onclick="selectUserRole('estoquista')" 
+                                        class="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white py-4 px-6 rounded-lg font-semibold text-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+                                    📦 ESTOQUISTA
+                                </button>
+                            </div>
+                            
+                            <p class="text-xs text-gray-500 mt-4">
+                                Esta seleção será lembrada neste dispositivo
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'role-selection-modal';
+            modalContainer.innerHTML = modalHTML;
+            document.body.appendChild(modalContainer);
+        }
+
+        // 🎯 SELECIONAR PAPEL DO USUÁRIO
+        async function selectUserRole(role) {
+            const userIP = await getClientIP();
+            const userRoleKey = 'estoque_user_role_' + userIP;
+            
+            // Remover modal primeiro
+            const modal = document.getElementById('role-selection-modal');
+            if (modal) modal.remove();
+            
+            if (role === 'estoquista') {
+                const password = prompt('🔐 Digite a senha de estoquista:');
+                if (password === 'estoque123') {
+                    state.isEstoquista = true;
+                    localStorage.setItem(userRoleKey, 'estoquista');
+                    showNotification('✅ Modo ESTOQUISTA ativado!');
+                } else {
+                    state.isEstoquista = false;
+                    localStorage.setItem(userRoleKey, 'vendedor');
+                    alert('❌ Senha incorreta. Modo VENDEDOR ativado.');
+                    showNotification('👤 Modo VENDEDOR ativado');
+                }
+            } else {
+                state.isEstoquista = false;
+                localStorage.setItem(userRoleKey, 'vendedor');
+                showNotification('👤 Modo VENDEDOR ativado');
+            }
+            
+            console.log('👤 Modo selecionado:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
+            
+            // Continuar carregamento do app
+            await loadFromGoogleSheets();
+            state.loading = false;
+            render();
+        }
+
         // 🔄 INICIALIZAÇÃO
         async function initApp() {
             console.log('🚀 Iniciando sistema completo...');
@@ -361,14 +466,21 @@
             
             await loadCustomLogo();
             await loadCustomFavicon();
-            await checkUserRole();
-            await loadFromGoogleSheets();
             
-            state.loading = false;
-            render();
+            // Verificar papel do usuário (pode mostrar modal)
+            const hasRoleDefined = await checkUserRole();
             
-            // Atualizar a cada 2 minutos
-            setInterval(loadFromGoogleSheets, 120000);
+            // Se o usuário já tem um papel definido, carregar os dados
+            if (hasRoleDefined) {
+                await loadFromGoogleSheets();
+                state.loading = false;
+                render();
+                
+                // Atualizar a cada 2 minutos
+                setInterval(loadFromGoogleSheets, 120000);
+            }
+            // Se não tem papel definido, o checkUserRole vai mostrar o modal
+            // e o carregamento continuará quando o usuário selecionar o papel
         }
 
         // 🕒 FUNÇÃO PARA CALCULAR TEMPO DECORRIDO
@@ -589,32 +701,6 @@
                     </div>
                 `;
             }
-        }
-
-        // 🔐 VERIFICAR SE É ESTOQUISTA
-        async function checkUserRole() {
-            const isEstoquista = localStorage.getItem('estoque_estoquista') === 'true';
-            
-            if (!isEstoquista) {
-                const wantToBeEstoquista = confirm('👋 Bem-vindo!\n\nVocê é o ESTOQUISTA ou um VENDEDOR?\n\nClique em "OK" se você é o ESTOQUISTA\nClique em "Cancelar" se você é VENDEDOR');
-                
-                if (wantToBeEstoquista) {
-                    const password = prompt('🔐 Digite a senha de estoquista:');
-                    if (password === 'estoque123') {
-                        state.isEstoquista = true;
-                        localStorage.setItem('estoque_estoquista', 'true');
-                    } else {
-                        state.isEstoquista = false;
-                        alert('❌ Senha incorreta. Modo VENDEDOR ativado.');
-                    }
-                } else {
-                    state.isEstoquista = false;
-                }
-            } else {
-                state.isEstoquista = true;
-            }
-            
-            console.log('👤 Modo:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
         }
 
         // 📊 CARREGAR DO GOOGLE SHEETS
