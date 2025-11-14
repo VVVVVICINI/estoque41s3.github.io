@@ -160,54 +160,102 @@
         }
         
         .status-tag {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
+            display: inline-block !important;
+            padding: 6px 10px;
+            border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 600;
+            margin: 2px;
+            line-height: 1.2;
+            white-space: nowrap;
+            border: 1px solid;
         }
         
-        /* NOVAS CORES PARA OS STATUS */
+        /* CORES CORRIGIDAS PARA OS STATUS */
         .status-mostruario {
-            background-color: rgba(244, 207, 8, 0.2); /* Amarelo da marca */
-            color: #7d6608;
-            border: 1px solid rgba(244, 207, 8, 0.4);
+            background-color: #fef9e7 !important;
+            color: #7d6608 !important;
+            border-color: #f4cf08 !important;
         }
         
         .status-embalado {
-            background-color: rgba(46, 204, 113, 0.2); /* Verde */
-            color: #186a3b;
-            border: 1px solid rgba(46, 204, 113, 0.4);
+            background-color: #e8f8ef !important;
+            color: #186a3b !important;
+            border-color: #2ecc71 !important;
         }
         
         .status-frentedeloja {
-            background-color: rgba(52, 152, 219, 0.2); /* Azul */
-            color: #1a5276;
-            border: 1px solid rgba(52, 152, 219, 0.4);
+            background-color: #e8f4fd !important;
+            color: #1a5276 !important;
+            border-color: #3498db !important;
         }
         
         .status-separadocd {
-            background-color: rgba(155, 89, 182, 0.2); /* Roxo */
-            color: #6c3483;
-            border: 1px solid rgba(155, 89, 182, 0.4);
+            background-color: #f4ecf7 !important;
+            color: #6c3483 !important;
+            border-color: #9b59b6 !important;
         }
         
         .status-montagem {
-            background-color: rgba(0, 0, 0, 0.2); /* Preto */
-            color: #000000;
-            border: 1px solid rgba(0, 0, 0, 0.4);
+            background-color: #ebedef !important;
+            color: #2c3e50 !important;
+            border-color: #34495e !important;
         }
         
         .status-assistencia {
-            background-color: rgba(231, 76, 60, 0.2); /* Vermelho */
-            color: #943126;
-            border: 1px solid rgba(231, 76, 60, 0.4);
+            background-color: #fdedec !important;
+            color: #943126 !important;
+            border-color: #e74c3c !important;
         }
         
         .status-default {
-            background-color: rgba(158, 158, 158, 0.1);
-            color: #424242;
-            border: 1px solid rgba(158, 158, 158, 0.3);
+            background-color: #f8f9fa !important;
+            color: #495057 !important;
+            border-color: #dee2e6 !important;
+        }
+
+        /* 🔧 CORREÇÕES PARA DIGITAÇÃO NO APP */
+        .search-input, 
+        input[type="text"], 
+        input[type="number"], 
+        input[type="password"], 
+        textarea {
+            font-size: 16px !important;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Melhorar foco nos inputs */
+        .search-input:focus, 
+        input[type="text"]:focus, 
+        input[type="number"]:focus, 
+        input[type="password"]:focus, 
+        textarea:focus {
+            border-color: var(--primary-red);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(160, 11, 8, 0.1);
+        }
+
+        /* Melhorar textarea */
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+
+        /* 🔧 MELHORIAS DE ACESSIBILIDADE */
+        button:focus, 
+        input:focus, 
+        textarea:focus {
+            outline: 2px solid var(--primary-red);
+            outline-offset: 2px;
         }
 
         /* MOBILE OPTIMIZATIONS */
@@ -227,8 +275,9 @@
             }
             
             .search-input {
-                font-size: 16px;
-                height: 48px;
+                font-size: 16px !important;
+                height: 52px;
+                padding: 14px 16px;
             }
             
             table {
@@ -257,7 +306,8 @@
 
             /* Table mobile optimizations */
             .table-mobile td, .table-mobile th {
-                padding: 8px 4px;
+                padding: 10px 6px;
+                vertical-align: top;
             }
 
             /* Button group mobile */
@@ -269,6 +319,33 @@
             .btn-mobile {
                 flex: 1;
                 min-width: 120px;
+            }
+
+            /* Garantir que as tags de status sejam visíveis */
+            .table-mobile .status-tag {
+                font-size: 10px;
+                padding: 4px 6px;
+                white-space: nowrap;
+                display: inline-block !important;
+            }
+
+            /* 🔧 CORREÇÃO PARA MODAIS NO MOBILE */
+            .modal-mobile {
+                margin: 10px;
+                max-height: 85vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .modal-content-mobile {
+                padding: 20px;
+            }
+            
+            /* Garantir que inputs em modais sejam legíveis */
+            .modal-mobile input,
+            .modal-mobile textarea {
+                font-size: 16px !important;
+                min-height: 48px;
             }
         }
 
@@ -296,19 +373,6 @@
         /* Loading states mobile */
         .loading-mobile {
             padding: 40px 20px;
-        }
-
-        /* Modal mobile optimizations */
-        @media (max-width: 768px) {
-            .modal-mobile {
-                margin: 10px;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            .modal-content-mobile {
-                padding: 16px;
-            }
         }
     </style>
 </head>
@@ -1138,7 +1202,7 @@
             });
         }
 
-        // 🔍 FUNÇÕES DE PESQUISA
+        // 🔍 FUNÇÕES DE PESQUISA MELHORADAS
         function handleSearchInput(event) {
             const value = event.target.value;
             state.searchTerm = value;
@@ -1147,14 +1211,17 @@
             state.searchTimeout = setTimeout(() => {
                 applySortingAndFiltering();
                 render();
+                // Melhorar foco após pesquisa
                 setTimeout(() => {
                     const searchInput = document.getElementById('searchInput');
                     if (searchInput) {
                         searchInput.focus();
-                        searchInput.setSelectionRange(value.length, value.length);
+                        // Mover cursor para o final
+                        const length = searchInput.value.length;
+                        searchInput.setSelectionRange(length, length);
                     }
-                }, 10);
-            }, 300);
+                }, 50);
+            }, 400); // Aumentei um pouco o delay para melhor performance
         }
 
         function handleSearchKeyPress(event) {
@@ -1166,13 +1233,22 @@
                 applySortingAndFiltering();
                 render();
                 
+                // Manter foco e cursor no final
                 setTimeout(() => {
                     const searchInput = document.getElementById('searchInput');
                     if (searchInput) {
                         searchInput.focus();
-                        searchInput.setSelectionRange(value.length, value.length);
+                        const length = searchInput.value.length;
+                        searchInput.setSelectionRange(length, length);
                     }
-                }, 10);
+                }, 50);
+                
+                // Esconder teclado virtual após pesquisa (mobile)
+                if (window.innerWidth < 768) {
+                    setTimeout(() => {
+                        document.activeElement.blur();
+                    }, 1000);
+                }
             }
         }
 
@@ -1322,44 +1398,51 @@
             alert('✅ Produto excluído!');
         }
 
-        // 📊 FORMATAR OBSERVAÇÕES - ATUALIZADO COM NOVAS CORES
+        // 📊 FORMATAR OBSERVAÇÕES - CORRIGIDO
         function formatObservacoes(observacoes) {
-            if (!observacoes) {
+            if (!observacoes || observacoes.trim() === '') {
                 return '<span class="status-tag status-default">Sem informações</span>';
             }
 
-            const partes = observacoes.split(/[,\.]| e /).filter(part => part.trim());
+            // Limpar e dividir as observações
+            const textoLimpo = observacoes.trim();
+            const partes = textoLimpo.split(/[,\.]| e |\//).filter(part => part.trim());
+            
+            // Se não conseguiu dividir, usar o texto completo
+            if (partes.length === 0) {
+                partes.push(textoLimpo);
+            }
             
             return partes.map(parte => {
                 const texto = parte.trim().toLowerCase();
                 let statusClass = 'status-default';
                 
                 // Mostruário - AMARELO
-                if (texto.includes('mostruario') || texto.includes('mostruário') || texto.includes('mostruarios') || texto.includes('mostruários')) {
+                if (texto.includes('mostruario') || texto.includes('mostruário') || texto.includes('amostra')) {
                     statusClass = 'status-mostruario';
                 }
                 // Embalado - VERDE
-                else if (texto.includes('embalado') || texto.includes('embalados') || texto.includes('caixa') || texto.includes('caixas')) {
+                else if (texto.includes('embalado') || texto.includes('caixa') || texto.includes('box')) {
                     statusClass = 'status-embalado';
                 }
-                // Frente de loja
-                else if (texto.includes('frente') || texto.includes('loja') || texto.includes('vitrine') || texto.includes('exposição') || texto.includes('exposicao')) {
+                // Frente de loja - AZUL
+                else if (texto.includes('frente') || texto.includes('loja') || texto.includes('vitrine') || texto.includes('exposi') || texto.includes('prateleira')) {
                     statusClass = 'status-frentedeloja';
                 }
-                // Separado para CD
-                else if (texto.includes('separado') || texto.includes('cd') || texto.includes('centro') || texto.includes('distribuição') || texto.includes('distribuicao')) {
+                // Separado para CD - ROXO
+                else if (texto.includes('separado') || texto.includes('cd') || texto.includes('centro') || texto.includes('distribui') || texto.includes('deposito') || texto.includes('depósito')) {
                     statusClass = 'status-separadocd';
                 }
                 // Montagem - PRETO
-                else if (texto.includes('montar') || texto.includes('montagem') || texto.includes('montado') || texto.includes('montados')) {
+                else if (texto.includes('montar') || texto.includes('montagem') || texto.includes('montado') || texto.includes('armar')) {
                     statusClass = 'status-montagem';
                 }
-                // Assistência
-                else if (texto.includes('assistencia') || texto.includes('assistência') || texto.includes('conserto') || texto.includes('reparo') || texto.includes('manutenção') || texto.includes('manutencao')) {
+                // Assistência - VERMELHO
+                else if (texto.includes('assistencia') || texto.includes('assistência') || texto.includes('conserto') || texto.includes('reparo') || texto.includes('manuten') || texto.includes('defeito')) {
                     statusClass = 'status-assistencia';
                 }
 
-                return `<span class="status-tag ${statusClass} mr-1 mb-1">${parte.trim()}</span>`;
+                return `<span class="status-tag ${statusClass} mr-1 mb-1 inline-block">${parte.trim()}</span>`;
             }).join('');
         }
 
