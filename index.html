@@ -1202,7 +1202,7 @@
             });
         }
 
-        // 🔍 FUNÇÕES DE PESQUISA MELHORADAS
+        // 🔍 FUNÇÕES DE PESQUISA MELHORADAS - DELAY AUMENTADO
         function handleSearchInput(event) {
             const value = event.target.value;
             state.searchTerm = value;
@@ -1221,7 +1221,7 @@
                         searchInput.setSelectionRange(length, length);
                     }
                 }, 50);
-            }, 400); // Aumentei um pouco o delay para melhor performance
+            }, 800); // AUMENTADO PARA 800ms (0.8 segundos)
         }
 
         function handleSearchKeyPress(event) {
