@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Localizador de Produtos - SUPER BRUNO ATACADO</title>
+    <title>Mapa de Estoque - SUPER BRUNO ATACADO</title>
     <meta name="theme-color" content="#a00b08">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -100,6 +100,10 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
 
+        .search-input {
+            font-size: 16px !important;
+        }
+
         @media (max-width: 768px) {
             .mobile-hidden {
                 display: none;
@@ -107,6 +111,16 @@
             .mobile-text-sm {
                 font-size: 0.875rem;
             }
+            .search-input {
+                height: 52px;
+                padding: 14px 16px;
+            }
+        }
+
+        /* Melhorias para mobile */
+        button, .sortable {
+            min-height: 44px;
+            min-width: 44px;
         }
     </style>
 </head>
@@ -115,13 +129,13 @@
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
                 <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-gray-600">Carregando todos os produtos da planilha...</p>
+                <p class="text-gray-600">Conectando com o mapa de estoque...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // 🔧 CONFIGURAÇÃO - ID DA PLANILHA
+        // 🔧 CONFIGURAÇÃO DA SUA PLANILHA
         const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
         
         let state = {
@@ -129,80 +143,74 @@
             loading: true,
             searchTerm: '',
             filteredItems: [],
-            isEstoquista: false,
             lastUpdate: null,
             connectionError: false,
             sortField: 'codigo',
             sortDirection: 'asc',
-            allItemsLoaded: false
+            autoRefresh: true,
+            lastSync: null
         };
 
-        // 📊 CARREGAR TODOS OS PRODUTOS DA PLANILHA
-        async function loadFromGoogleSheets() {
+        // 📊 SINCRONIZAR COM A PLANILHA - MÉTODO DIRETO
+        async function syncWithSheet() {
             try {
-                console.log('📊 Carregando TODOS os produtos...');
+                console.log('🔄 Sincronizando com a planilha...');
                 state.loading = true;
                 render();
                 
-                // Método 1: Tentar via API JSON (mais confiável)
-                const jsonUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json`;
+                // URL direta para a planilha (método mais confiável)
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&t=${Date.now()}`;
                 
-                console.log('🔗 Tentando API JSON...');
-                const response = await fetch(jsonUrl);
+                console.log('🔗 Acessando:', sheetUrl);
+                const response = await fetch(sheetUrl);
                 
                 if (!response.ok) {
                     throw new Error(`Erro HTTP: ${response.status}`);
                 }
                 
                 const text = await response.text();
-                console.log('📄 Resposta JSON:', text.substring(0, 500));
                 
-                // Processar resposta JSON
+                // Processar resposta do Google Sheets
                 const jsonData = JSON.parse(text.substring(47).slice(0, -2));
-                const items = parseJSONData(jsonData);
+                const items = parseSheetData(jsonData);
                 
                 if (items.length > 0) {
                     state.items = items;
                     state.connectionError = false;
-                    state.allItemsLoaded = true;
                     state.lastUpdate = new Date().toLocaleString('pt-BR');
-                    console.log('✅ TODOS os produtos carregados:', items.length, 'itens');
-                    showNotification(`✅ ${items.length} produtos carregados com sucesso!`);
+                    state.lastSync = Date.now();
+                    console.log('✅ Sincronizado:', items.length, 'produtos');
+                    
+                    // Salvar no localStorage como backup
+                    localStorage.setItem('estoque_backup', JSON.stringify({
+                        items: items,
+                        lastSync: state.lastSync
+                    }));
                 } else {
-                    throw new Error('Nenhum item encontrado via JSON');
+                    throw new Error('Nenhum produto encontrado');
                 }
                 
             } catch (error) {
-                console.error('❌ Erro com API JSON:', error);
+                console.error('❌ Erro na sincronização:', error);
                 
-                // Método 2: Tentar via CSV como fallback
+                // Tentar carregar do backup
                 try {
-                    console.log('🔄 Tentando método CSV...');
-                    const csvUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv`;
-                    const csvResponse = await fetch(csvUrl);
-                    
-                    if (csvResponse.ok) {
-                        const csvData = await csvResponse.text();
-                        const csvItems = parseCSV(csvData);
-                        
-                        if (csvItems.length > 0) {
-                            state.items = csvItems;
-                            state.connectionError = false;
-                            state.allItemsLoaded = true;
-                            state.lastUpdate = new Date().toLocaleString('pt-BR');
-                            console.log('✅ Produtos carregados via CSV:', csvItems.length, 'itens');
-                            showNotification(`✅ ${csvItems.length} produtos carregados!`);
-                        } else {
-                            throw new Error('CSV também vazio');
-                        }
+                    const backup = localStorage.getItem('estoque_backup');
+                    if (backup) {
+                        const backupData = JSON.parse(backup);
+                        state.items = backupData.items;
+                        state.lastSync = backupData.lastSync;
+                        state.connectionError = true;
+                        console.log('📱 Dados do backup:', state.items.length, 'produtos');
+                        showNotification('⚠️ Usando dados offline da última sincronização');
                     } else {
-                        throw new Error('Falha no CSV');
+                        throw new Error('Sem backup disponível');
                     }
-                } catch (csvError) {
-                    console.error('❌ Erro com CSV também:', csvError);
-                    await loadSampleData();
+                } catch (backupError) {
+                    console.error('❌ Erro no backup:', backupError);
+                    loadSampleData();
                     state.connectionError = true;
-                    showNotification('⚠️ Usando dados de exemplo');
+                    showNotification('❌ Erro ao carregar. Usando dados de exemplo.');
                 }
             }
             
@@ -211,12 +219,12 @@
             render();
         }
 
-        // 📝 ANALISAR DADOS JSON DA API
-        function parseJSONData(jsonData) {
+        // 📝 ANALISAR DADOS DA PLANILHA
+        function parseSheetData(jsonData) {
             const items = [];
             
             if (!jsonData.table || !jsonData.table.rows) {
-                console.warn('Estrutura JSON inválida');
+                console.warn('Estrutura de dados inválida');
                 return items;
             }
             
@@ -231,13 +239,17 @@
                     // Pular linha de cabeçalho (primeira linha)
                     if (i === 0) continue;
                     
-                    // Extrair dados das células
+                    // Pular linhas vazias
+                    if (!cells || cells.length === 0) continue;
+                    
+                    // Extrair dados - ajuste as posições conforme sua planilha
                     const codigo = cells[0] ? (cells[0].v || '').toString().trim() : '';
                     const nome = cells[1] ? (cells[1].v || '').toString().trim() : '';
                     const quantidade = cells[2] ? parseInt(cells[2].v) || 0 : 0;
                     const plataforma = cells[3] ? (cells[3].v || 'Não informado').toString().trim() : 'Não informado';
                     const observacoes = cells[4] ? (cells[4].v || '').toString().trim() : '';
                     
+                    // Só adicionar se tiver código e nome
                     if (codigo && nome) {
                         items.push({
                             id: 'item_' + i + '_' + Date.now(),
@@ -251,104 +263,49 @@
                         });
                     }
                 } catch (error) {
-                    console.warn(`❌ Erro na linha ${i}:`, error);
+                    console.warn(`❌ Erro na linha ${i + 1}:`, error);
                 }
             }
             
-            console.log('🎯 Itens processados via JSON:', items.length);
-            return items;
-        }
-
-        // 📝 ANALISAR CSV (FALLBACK)
-        function parseCSV(csvText) {
-            const lines = csvText.split('\n').filter(line => line.trim());
-            const items = [];
-            
-            console.log('📋 Total de linhas CSV:', lines.length);
-            
-            for (let i = 1; i < lines.length; i++) {
-                try {
-                    const line = lines[i];
-                    
-                    // Parser CSV robusto
-                    const cells = [];
-                    let current = '';
-                    let inQuotes = false;
-                    let quoteChar = '"';
-                    
-                    for (let j = 0; j < line.length; j++) {
-                        const char = line[j];
-                        
-                        if ((char === '"' || char === "'") && !inQuotes) {
-                            inQuotes = true;
-                            quoteChar = char;
-                        } else if (char === quoteChar && inQuotes) {
-                            inQuotes = false;
-                        } else if (char === ',' && !inQuotes) {
-                            cells.push(current);
-                            current = '';
-                        } else {
-                            current += char;
-                        }
-                    }
-                    cells.push(current);
-                    
-                    const cleanCells = cells.map(cell => cell.replace(/^["']|["']$/g, '').trim());
-                    
-                    const codigo = cleanCells[0] || '';
-                    const nome = cleanCells[1] || '';
-                    const quantidade = parseInt(cleanCells[2]) || 0;
-                    const plataforma = cleanCells[3] || 'Não informado';
-                    const observacoes = cleanCells[4] || '';
-                    
-                    if (codigo && nome) {
-                        items.push({
-                            id: 'item_' + i + '_' + Date.now(),
-                            codigo: codigo,
-                            nome: nome,
-                            quantidade: quantidade,
-                            plataforma: plataforma,
-                            observacoes: observacoes,
-                            data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString()
-                        });
-                    }
-                } catch (error) {
-                    console.warn(`❌ Erro na linha ${i}:`, error);
-                }
-            }
-            
+            console.log('🎯 Produtos processados:', items.length);
             return items;
         }
 
         // 📋 DADOS DE EXEMPLO (EMERGÊNCIA)
-        async function loadSampleData() {
+        function loadSampleData() {
             console.log('📋 Carregando dados de exemplo...');
             
-            // Gerar mais dados de exemplo
-            state.items = [];
-            const marcas = ['Samsung', 'LG', 'Sony', 'Apple', 'Dell', 'Lenovo', 'Acer', 'HP', 'Xiaomi', 'Motorola'];
-            const produtos = ['Smartphone', 'Tablet', 'Notebook', 'Smart TV', 'Fone Bluetooth', 'Smartwatch', 'Monitor', 'Impressora'];
-            const status = ['Mostruario', 'Embalado', 'Frente de Loja', 'Separado p/CD', 'Montagem', 'Assistencia'];
-            
-            for (let i = 1; i <= 100; i++) {
-                const randomStatus = status[Math.floor(Math.random() * status.length)];
-                const randomStatus2 = status[Math.floor(Math.random() * status.length)];
-                
-                state.items.push({
-                    id: 'ex_' + i,
-                    codigo: 'BR' + i.toString().padStart(3, '0'),
-                    nome: `${produtos[i % produtos.length]} ${marcas[i % marcas.length]} Modelo ${i}`,
-                    quantidade: Math.floor(Math.random() * 50) + 1,
-                    plataforma: ['Mercado Livre', 'Shopee', 'Amazon', 'Site Oficial', 'Loja Física'][i % 5],
-                    observacoes: `${randomStatus}, ${randomStatus2}`,
-                    data_entrada: '2024-01-15',
-                    updated_at: new Date().toISOString()
-                });
-            }
+            state.items = [
+                {
+                    id: '1',
+                    codigo: 'BR001',
+                    nome: 'Smartphone Samsung Galaxy A54',
+                    quantidade: 12,
+                    plataforma: 'Mercado Livre',
+                    observacoes: 'Mostruario, Embalado',
+                    data_entrada: '2024-01-15'
+                },
+                {
+                    id: '2', 
+                    codigo: 'BR002',
+                    nome: 'Tablet Lenovo Tab M10',
+                    quantidade: 8,
+                    plataforma: 'Shopee',
+                    observacoes: 'Frente de Loja, Separado p/CD',
+                    data_entrada: '2024-01-10'
+                },
+                {
+                    id: '3',
+                    codigo: 'BR003',
+                    nome: 'Notebook Dell Inspiron 15',
+                    quantidade: 5,
+                    plataforma: 'Site Oficial', 
+                    observacoes: 'Montagem, Assistencia',
+                    data_entrada: '2024-01-08'
+                }
+            ];
             
             state.lastUpdate = new Date().toLocaleString('pt-BR');
-            state.allItemsLoaded = true;
         }
 
         // 📊 FORMATAR OBSERVAÇÕES
@@ -391,7 +348,7 @@
             }).join('');
         }
 
-        // 🔍 FUNÇÕES DE PESQUISA E ORDENAÇÃO
+        // 🔍 FUNÇÕES DE PESQUISA RÁPIDA
         function handleSearchInput(event) {
             state.searchTerm = event.target.value;
             applySortingAndFiltering();
@@ -402,6 +359,23 @@
             state.searchTerm = '';
             applySortingAndFiltering();
             render();
+            
+            // Focar no search input após limpar
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) searchInput.focus();
+            }, 10);
+        }
+
+        function handleSearchKeyPress(event) {
+            if (event.key === 'Enter') {
+                // Esconder teclado virtual no mobile após pesquisa
+                if (window.innerWidth < 768) {
+                    setTimeout(() => {
+                        document.activeElement.blur();
+                    }, 100);
+                }
+            }
         }
 
         function sortBy(field) {
@@ -474,7 +448,8 @@
         // 🔔 NOTIFICAÇÃO
         function showNotification(message) {
             const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            const isError = message.includes('❌') || message.includes('⚠️');
+            notification.className = `fixed top-4 right-4 ${isError ? 'bg-orange-500' : 'bg-green-600'} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
             notification.innerHTML = `
                 <div class="flex items-center gap-2">
                     <span>${message}</span>
@@ -488,23 +463,35 @@
             }, 4000);
         }
 
+        // 🕒 CALCULAR TEMPO DESDE A SINCRONIZAÇÃO
+        function getTimeSinceSync() {
+            if (!state.lastSync) return 'Nunca';
+            
+            const now = Date.now();
+            const diff = now - state.lastSync;
+            const minutes = Math.floor(diff / (1000 * 60));
+            
+            if (minutes < 1) return 'Agora mesmo';
+            if (minutes < 60) return `Há ${minutes} min`;
+            
+            const hours = Math.floor(minutes / 60);
+            return `Há ${hours} h`;
+        }
+
         // 🎯 INICIALIZAÇÃO
         async function initApp() {
-            console.log('🚀 Iniciando sistema de estoque...');
+            console.log('🚀 Iniciando Mapa de Estoque...');
             
-            // Modo simples
-            state.isEstoquista = confirm('Deseja acessar como ESTOQUISTA?\n\nCancelar para modo VENDEDOR');
+            // Sincronizar imediatamente
+            await syncWithSheet();
             
-            if (state.isEstoquista) {
-                showNotification('✅ Modo ESTOQUISTA ativado!');
-            } else {
-                showNotification('👤 Modo VENDEDOR ativado');
-            }
+            // Sincronizar automaticamente a cada 2 minutos
+            setInterval(syncWithSheet, 120000);
             
-            await loadFromGoogleSheets();
-            
-            // Atualizar a cada 3 minutos
-            setInterval(loadFromGoogleSheets, 180000);
+            // Mostrar instruções
+            setTimeout(() => {
+                showNotification('🔍 Digite no campo de busca para encontrar produtos rapidamente!');
+            }, 2000);
         }
 
         // 🎨 RENDERIZAÇÃO PRINCIPAL
@@ -525,74 +512,65 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <h1 class="text-white text-xl md:text-2xl font-bold">Sistema de Estoque</h1>
-                                    <p class="text-yellow-200 text-sm mobile-hidden">SUPER BRUNO ATACADO</p>
+                                    <h1 class="text-white text-xl md:text-2xl font-bold">Mapa de Estoque</h1>
+                                    <p class="text-yellow-200 text-sm mobile-hidden">Consulta Rápida para Vendedores</p>
                                 </div>
                             </div>
                             
                             <div class="flex items-center gap-4">
-                                <div class="text-white">
-                                    <span class="text-sm">👤 ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}</span>
-                                </div>
-                                
-                                <div class="flex gap-2">
-                                    <button onclick="loadFromGoogleSheets()" 
-                                            class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center gap-2">
-                                        🔄 Atualizar
-                                    </button>
-                                    <button onclick="location.reload()" 
-                                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium">
-                                        🔁 Trocar Modo
-                                    </button>
-                                </div>
+                                <button onclick="syncWithSheet()" 
+                                        class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                                    🔄 Atualizar
+                                </button>
                             </div>
                         </div>
                     </div>
                 </header>
 
                 <!-- MAIN CONTENT -->
-                <main class="container mx-auto px-4 py-6">
+                <main class="container mx-auto px-2 md:px-4 py-4 md:py-6">
                     <!-- STATUS BAR -->
-                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <div class="flex items-center gap-2">
-                                <span class="font-medium">📦 Total:</span>
-                                <span class="text-red-600 font-bold">${state.items.length}</span>
-                                ${state.allItemsLoaded ? '<span class="text-green-600 text-sm">✓ Todos carregados</span>' : ''}
+                    <div class="bg-white rounded-lg p-4 mb-4 md:mb-6 shadow">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
+                            <div class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 mobile-text-sm">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">📦 Total:</span>
+                                    <span class="text-red-600 font-bold">${state.items.length}</span>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">🔍 Filtrados:</span>
+                                    <span class="text-red-600 font-bold">${state.filteredItems.length}</span>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">🕒 Sincronizado:</span>
+                                    <span class="text-gray-700">${getTimeSinceSync()}</span>
+                                </div>
+                                
+                                ${state.connectionError ? `
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-orange-600">⚠️ Modo Offline</span>
+                                    </div>
+                                ` : `
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-green-600">✅ Conectado</span>
+                                    </div>
+                                `}
                             </div>
-                            
-                            <div class="flex items-center gap-2">
-                                <span class="font-medium">🔍 Filtrados:</span>
-                                <span class="text-red-600 font-bold">${state.filteredItems.length}</span>
-                            </div>
-                            
-                            ${state.lastUpdate ? `
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium">🕒 Atualizado:</span>
-                                    <span class="text-gray-700">${state.lastUpdate}</span>
-                                </div>
-                            ` : ''}
-                            
-                            ${state.connectionError ? `
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium text-orange-600">⚠️ Modo Offline</span>
-                                </div>
-                            ` : `
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium text-green-600">✅ Conectado</span>
-                                </div>
-                            `}
                         </div>
                     </div>
 
                     <!-- SEARCH BAR -->
-                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
+                    <div class="bg-white rounded-lg p-4 mb-4 md:mb-6 shadow">
                         <div class="relative">
                             <input type="text" 
-                                   placeholder="🔍 Pesquisar por código, nome, plataforma..."
+                                   id="searchInput"
+                                   placeholder="🔍 Buscar produto por código, nome, plataforma..."
                                    value="${state.searchTerm}"
                                    oninput="handleSearchInput(event)"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                                   onkeypress="handleSearchKeyPress(event)"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent search-input">
                             
                             ${state.searchTerm ? `
                                 <button onclick="clearSearch()" 
@@ -601,6 +579,9 @@
                                 </button>
                             ` : ''}
                         </div>
+                        <p class="text-sm text-gray-500 mt-2">
+                            💡 Dica: Digite o código ou nome do produto para buscar rapidamente
+                        </p>
                     </div>
 
                     <!-- PRODUCTS TABLE -->
@@ -609,47 +590,51 @@
                             <table class="w-full">
                                 <thead>
                                     <tr class="bg-gradient-to-r from-red-700 to-red-900 text-white">
-                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('codigo')">
+                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('codigo')">
                                             Código ${getSortIcon('codigo')}
                                         </th>
-                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('nome')">
+                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('nome')">
                                             Nome ${getSortIcon('nome')}
                                         </th>
-                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('quantidade')">
+                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('quantidade')">
                                             Qtd ${getSortIcon('quantidade')}
                                         </th>
-                                        <th class="px-4 py-3 text-left sortable mobile-hidden" onclick="sortBy('plataforma')">
+                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-hidden" onclick="sortBy('plataforma')">
                                             Plataforma ${getSortIcon('plataforma')}
                                         </th>
-                                        <th class="px-4 py-3 text-left">Local/Status</th>
+                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left mobile-text-sm">Localização</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
                                     ${state.filteredItems.length === 0 ? `
                                         <tr>
                                             <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                                                ${state.searchTerm ? 'Nenhum produto encontrado para sua pesquisa.' : 'Carregando produtos...'}
+                                                ${state.searchTerm ? 
+                                                    '🔍 Nenhum produto encontrado. Tente outros termos.' : 
+                                                    '📦 Nenhum produto carregado. Clique em "Atualizar".'}
                                             </td>
                                         </tr>
                                     ` : ''}
                                     
                                     ${state.filteredItems.map(item => `
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 font-mono font-bold text-red-700 mobile-text-sm">${item.codigo}</td>
-                                            <td class="px-4 py-3">
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-3 py-2 md:px-4 md:py-3 font-mono font-bold text-red-700 mobile-text-sm">
+                                                ${item.codigo}
+                                            </td>
+                                            <td class="px-3 py-2 md:px-4 md:py-3">
                                                 <div class="font-medium mobile-text-sm">${item.nome}</div>
                                             </td>
-                                            <td class="px-4 py-3">
+                                            <td class="px-3 py-2 md:px-4 md:py-3">
                                                 <span class="font-bold ${item.quantidade === 0 ? 'text-red-600' : 'text-green-600'} mobile-text-sm">
                                                     ${item.quantidade}
                                                 </span>
                                             </td>
-                                            <td class="px-4 py-3 mobile-hidden">
+                                            <td class="px-3 py-2 md:px-4 md:py-3 mobile-hidden">
                                                 <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
                                                     ${item.plataforma}
                                                 </span>
                                             </td>
-                                            <td class="px-4 py-3">
+                                            <td class="px-3 py-2 md:px-4 md:py-3">
                                                 <div class="flex flex-wrap gap-1">
                                                     ${formatObservacoes(item.observacoes)}
                                                 </div>
@@ -661,20 +646,50 @@
                         </div>
                     </div>
 
-                    <!-- LEGENDA -->
-                    <div class="mt-6 bg-white rounded-lg p-4 shadow">
-                        <h3 class="font-bold text-gray-800 mb-2">🎨 Legenda dos Status:</h3>
-                        <div class="flex flex-wrap gap-2">
-                            <span class="status-tag status-mostruario">Mostruário</span>
-                            <span class="status-tag status-embalado">Embalado</span>
-                            <span class="status-tag status-frentedeloja">Frente de Loja</span>
-                            <span class="status-tag status-separadocd">Separado p/CD</span>
-                            <span class="status-tag status-montagem">Montagem</span>
-                            <span class="status-tag status-assistencia">Assistência</span>
+                    <!-- LEGENDA E INFORMAÇÕES -->
+                    <div class="mt-6 space-y-4">
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <h3 class="font-bold text-gray-800 mb-2">🎨 Legenda de Localização:</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="status-tag status-mostruario">Mostruário</span>
+                                <span class="status-tag status-embalado">Embalado</span>
+                                <span class="status-tag status-frentedeloja">Frente de Loja</span>
+                                <span class="status-tag status-separadocd">Separado p/CD</span>
+                                <span class="status-tag status-montagem">Montagem</span>
+                                <span class="status-tag status-assistencia">Assistência</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <h3 class="font-bold text-blue-800 mb-2">💡 Como usar:</h3>
+                            <ul class="text-sm text-blue-700 space-y-1">
+                                <li>• <strong>Busca rápida:</strong> Digite código, nome ou plataforma do produto</li>
+                                <li>• <strong>Ordenação:</strong> Clique nos cabeçalhos para ordenar</li>
+                                <li>• <strong>Atualização automática:</strong> Os dados sincronizam a cada 2 minutos</li>
+                                <li>• <strong>Modo offline:</strong> Funciona mesmo sem internet</li>
+                            </ul>
                         </div>
                     </div>
                 </main>
+
+                <!-- FOOTER -->
+                <footer class="mt-8 text-center text-gray-500 text-sm">
+                    <p>🔄 Atualização automática a cada 2 minutos | 📱 Otimizado para mobile</p>
+                    <p class="mt-1">Última atualização da planilha: ${state.lastUpdate || 'Nunca'}</p>
+                </footer>
             `;
+
+            // Focar no campo de busca após renderizar
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    // Mover cursor para o final se houver texto
+                    if (state.searchTerm) {
+                        searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
+                    }
+                }
+            }, 100);
         }
 
         // 🚀 INICIAR APLICATIVO
