@@ -95,6 +95,11 @@
             to { transform: rotate(360deg); }
         }
 
+        .sortable:hover {
+            cursor: pointer;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
         @media (max-width: 768px) {
             .mobile-hidden {
                 display: none;
@@ -110,14 +115,14 @@
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
                 <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-gray-600">Carregando estoque da planilha...</p>
+                <p class="text-gray-600">Carregando todos os produtos da planilha...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // ✅ URL CORRETA DA PLANILHA PUBLISHED
-        const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIBXGqrCkz3-Fg07OBUq5Xv4jrXhpAvIXWrk9GiNoeD_so8qTHaxdPXBRTTOvkN1EUujUtVOPDU8f/pub?output=csv';
+        // 🔧 CONFIGURAÇÃO - ID DA PLANILHA
+        const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
         
         let state = {
             items: [],
@@ -128,42 +133,77 @@
             lastUpdate: null,
             connectionError: false,
             sortField: 'codigo',
-            sortDirection: 'asc'
+            sortDirection: 'asc',
+            allItemsLoaded: false
         };
 
-        // 📊 CARREGAR DA PLANILHA PUBLISHED
+        // 📊 CARREGAR TODOS OS PRODUTOS DA PLANILHA
         async function loadFromGoogleSheets() {
             try {
-                console.log('📊 Carregando da planilha publicada...');
+                console.log('📊 Carregando TODOS os produtos...');
+                state.loading = true;
+                render();
                 
-                const response = await fetch(GOOGLE_SHEET_URL);
+                // Método 1: Tentar via API JSON (mais confiável)
+                const jsonUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json`;
+                
+                console.log('🔗 Tentando API JSON...');
+                const response = await fetch(jsonUrl);
                 
                 if (!response.ok) {
                     throw new Error(`Erro HTTP: ${response.status}`);
                 }
                 
-                const csvData = await response.text();
-                console.log('📄 Dados CSV recebidos:', csvData.substring(0, 500));
+                const text = await response.text();
+                console.log('📄 Resposta JSON:', text.substring(0, 500));
                 
-                if (!csvData || csvData.trim() === '') {
-                    throw new Error('Planilha vazia');
-                }
-                
-                const items = parseCSV(csvData);
+                // Processar resposta JSON
+                const jsonData = JSON.parse(text.substring(47).slice(0, -2));
+                const items = parseJSONData(jsonData);
                 
                 if (items.length > 0) {
                     state.items = items;
                     state.connectionError = false;
+                    state.allItemsLoaded = true;
                     state.lastUpdate = new Date().toLocaleString('pt-BR');
-                    console.log('✅ Dados carregados:', items.length, 'itens');
+                    console.log('✅ TODOS os produtos carregados:', items.length, 'itens');
+                    showNotification(`✅ ${items.length} produtos carregados com sucesso!`);
                 } else {
-                    throw new Error('Nenhum item válido encontrado');
+                    throw new Error('Nenhum item encontrado via JSON');
                 }
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar planilha:', error);
-                await loadSampleData();
-                state.connectionError = true;
+                console.error('❌ Erro com API JSON:', error);
+                
+                // Método 2: Tentar via CSV como fallback
+                try {
+                    console.log('🔄 Tentando método CSV...');
+                    const csvUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv`;
+                    const csvResponse = await fetch(csvUrl);
+                    
+                    if (csvResponse.ok) {
+                        const csvData = await csvResponse.text();
+                        const csvItems = parseCSV(csvData);
+                        
+                        if (csvItems.length > 0) {
+                            state.items = csvItems;
+                            state.connectionError = false;
+                            state.allItemsLoaded = true;
+                            state.lastUpdate = new Date().toLocaleString('pt-BR');
+                            console.log('✅ Produtos carregados via CSV:', csvItems.length, 'itens');
+                            showNotification(`✅ ${csvItems.length} produtos carregados!`);
+                        } else {
+                            throw new Error('CSV também vazio');
+                        }
+                    } else {
+                        throw new Error('Falha no CSV');
+                    }
+                } catch (csvError) {
+                    console.error('❌ Erro com CSV também:', csvError);
+                    await loadSampleData();
+                    state.connectionError = true;
+                    showNotification('⚠️ Usando dados de exemplo');
+                }
             }
             
             state.loading = false;
@@ -171,46 +211,32 @@
             render();
         }
 
-        // 📝 ANALISAR CSV CORRIGIDO
-        function parseCSV(csvText) {
-            const lines = csvText.split('\n').filter(line => line.trim());
+        // 📝 ANALISAR DADOS JSON DA API
+        function parseJSONData(jsonData) {
             const items = [];
             
-            console.log('📋 Total de linhas:', lines.length);
+            if (!jsonData.table || !jsonData.table.rows) {
+                console.warn('Estrutura JSON inválida');
+                return items;
+            }
             
-            // Pular cabeçalho (linha 1) e começar da linha 2
-            for (let i = 1; i < lines.length; i++) {
+            const rows = jsonData.table.rows;
+            console.log('📋 Total de linhas na planilha:', rows.length);
+            
+            for (let i = 0; i < rows.length; i++) {
                 try {
-                    const line = lines[i];
-                    console.log(`🔍 Processando linha ${i}:`, line);
+                    const row = rows[i];
+                    const cells = row.c;
                     
-                    // Método robusto para parse CSV
-                    const cells = [];
-                    let current = '';
-                    let inQuotes = false;
+                    // Pular linha de cabeçalho (primeira linha)
+                    if (i === 0) continue;
                     
-                    for (let j = 0; j < line.length; j++) {
-                        const char = line[j];
-                        
-                        if (char === '"') {
-                            inQuotes = !inQuotes;
-                        } else if (char === ',' && !inQuotes) {
-                            cells.push(current.trim());
-                            current = '';
-                        } else {
-                            current += char;
-                        }
-                    }
-                    cells.push(current.trim());
-                    
-                    console.log('📦 Células processadas:', cells);
-                    
-                    // Mapear células para campos (ajuste conforme sua planilha)
-                    const codigo = cells[0] || '';
-                    const nome = cells[1] || '';
-                    const quantidade = parseInt(cells[2]) || 0;
-                    const plataforma = cells[3] || 'Não informado';
-                    const observacoes = cells[4] || '';
+                    // Extrair dados das células
+                    const codigo = cells[0] ? (cells[0].v || '').toString().trim() : '';
+                    const nome = cells[1] ? (cells[1].v || '').toString().trim() : '';
+                    const quantidade = cells[2] ? parseInt(cells[2].v) || 0 : 0;
+                    const plataforma = cells[3] ? (cells[3].v || 'Não informado').toString().trim() : 'Não informado';
+                    const observacoes = cells[4] ? (cells[4].v || '').toString().trim() : '';
                     
                     if (codigo && nome) {
                         items.push({
@@ -223,55 +249,106 @@
                             data_entrada: new Date().toISOString().split('T')[0],
                             updated_at: new Date().toISOString()
                         });
-                        console.log('✅ Item adicionado:', codigo, nome);
                     }
                 } catch (error) {
                     console.warn(`❌ Erro na linha ${i}:`, error);
                 }
             }
             
-            console.log('🎯 Total de itens processados:', items.length);
+            console.log('🎯 Itens processados via JSON:', items.length);
             return items;
         }
 
-        // 📋 DADOS DE EXEMPLO
+        // 📝 ANALISAR CSV (FALLBACK)
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            const items = [];
+            
+            console.log('📋 Total de linhas CSV:', lines.length);
+            
+            for (let i = 1; i < lines.length; i++) {
+                try {
+                    const line = lines[i];
+                    
+                    // Parser CSV robusto
+                    const cells = [];
+                    let current = '';
+                    let inQuotes = false;
+                    let quoteChar = '"';
+                    
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        
+                        if ((char === '"' || char === "'") && !inQuotes) {
+                            inQuotes = true;
+                            quoteChar = char;
+                        } else if (char === quoteChar && inQuotes) {
+                            inQuotes = false;
+                        } else if (char === ',' && !inQuotes) {
+                            cells.push(current);
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    cells.push(current);
+                    
+                    const cleanCells = cells.map(cell => cell.replace(/^["']|["']$/g, '').trim());
+                    
+                    const codigo = cleanCells[0] || '';
+                    const nome = cleanCells[1] || '';
+                    const quantidade = parseInt(cleanCells[2]) || 0;
+                    const plataforma = cleanCells[3] || 'Não informado';
+                    const observacoes = cleanCells[4] || '';
+                    
+                    if (codigo && nome) {
+                        items.push({
+                            id: 'item_' + i + '_' + Date.now(),
+                            codigo: codigo,
+                            nome: nome,
+                            quantidade: quantidade,
+                            plataforma: plataforma,
+                            observacoes: observacoes,
+                            data_entrada: new Date().toISOString().split('T')[0],
+                            updated_at: new Date().toISOString()
+                        });
+                    }
+                } catch (error) {
+                    console.warn(`❌ Erro na linha ${i}:`, error);
+                }
+            }
+            
+            return items;
+        }
+
+        // 📋 DADOS DE EXEMPLO (EMERGÊNCIA)
         async function loadSampleData() {
             console.log('📋 Carregando dados de exemplo...');
             
-            state.items = [
-                {
-                    id: '1',
-                    codigo: 'BR001',
-                    nome: 'Smartphone Samsung Galaxy A54 5G',
-                    quantidade: 12,
-                    plataforma: 'Mercado Livre',
-                    observacoes: 'Mostruario, Embalado',
+            // Gerar mais dados de exemplo
+            state.items = [];
+            const marcas = ['Samsung', 'LG', 'Sony', 'Apple', 'Dell', 'Lenovo', 'Acer', 'HP', 'Xiaomi', 'Motorola'];
+            const produtos = ['Smartphone', 'Tablet', 'Notebook', 'Smart TV', 'Fone Bluetooth', 'Smartwatch', 'Monitor', 'Impressora'];
+            const status = ['Mostruario', 'Embalado', 'Frente de Loja', 'Separado p/CD', 'Montagem', 'Assistencia'];
+            
+            for (let i = 1; i <= 100; i++) {
+                const randomStatus = status[Math.floor(Math.random() * status.length)];
+                const randomStatus2 = status[Math.floor(Math.random() * status.length)];
+                
+                state.items.push({
+                    id: 'ex_' + i,
+                    codigo: 'BR' + i.toString().padStart(3, '0'),
+                    nome: `${produtos[i % produtos.length]} ${marcas[i % marcas.length]} Modelo ${i}`,
+                    quantidade: Math.floor(Math.random() * 50) + 1,
+                    plataforma: ['Mercado Livre', 'Shopee', 'Amazon', 'Site Oficial', 'Loja Física'][i % 5],
+                    observacoes: `${randomStatus}, ${randomStatus2}`,
                     data_entrada: '2024-01-15',
                     updated_at: new Date().toISOString()
-                },
-                {
-                    id: '2', 
-                    codigo: 'BR002',
-                    nome: 'Tablet Lenovo Tab M10 Plus',
-                    quantidade: 8,
-                    plataforma: 'Shopee',
-                    observacoes: 'Frente de Loja, Separado p/CD',
-                    data_entrada: '2024-01-10',
-                    updated_at: new Date().toISOString()
-                },
-                {
-                    id: '3',
-                    codigo: 'BR003',
-                    nome: 'Notebook Dell Inspiron 15',
-                    quantidade: 5,
-                    plataforma: 'Site Oficial', 
-                    observacoes: 'Montagem, Assistencia',
-                    data_entrada: '2024-01-08',
-                    updated_at: new Date().toISOString()
-                }
-            ];
+                });
+            }
             
             state.lastUpdate = new Date().toLocaleString('pt-BR');
+            state.allItemsLoaded = true;
         }
 
         // 📊 FORMATAR OBSERVAÇÕES
@@ -396,7 +473,6 @@
 
         // 🔔 NOTIFICAÇÃO
         function showNotification(message) {
-            // Notificação simples
             const notification = document.createElement('div');
             notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
             notification.innerHTML = `
@@ -409,14 +485,14 @@
             
             setTimeout(() => {
                 if (notification.parentElement) notification.remove();
-            }, 3000);
+            }, 4000);
         }
 
         // 🎯 INICIALIZAÇÃO
         async function initApp() {
             console.log('🚀 Iniciando sistema de estoque...');
             
-            // Modo simples - sem senha por enquanto
+            // Modo simples
             state.isEstoquista = confirm('Deseja acessar como ESTOQUISTA?\n\nCancelar para modo VENDEDOR');
             
             if (state.isEstoquista) {
@@ -427,8 +503,8 @@
             
             await loadFromGoogleSheets();
             
-            // Atualizar a cada 2 minutos
-            setInterval(loadFromGoogleSheets, 120000);
+            // Atualizar a cada 3 minutos
+            setInterval(loadFromGoogleSheets, 180000);
         }
 
         // 🎨 RENDERIZAÇÃO PRINCIPAL
@@ -482,6 +558,7 @@
                             <div class="flex items-center gap-2">
                                 <span class="font-medium">📦 Total:</span>
                                 <span class="text-red-600 font-bold">${state.items.length}</span>
+                                ${state.allItemsLoaded ? '<span class="text-green-600 text-sm">✓ Todos carregados</span>' : ''}
                             </div>
                             
                             <div class="flex items-center gap-2">
@@ -551,19 +628,19 @@
                                     ${state.filteredItems.length === 0 ? `
                                         <tr>
                                             <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                                                ${state.searchTerm ? 'Nenhum produto encontrado para sua pesquisa.' : 'Nenhum produto cadastrado.'}
+                                                ${state.searchTerm ? 'Nenhum produto encontrado para sua pesquisa.' : 'Carregando produtos...'}
                                             </td>
                                         </tr>
                                     ` : ''}
                                     
                                     ${state.filteredItems.map(item => `
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 font-mono font-bold text-red-700">${item.codigo}</td>
+                                            <td class="px-4 py-3 font-mono font-bold text-red-700 mobile-text-sm">${item.codigo}</td>
                                             <td class="px-4 py-3">
-                                                <div class="font-medium">${item.nome}</div>
+                                                <div class="font-medium mobile-text-sm">${item.nome}</div>
                                             </td>
                                             <td class="px-4 py-3">
-                                                <span class="font-bold ${item.quantidade === 0 ? 'text-red-600' : 'text-green-600'}">
+                                                <span class="font-bold ${item.quantidade === 0 ? 'text-red-600' : 'text-green-600'} mobile-text-sm">
                                                     ${item.quantidade}
                                                 </span>
                                             </td>
