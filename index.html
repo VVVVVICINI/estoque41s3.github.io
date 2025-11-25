@@ -216,8 +216,12 @@
     <script>
         // 🔧 CONFIGURAÇÃO DA PLANILHA
         const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
+        const PUBLISHED_ID = '2PACX-1vTXIBXGqrCkz3-Fg07OBUq5Xv4jrXhpAvIXWrk9GiNoeD_so8qTHaxdPXBRTTOvkN1EUujUtVOPDU8f'; // ID da versão publicada
+        const SHEET_NAME = 'Página1'; // ⚠️ AJUSTE O NOME DA ABA AQUI SE NECESSÁRIO
         const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
         const BACKUP_KEY = 'estoque_live_backup';
+        const DEBUG_MODE = true; // Ativa logs detalhados
+        const USE_PUBLISHED_VERSION = true; // Usar versão publicada (mais estável)
         
         let state = {
             items: [],
@@ -245,9 +249,19 @@
         // 📊 BUSCAR DADOS AO VIVO DA PLANILHA
         async function fetchLiveData() {
             try {
-                console.log('🔄 Buscando dados ao vivo...');
+                if (DEBUG_MODE) console.log('🔄 Buscando dados ao vivo...');
                 
-                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Página1&t=${Date.now()}`;
+                // Escolher entre versão publicada ou versão direta
+                let url;
+                if (USE_PUBLISHED_VERSION) {
+                    url = `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?output=csv&gid=0&t=${Date.now()}`;
+                    if (DEBUG_MODE) console.log('📘 Usando versão PUBLICADA');
+                } else {
+                    url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+                    if (DEBUG_MODE) console.log('📗 Usando versão DIRETA (requer compartilhamento público)');
+                }
+                
+                if (DEBUG_MODE) console.log('🔗 URL:', url);
                 
                 const response = await fetch(url, {
                     cache: 'no-cache',
@@ -257,15 +271,34 @@
                     }
                 });
                 
+                if (DEBUG_MODE) console.log('📡 Status HTTP:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
+                    throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
                 }
                 
                 const csvData = await response.text();
-                console.log('📄 Dados recebidos:', csvData.length, 'caracteres');
                 
-                if (!csvData || csvData.includes('autocrat demo job') || csvData.length < 50) {
-                    throw new Error('Planilha não está acessível publicamente');
+                if (DEBUG_MODE) {
+                    console.log('📄 Dados recebidos:', csvData.length, 'caracteres');
+                    console.log('📝 Primeiros 300 caracteres:', csvData.substring(0, 300));
+                }
+                
+                // Verificar erros comuns
+                if (!csvData || csvData.trim().length === 0) {
+                    throw new Error('❌ Planilha vazia ou inacessível');
+                }
+                
+                if (csvData.includes('autocrat demo job')) {
+                    throw new Error('❌ ERRO: Planilha não está compartilhada publicamente! Mude USE_PUBLISHED_VERSION para true ou compartilhe a planilha.');
+                }
+                
+                if (csvData.includes('Error') || csvData.includes('error')) {
+                    throw new Error('❌ Erro retornado pela planilha: ' + csvData.substring(0, 100));
+                }
+                
+                if (csvData.length < 20) {
+                    throw new Error('❌ Dados muito curtos. Verifique se há dados na planilha');
                 }
                 
                 const items = parseCSVData(csvData);
