@@ -3,25 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Localizador de Produtos - SUPER BRUNO ATACADO</title>
-
-    <!-- PWA CONFIG -->
     <meta name="theme-color" content="#a00b08">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Super Bruno">
-    <link rel="manifest" href="./manifest.json">
-
-    <!-- Ícones PWA -->
-    <link rel="icon" type="image/png" href="./icons/icon-192x192.png">
-    <link rel="apple-touch-icon" href="./icons/icon-192x192.png">
-
-    <!-- Viewport otimizado para mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* Cores personalizadas da SUPER BRUNO ATACADO */
         :root {
             --primary-red: #a00b08;
             --primary-yellow: #f4cf08;
@@ -30,100 +16,10 @@
             --primary-purple: #9c7c84;
         }
         
-        .loading-spinner {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .sortable:hover {
-            cursor: pointer;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        .pulse-sync {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        .logo-preview {
-            max-height: 64px;
-            max-width: 192px;
-            object-fit: contain;
-        }
-        .favicon-preview {
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-        }
-        .time-ago {
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-        .recent-update {
-            background-color: #f0f9ff;
-            border-left: 3px solid var(--primary-red);
-        }
-        .user-modified {
-            background-color: rgba(244, 207, 8, 0.1);
-            border-left: 3px solid var(--primary-yellow);
-        }
-        
-        /* Estilos personalizados com as cores da marca */
-        .brand-bg-primary {
-            background-color: var(--primary-red);
-        }
-        .brand-bg-secondary {
-            background-color: var(--primary-yellow);
-        }
-        .brand-bg-light {
-            background-color: var(--primary-beige);
-        }
-        .brand-bg-dark {
-            background-color: var(--primary-dark-red);
-        }
-        .brand-bg-accent {
-            background-color: var(--primary-purple);
-        }
-        .brand-text-primary {
-            color: var(--primary-red);
-        }
-        .brand-text-secondary {
-            color: var(--primary-yellow);
-        }
-        .brand-text-light {
-            color: var(--primary-beige);
-        }
-        .brand-text-dark {
-            color: var(--primary-dark-red);
-        }
-        .brand-text-accent {
-            color: var(--primary-purple);
-        }
-        .brand-border-primary {
-            border-color: var(--primary-red);
-        }
-        .brand-border-secondary {
-            border-color: var(--primary-yellow);
-        }
-        
-        /* Gradientes personalizados */
         .brand-gradient {
             background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
         }
-        .brand-gradient-light {
-            background: linear-gradient(135deg, var(--primary-beige) 0%, #f5f2ee 100%);
-        }
-        .brand-gradient-yellow {
-            background: linear-gradient(135deg, var(--primary-yellow) 0%, #f8de5e 100%);
-        }
         
-        /* Botões personalizados */
         .btn-primary {
             background-color: var(--primary-red);
             color: white;
@@ -131,32 +27,10 @@
         .btn-primary:hover {
             background-color: var(--primary-dark-red);
         }
+        
         .btn-secondary {
             background-color: var(--primary-yellow);
             color: var(--primary-dark-red);
-        }
-        .btn-secondary:hover {
-            background-color: #e6bf07;
-        }
-        .btn-accent {
-            background-color: var(--primary-purple);
-            color: white;
-        }
-        .btn-accent:hover {
-            background-color: #8a6c74;
-        }
-        
-        /* Cards e elementos de UI */
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(160, 11, 8, 0.1);
-            border: 1px solid rgba(160, 11, 8, 0.1);
-        }
-        
-        .table-header {
-            background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
-            color: white;
         }
         
         .status-tag {
@@ -171,7 +45,6 @@
             border: 1px solid;
         }
         
-        /* CORES CORRIGIDAS PARA OS STATUS */
         .status-mostruario {
             background-color: #fef9e7 !important;
             color: #7d6608 !important;
@@ -214,165 +87,21 @@
             border-color: #dee2e6 !important;
         }
 
-        /* 🔧 CORREÇÕES PARA DIGITAÇÃO NO APP */
-        .search-input, 
-        input[type="text"], 
-        input[type="number"], 
-        input[type="password"], 
-        textarea {
-            font-size: 16px !important;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            border-radius: 8px;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            background: white;
-            width: 100%;
-            box-sizing: border-box;
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
-        /* Melhorar foco nos inputs */
-        .search-input:focus, 
-        input[type="text"]:focus, 
-        input[type="number"]:focus, 
-        input[type="password"]:focus, 
-        textarea:focus {
-            border-color: var(--primary-red);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(160, 11, 8, 0.1);
-        }
-
-        /* Melhorar textarea */
-        textarea {
-            min-height: 100px;
-            resize: vertical;
-            line-height: 1.4;
-        }
-
-        /* 🔧 MELHORIAS DE ACESSIBILIDADE */
-        button:focus, 
-        input:focus, 
-        textarea:focus {
-            outline: 2px solid var(--primary-red);
-            outline-offset: 2px;
-        }
-
-        /* MOBILE OPTIMIZATIONS */
         @media (max-width: 768px) {
-            .container {
-                padding: 8px;
-            }
-            
-            .product-table {
-                font-size: 14px;
-            }
-            
-            .btn-action {
-                min-height: 44px;
-                padding: 12px 16px;
-                font-size: 16px;
-            }
-            
-            .search-input {
-                font-size: 16px !important;
-                height: 52px;
-                padding: 14px 16px;
-            }
-            
-            table {
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-            
             .mobile-hidden {
                 display: none;
             }
-            
             .mobile-text-sm {
                 font-size: 0.875rem;
             }
-
-            /* Header mobile */
-            .header-mobile {
-                padding: 12px 8px;
-            }
-
-            .logo-mobile {
-                max-width: 120px;
-                max-height: 40px;
-            }
-
-            /* Table mobile optimizations */
-            .table-mobile td, .table-mobile th {
-                padding: 10px 6px;
-                vertical-align: top;
-            }
-
-            /* Button group mobile */
-            .btn-group-mobile {
-                flex-wrap: wrap;
-                gap: 4px;
-            }
-
-            .btn-mobile {
-                flex: 1;
-                min-width: 120px;
-            }
-
-            /* Garantir que as tags de status sejam visíveis */
-            .table-mobile .status-tag {
-                font-size: 10px;
-                padding: 4px 6px;
-                white-space: nowrap;
-                display: inline-block !important;
-            }
-
-            /* 🔧 CORREÇÃO PARA MODAIS NO MOBILE */
-            .modal-mobile {
-                margin: 10px;
-                max-height: 85vh;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            .modal-content-mobile {
-                padding: 20px;
-            }
-            
-            /* Garantir que inputs em modais sejam legíveis */
-            .modal-mobile input,
-            .modal-mobile textarea {
-                font-size: 16px !important;
-                min-height: 48px;
-            }
-        }
-
-        /* Melhorar elementos touch */
-        button, .sortable, [onclick] {
-            min-height: 44px;
-            min-width: 44px;
-            cursor: pointer;
-        }
-
-        /* Prevenir seleção de texto */
-        body {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* Melhorar scroll no mobile */
-        .overflow-x-auto {
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Loading states mobile */
-        .loading-mobile {
-            padding: 40px 20px;
         }
     </style>
 </head>
@@ -381,662 +110,107 @@
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
                 <div class="loading-spinner w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-gray-600">Carregando estoque do Google Sheets...</p>
+                <p class="text-gray-600">Carregando estoque da planilha...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // 🔧 CONFIGURAÇÃO CORRIGIDA
-        const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
-        const GOOGLE_SHEET_NAME = 'Página1';
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby_-ra10vfKh8nr7U7oUPe7q3iuLGJbtrZvt7XhS_xs_WellTy3zWGs5POJ02TXDWF_-Q/exec';
-
+        // ✅ URL CORRETA DA PLANILHA PUBLISHED
+        const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXIBXGqrCkz3-Fg07OBUq5Xv4jrXhpAvIXWrk9GiNoeD_so8qTHaxdPXBRTTOvkN1EUujUtVOPDU8f/pub?output=csv';
+        
         let state = {
             items: [],
             loading: true,
-            activeModal: null,
-            importLoading: false,
             searchTerm: '',
             filteredItems: [],
-            isEstoquista: null,
-            editingItem: null,
-            isNewProduct: false,
+            isEstoquista: false,
             lastUpdate: null,
             connectionError: false,
-            syncInProgress: false,
             sortField: 'codigo',
-            sortDirection: 'asc',
-            searchTimeout: null,
-            lastSync: null,
-            customLogo: null,
-            customFavicon: null,
-            demoData: [
-                {
-                    id: 'demo_1',
-                    codigo: 'BR001',
-                    nome: 'Smartphone Samsung Galaxy A54',
-                    quantidade: 15,
-                    plataforma: 'Mercado Livre',
-                    observacoes: 'Mostruario, Embalado',
-                    data_entrada: '2024-01-15',
-                    updated_at: new Date().toISOString(),
-                    last_modified: null,
-                    user_modified: false
-                },
-                {
-                    id: 'demo_2',
-                    codigo: 'BR002',
-                    nome: 'Tablet Lenovo Tab M10',
-                    quantidade: 8,
-                    plataforma: 'Shopee',
-                    observacoes: 'Frente de Loja, Separado p/CD',
-                    data_entrada: '2024-01-10',
-                    updated_at: new Date().toISOString(),
-                    last_modified: null,
-                    user_modified: false
-                },
-                {
-                    id: 'demo_3',
-                    codigo: 'BR003',
-                    nome: 'Notebook Dell Inspiron 15',
-                    quantidade: 5,
-                    plataforma: 'Site Oficial',
-                    observacoes: 'Montagem, Assistencia',
-                    data_entrada: '2024-01-08',
-                    updated_at: new Date().toISOString(),
-                    last_modified: null,
-                    user_modified: false
-                },
-                {
-                    id: 'demo_4',
-                    codigo: 'BR004',
-                    nome: 'Fone de Ouvido JBL Tune 510BT',
-                    quantidade: 25,
-                    plataforma: 'Amazon',
-                    observacoes: 'Embalado, Frente de Loja',
-                    data_entrada: '2024-01-12',
-                    updated_at: new Date().toISOString(),
-                    last_modified: null,
-                    user_modified: false
-                },
-                {
-                    id: 'demo_5',
-                    codigo: 'BR005',
-                    nome: 'Smart TV LG 55" 4K',
-                    quantidade: 3,
-                    plataforma: 'Mercado Livre',
-                    observacoes: 'Mostruario, Montagem',
-                    data_entrada: '2024-01-05',
-                    updated_at: new Date().toISOString(),
-                    last_modified: null,
-                    user_modified: false
-                }
-            ]
+            sortDirection: 'asc'
         };
 
-        // 🌐 OBTER IP DO CLIENTE (SIMPLIFICADO)
-        async function getClientIP() {
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                return data.ip;
-            } catch (error) {
-                const fallbackId = btoa(navigator.userAgent + navigator.language + screen.width + screen.height);
-                return 'local_' + fallbackId.substring(0, 16);
-            }
-        }
-
-        // 🔐 VERIFICAR SE É ESTOQUISTA
-        async function checkUserRole() {
-            const userIP = await getClientIP();
-            const userRoleKey = 'estoque_user_role_' + userIP;
-            const savedRole = localStorage.getItem(userRoleKey);
-            
-            if (savedRole) {
-                state.isEstoquista = savedRole === 'estoquista';
-                console.log('👤 Modo carregado:', state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR');
-                return true;
-            }
-            
-            showRoleSelectionModal();
-            return false;
-        }
-
-        // 🔄 TROCAR MODO DO USUÁRIO
-        async function switchUserMode() {
-            const userIP = await getClientIP();
-            const userRoleKey = 'estoque_user_role_' + userIP;
-            
-            localStorage.removeItem(userRoleKey);
-            state.isEstoquista = null;
-            
-            showRoleSelectionModal();
-        }
-
-        // 🔓 RECUPERAR SENHA
-        function showPasswordRecovery() {
-            const modalHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <div class="bg-white rounded-xl w-full max-w-sm mx-auto">
-                        <div class="p-6 text-center">
-                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-2xl">🔑</span>
-                            </div>
-                            
-                            <h2 class="text-xl font-bold text-gray-800 mb-2">Recuperar Senha</h2>
-                            <p class="text-gray-600 mb-4">Entre em contato com o administrador do sistema para obter a senha de estoquista.</p>
-                            
-                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                                <p class="text-sm text-yellow-800">
-                                    <strong>📞 Contato:</strong> Administrador do Sistema<br>
-                                    <strong>🏢 Setor:</strong> TI ou Gerência
-                                </p>
-                            </div>
-                            
-                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
-                                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold transition-all">
-                                Fechar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const modalContainer = document.createElement('div');
-            modalContainer.id = 'password-recovery-modal';
-            modalContainer.innerHTML = modalHTML;
-            document.body.appendChild(modalContainer);
-        }
-
-        // 🎯 MODAL DE SELEÇÃO DE PAPEL
-        function showRoleSelectionModal() {
-            const modalHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <div class="bg-white rounded-xl w-full max-w-sm mx-auto">
-                        <div class="p-6 text-center">
-                            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-2xl">👋</span>
-                            </div>
-                            
-                            <h2 class="text-xl font-bold text-gray-800 mb-2">Bem-vindo!</h2>
-                            <p class="text-gray-600 mb-6">Qual é a sua função na empresa?</p>
-                            
-                            <div class="space-y-3">
-                                <button onclick="selectUserRole('vendedor')" 
-                                        class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 px-6 rounded-lg font-semibold text-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg">
-                                    🛒 VENDEDOR
-                                </button>
-                                
-                                <button onclick="selectUserRole('estoquista')" 
-                                        class="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white py-4 px-6 rounded-lg font-semibold text-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg">
-                                    📦 ESTOQUISTA
-                                </button>
-                            </div>
-                            
-                            <div class="mt-4 pt-4 border-t border-gray-200">
-                                <button onclick="showPasswordRecovery()" 
-                                        class="text-sm text-blue-600 hover:text-blue-800 underline">
-                                    🔑 Esqueci a senha do modo estoquista
-                                </button>
-                            </div>
-                            
-                            <p class="text-xs text-gray-500 mt-4">
-                                Esta seleção será lembrada neste dispositivo
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const modalContainer = document.createElement('div');
-            modalContainer.id = 'role-selection-modal';
-            modalContainer.innerHTML = modalHTML;
-            document.body.appendChild(modalContainer);
-        }
-
-        // 🎯 SELECIONAR PAPEL DO USUÁRIO
-        async function selectUserRole(role) {
-            const userIP = await getClientIP();
-            const userRoleKey = 'estoque_user_role_' + userIP;
-            
-            const modal = document.getElementById('role-selection-modal');
-            if (modal) modal.remove();
-            
-            if (role === 'estoquista') {
-                showPasswordModal();
-            } else {
-                state.isEstoquista = false;
-                localStorage.setItem(userRoleKey, 'vendedor');
-                showNotification('👤 Modo VENDEDOR ativado');
-                
-                console.log('👤 Modo selecionado: VENDEDOR');
-                
-                await loadFromGoogleSheets();
-                state.loading = false;
-                render();
-            }
-        }
-
-        // 🔐 MODAL DE SENHA DO ESTOQUISTA
-        function showPasswordModal() {
-            const modalHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <div class="bg-white rounded-xl w-full max-w-sm mx-auto">
-                        <div class="p-6 text-center">
-                            <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-2xl">🔒</span>
-                            </div>
-                            
-                            <h2 class="text-xl font-bold text-gray-800 mb-2">Acesso Estoquista</h2>
-                            <p class="text-gray-600 mb-4">Digite a senha do modo estoquista:</p>
-                            
-                            <input type="password" 
-                                   id="passwordInput"
-                                   placeholder="Digite a senha..."
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-4 text-center text-lg font-mono"
-                                   autocomplete="off">
-                            
-                            <div class="flex gap-2 mb-4">
-                                <button onclick="verifyPassword()" 
-                                        class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold transition-all">
-                                    ✅ Confirmar
-                                </button>
-                                <button onclick="cancelPassword()" 
-                                        class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold transition-all">
-                                    ❌ Cancelar
-                                </button>
-                            </div>
-                            
-                            <button onclick="showPasswordRecovery()" 
-                                    class="text-sm text-blue-600 hover:text-blue-800 underline">
-                                🔑 Esqueci a senha
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const modalContainer = document.createElement('div');
-            modalContainer.id = 'password-modal';
-            modalContainer.innerHTML = modalHTML;
-            document.body.appendChild(modalContainer);
-            
-            setTimeout(() => {
-                const passwordInput = document.getElementById('passwordInput');
-                if (passwordInput) {
-                    passwordInput.focus();
-                    passwordInput.addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter') {
-                            verifyPassword();
-                        }
-                    });
-                }
-            }, 100);
-        }
-
-        // ✅ VERIFICAR SENHA
-        async function verifyPassword() {
-            const passwordInput = document.getElementById('passwordInput');
-            const password = passwordInput ? passwordInput.value : '';
-            const userIP = await getClientIP();
-            const userRoleKey = 'estoque_user_role_' + userIP;
-            
-            const modal = document.getElementById('password-modal');
-            if (modal) modal.remove();
-            
-            if (password === 'estoque123') {
-                state.isEstoquista = true;
-                localStorage.setItem(userRoleKey, 'estoquista');
-                showNotification('✅ Modo ESTOQUISTA ativado!');
-                
-                console.log('👤 Modo selecionado: ESTOQUISTA');
-                
-                await loadFromGoogleSheets();
-                state.loading = false;
-                render();
-            } else {
-                alert('❌ Senha incorreta. Tente novamente.');
-                showRoleSelectionModal();
-            }
-        }
-
-        // ❌ CANCELAR DIGITAÇÃO DE SENHA
-        function cancelPassword() {
-            const modal = document.getElementById('password-modal');
-            if (modal) modal.remove();
-            
-            showRoleSelectionModal();
-        }
-
-        // 🔄 INICIALIZAÇÃO
-        async function initApp() {
-            console.log('🚀 Iniciando sistema completo...');
-            
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                console.log('📱 Executando como App PWA');
-                document.body.classList.add('pwa-mode');
-            }
-            
-            await loadCustomLogo();
-            await loadCustomFavicon();
-            
-            const hasRoleDefined = await checkUserRole();
-            
-            if (hasRoleDefined) {
-                await loadFromGoogleSheets();
-                state.loading = false;
-                render();
-                
-                setInterval(loadFromGoogleSheets, 120000);
-            }
-        }
-
-        // 🕒 FUNÇÃO PARA CALCULAR TEMPO DECORRIDO
-        function getTimeAgo(timestamp) {
-            if (!timestamp) return 'Nunca atualizado';
-            
-            const now = new Date();
-            const past = new Date(timestamp);
-            const diffInSeconds = Math.floor((now - past) / 1000);
-            
-            if (diffInSeconds < 60) {
-                return 'Agora mesmo';
-            } else if (diffInSeconds < 3600) {
-                const minutes = Math.floor(diffInSeconds / 60);
-                return `Há ${minutes} min${minutes > 1 ? 's' : ''}`;
-            } else if (diffInSeconds < 86400) {
-                const hours = Math.floor(diffInSeconds / 3600);
-                return `Há ${hours} h${hours > 1 ? 's' : ''}`;
-            } else if (diffInSeconds < 2592000) {
-                const days = Math.floor(diffInSeconds / 86400);
-                return `Há ${days} dia${days > 1 ? 's' : ''}`;
-            } else {
-                const months = Math.floor(diffInSeconds / 2592000);
-                return `Há ${months} mes${months > 1 ? 'es' : ''}`;
-            }
-        }
-
-        // 🕒 FUNÇÃO PARA FORMATAR DATA COMPLETA
-        function formatFullDate(timestamp) {
-            if (!timestamp) return 'Data não disponível';
-            
-            const date = new Date(timestamp);
-            return date.toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        // 🕒 VERIFICAR SE É ATUALIZAÇÃO DO USUÁRIO
-        function isUserModified(timestamp) {
-            if (!timestamp) return false;
-            
-            const now = new Date();
-            const past = new Date(timestamp);
-            const diffInHours = (now - past) / (1000 * 3600);
-            
-            return diffInHours < 24;
-        }
-
-        // 🖼️ CARREGAR LOGO PERSONALIZADA
-        async function loadCustomLogo() {
-            const savedLogo = localStorage.getItem('estoque_custom_logo');
-            if (savedLogo) {
-                state.customLogo = savedLogo;
-            }
-        }
-
-        // 🖼️ SALVAR LOGO PERSONALIZADA
-        function saveCustomLogo(logoData) {
-            state.customLogo = logoData;
-            localStorage.setItem('estoque_custom_logo', logoData);
-        }
-
-        // 🖼️ REMOVER LOGO PERSONALIZADA
-        function removeCustomLogo() {
-            state.customLogo = null;
-            localStorage.removeItem('estoque_custom_logo');
-            render();
-        }
-
-        // 🔵 CARREGAR FAVICON PERSONALIZADO
-        async function loadCustomFavicon() {
-            const savedFavicon = localStorage.getItem('estoque_custom_favicon');
-            if (savedFavicon) {
-                state.customFavicon = savedFavicon;
-                updateFavicon(savedFavicon);
-            }
-        }
-
-        // 🔵 SALVAR FAVICON PERSONALIZADO
-        function saveCustomFavicon(faviconData) {
-            state.customFavicon = faviconData;
-            localStorage.setItem('estoque_custom_favicon', faviconData);
-            updateFavicon(faviconData);
-        }
-
-        // 🔵 REMOVER FAVICON PERSONALIZADO
-        function removeCustomFavicon() {
-            state.customFavicon = null;
-            localStorage.removeItem('estoque_custom_favicon');
-            resetFavicon();
-            render();
-        }
-
-        // 🔵 ATUALIZAR FAVICON NA PÁGINA
-        function updateFavicon(faviconData) {
-            const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
-            existingFavicons.forEach(favicon => favicon.remove());
-            
-            const newFavicon = document.createElement('link');
-            newFavicon.rel = 'icon';
-            newFavicon.href = faviconData;
-            document.head.appendChild(newFavicon);
-
-            const appleFavicon = document.createElement('link');
-            appleFavicon.rel = 'apple-touch-icon';
-            appleFavicon.href = faviconData;
-            document.head.appendChild(appleFavicon);
-        }
-
-        // 🔵 RESETAR FAVICON PADRÃO
-        function resetFavicon() {
-            const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
-            existingFavicons.forEach(favicon => favicon.remove());
-            
-            const defaultFavicon = document.createElement('link');
-            defaultFavicon.rel = 'icon';
-            defaultFavicon.href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>";
-            document.head.appendChild(defaultFavicon);
-        }
-
-        // 📤 UPLOAD DE IMAGEM
-        function handleImageUpload(event, type = 'logo') {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (!file.type.match('image.*')) {
-                alert('❌ Por favor, selecione apenas arquivos de imagem.');
-                return;
-            }
-
-            if (file.size > 2 * 1024 * 1024) {
-                alert('❌ A imagem deve ter no máximo 2MB.');
-                return;
-            }
-
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const imageData = e.target.result;
-                if (type === 'logo') {
-                    saveCustomLogo(imageData);
-                    showNotification('✅ Logo atualizada com sucesso!');
-                } else if (type === 'favicon') {
-                    saveCustomFavicon(imageData);
-                    showNotification('✅ Favicon atualizado com sucesso!');
-                }
-                render();
-            };
-            
-            reader.onerror = function() {
-                alert('❌ Erro ao carregar a imagem.');
-            };
-            
-            reader.readAsDataURL(file);
-            
-            event.target.value = '';
-        }
-
-        // 🖼️ RENDERIZAR LOGO
-        function renderLogo() {
-            if (state.customLogo) {
-                return `
-                    <div class="w-48 h-16 flex items-center justify-center relative group">
-                        <img src="${state.customLogo}" alt="Logo Personalizada" class="logo-preview logo-mobile">
-                        ${state.isEstoquista ? `
-                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                <button onclick="removeCustomLogo()" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
-                                    Remover
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="brand-gradient rounded-xl p-2 text-white font-bold text-xl flex items-center justify-center h-16 w-48 shadow-md logo-mobile">
-                        <div class="flex items-center">
-                            <span class="text-white">SUPER</span>
-                            <span class="text-yellow-300 ml-1">BRUNO</span>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // 🔵 RENDERIZAR PREVIEW DO FAVICON
-        function renderFaviconPreview() {
-            if (state.customFavicon) {
-                return `
-                    <div class="flex items-center gap-2 relative group">
-                        <img src="${state.customFavicon}" alt="Favicon" class="favicon-preview">
-                        <span class="text-xs text-gray-600">Favicon Atual</span>
-                        <button onclick="removeCustomFavicon()" class="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                            ×
-                        </button>
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="flex items-center gap-2">
-                        <div class="favicon-preview bg-gray-100 flex items-center justify-center text-sm">📦</div>
-                        <span class="text-xs text-gray-600">Favicon Padrão</span>
-                    </div>
-                `;
-            }
-        }
-
-        // 📊 CARREGAR DO GOOGLE SHEETS - CORRIGIDO
+        // 📊 CARREGAR DA PLANILHA PUBLISHED
         async function loadFromGoogleSheets() {
             try {
-                console.log('📊 Buscando dados do Google Sheets...');
+                console.log('📊 Carregando da planilha publicada...');
                 
-                // URL alternativa para evitar problema do "autocrat demo job"
-                const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(GOOGLE_SHEET_NAME)}&t=${Date.now()}`;
-                
-                console.log('🔗 URL da planilha:', sheetUrl);
-                
-                const response = await fetch(sheetUrl);
+                const response = await fetch(GOOGLE_SHEET_URL);
                 
                 if (!response.ok) {
-                    throw new Error('Erro ao carregar planilha: ' + response.status);
+                    throw new Error(`Erro HTTP: ${response.status}`);
                 }
                 
                 const csvData = await response.text();
-                console.log('📄 Dados CSV recebidos:', csvData.substring(0, 200) + '...');
+                console.log('📄 Dados CSV recebidos:', csvData.substring(0, 500));
                 
-                if (csvData.includes('autocrat demo job') || csvData.trim() === '') {
-                    throw new Error('Planilha vazia ou em modo demonstração');
+                if (!csvData || csvData.trim() === '') {
+                    throw new Error('Planilha vazia');
                 }
                 
-                const newItems = parseCSV(csvData);
+                const items = parseCSV(csvData);
                 
-                // Se não conseguiu carregar dados, usar dados de demonstração
-                if (newItems.length === 0) {
-                    console.log('⚠️ Usando dados de demonstração');
-                    state.items = [...state.demoData];
-                    showNotification('⚠️ Usando dados de demonstração');
+                if (items.length > 0) {
+                    state.items = items;
+                    state.connectionError = false;
+                    state.lastUpdate = new Date().toLocaleString('pt-BR');
+                    console.log('✅ Dados carregados:', items.length, 'itens');
                 } else {
-                    state.items = newItems;
+                    throw new Error('Nenhum item válido encontrado');
                 }
-                
-                applySortingAndFiltering();
-                state.lastUpdate = new Date().toLocaleString('pt-BR');
-                state.connectionError = false;
-                
-                console.log('✅ Dados carregados:', state.items.length, 'itens');
-                render();
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar do Google Sheets:', error);
-                
-                // Tentar carregar do localStorage
-                await loadFromLocalStorage();
-                
-                // Se ainda não tiver dados, usar demonstração
-                if (state.items.length === 0) {
-                    console.log('📋 Carregando dados de demonstração');
-                    state.items = [...state.demoData];
-                    applySortingAndFiltering();
-                    state.connectionError = true;
-                    showNotification('⚠️ Modo offline - Dados de demonstração');
-                }
-                
-                state.loading = false;
-                render();
+                console.error('❌ Erro ao carregar planilha:', error);
+                await loadSampleData();
+                state.connectionError = true;
             }
+            
+            state.loading = false;
+            applySortingAndFiltering();
+            render();
         }
 
-        // 📝 ANALISAR CSV - CORRIGIDO
+        // 📝 ANALISAR CSV CORRIGIDO
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
-            
-            if (lines.length <= 1) {
-                console.warn('CSV vazio ou apenas cabeçalho');
-                return [];
-            }
-            
             const items = [];
-            const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
             
-            console.log('📋 Cabeçalhos encontrados:', headers);
+            console.log('📋 Total de linhas:', lines.length);
             
+            // Pular cabeçalho (linha 1) e começar da linha 2
             for (let i = 1; i < lines.length; i++) {
                 try {
-                    const cells = parseCSVLine(lines[i]);
+                    const line = lines[i];
+                    console.log(`🔍 Processando linha ${i}:`, line);
                     
-                    // Mapear colunas dinamicamente
-                    const codigo = (cells[0] || '').toString().trim();
-                    const nome = (cells[1] || '').toString().trim();
+                    // Método robusto para parse CSV
+                    const cells = [];
+                    let current = '';
+                    let inQuotes = false;
                     
-                    // Tentar encontrar quantidade em diferentes colunas
-                    let quantidade = 0;
-                    for (let j = 2; j < Math.min(cells.length, 5); j++) {
-                        const cellValue = cells[j] || '';
-                        const parsed = parseInt(cellValue);
-                        if (!isNaN(parsed)) {
-                            quantidade = parsed;
-                            break;
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            cells.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
                         }
                     }
+                    cells.push(current.trim());
                     
-                    const plataforma = (cells[3] || 'Não informado').toString().trim();
-                    const observacoes = (cells[4] || '').toString().trim();
+                    console.log('📦 Células processadas:', cells);
+                    
+                    // Mapear células para campos (ajuste conforme sua planilha)
+                    const codigo = cells[0] || '';
+                    const nome = cells[1] || '';
+                    const quantidade = parseInt(cells[2]) || 0;
+                    const plataforma = cells[3] || 'Não informado';
+                    const observacoes = cells[4] || '';
                     
                     if (codigo && nome) {
                         items.push({
@@ -1047,427 +221,60 @@
                             plataforma: plataforma,
                             observacoes: observacoes,
                             data_entrada: new Date().toISOString().split('T')[0],
-                            updated_at: new Date().toISOString(),
-                            last_modified: null,
-                            user_modified: false
+                            updated_at: new Date().toISOString()
                         });
+                        console.log('✅ Item adicionado:', codigo, nome);
                     }
                 } catch (error) {
-                    console.warn(`Erro na linha ${i + 1}:`, error);
+                    console.warn(`❌ Erro na linha ${i}:`, error);
                 }
             }
             
-            console.log('📦 Itens processados:', items.length);
+            console.log('🎯 Total de itens processados:', items.length);
             return items;
         }
 
-        // 🔧 PARSER DE CSV MELHORADO
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            let quoteChar = '"';
+        // 📋 DADOS DE EXEMPLO
+        async function loadSampleData() {
+            console.log('📋 Carregando dados de exemplo...');
             
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                
-                if ((char === '"' || char === "'") && !inQuotes) {
-                    inQuotes = true;
-                    quoteChar = char;
-                } else if (char === quoteChar && inQuotes) {
-                    inQuotes = false;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = '';
-                } else {
-                    current += char;
+            state.items = [
+                {
+                    id: '1',
+                    codigo: 'BR001',
+                    nome: 'Smartphone Samsung Galaxy A54 5G',
+                    quantidade: 12,
+                    plataforma: 'Mercado Livre',
+                    observacoes: 'Mostruario, Embalado',
+                    data_entrada: '2024-01-15',
+                    updated_at: new Date().toISOString()
+                },
+                {
+                    id: '2', 
+                    codigo: 'BR002',
+                    nome: 'Tablet Lenovo Tab M10 Plus',
+                    quantidade: 8,
+                    plataforma: 'Shopee',
+                    observacoes: 'Frente de Loja, Separado p/CD',
+                    data_entrada: '2024-01-10',
+                    updated_at: new Date().toISOString()
+                },
+                {
+                    id: '3',
+                    codigo: 'BR003',
+                    nome: 'Notebook Dell Inspiron 15',
+                    quantidade: 5,
+                    plataforma: 'Site Oficial', 
+                    observacoes: 'Montagem, Assistencia',
+                    data_entrada: '2024-01-08',
+                    updated_at: new Date().toISOString()
                 }
-            }
+            ];
             
-            result.push(current);
-            return result.map(cell => cell.replace(/^["']|["']$/g, '').trim());
+            state.lastUpdate = new Date().toLocaleString('pt-BR');
         }
 
-        // 🔄 SINCRONIZAÇÃO
-        async function syncWithGoogleSheets(item) {
-            if (!state.isEstoquista) return false;
-            
-            try {
-                console.log('🔄 Tentando sincronizar:', item.codigo, item.quantidade);
-                
-                const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        codigo: item.codigo,
-                        quantidade: item.quantidade
-                    })
-                });
-                
-                console.log('✅ Resposta recebida');
-                state.lastSync = new Date().toLocaleString('pt-BR');
-                showNotification(`✅ ${item.codigo} atualizado para ${item.quantidade} unidades`);
-                return true;
-                
-            } catch (error) {
-                console.error('❌ Erro na sincronização:', error);
-                
-                try {
-                    fetch(WEB_APP_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            codigo: item.codigo,
-                            quantidade: item.quantidade
-                        })
-                    });
-                    
-                    showNotification('🔄 Sincronização enviada (modo assíncrono)');
-                    return true;
-                } catch (secondError) {
-                    showNotification('❌ Erro ao sincronizar. Atualizado apenas localmente.');
-                    return false;
-                }
-            }
-        }
-
-        // ➕ DIMINUIR QUANTIDADE
-        async function decreaseQuantity(itemId, amount = 1) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem alterar quantidades.');
-                return;
-            }
-            
-            const itemIndex = state.items.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) return;
-            
-            const currentQuantity = state.items[itemIndex].quantidade;
-            const newQuantity = Math.max(0, currentQuantity - amount);
-            
-            if (newQuantity === currentQuantity) {
-                alert('❌ Quantidade já está em zero.');
-                return;
-            }
-            
-            state.items[itemIndex].quantidade = newQuantity;
-            state.items[itemIndex].updated_at = new Date().toISOString();
-            state.items[itemIndex].last_modified = new Date().toISOString();
-            state.items[itemIndex].user_modified = true;
-            
-            syncWithGoogleSheets(state.items[itemIndex]);
-            
-            applySortingAndFiltering();
-            saveToLocalStorage();
-            render();
-        }
-
-        // ➕ AUMENTAR QUANTIDADE
-        async function increaseQuantity(itemId, amount = 1) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem alterar quantidades.');
-                return;
-            }
-            
-            const itemIndex = state.items.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) return;
-            
-            const newQuantity = state.items[itemIndex].quantidade + amount;
-            
-            state.items[itemIndex].quantidade = newQuantity;
-            state.items[itemIndex].updated_at = new Date().toISOString();
-            state.items[itemIndex].last_modified = new Date().toISOString();
-            state.items[itemIndex].user_modified = true;
-            
-            syncWithGoogleSheets(state.items[itemIndex]);
-            
-            applySortingAndFiltering();
-            saveToLocalStorage();
-            render();
-        }
-
-        // 🔔 NOTIFICAÇÃO
-        function showNotification(message) {
-            document.querySelectorAll('.notification').forEach(el => el.remove());
-            
-            const notification = document.createElement('div');
-            const isError = message.includes('❌');
-            notification.className = `notification fixed top-4 right-4 ${isError ? 'bg-red-600' : 'btn-primary'} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
-            notification.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <span>${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">×</button>
-                </div>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) notification.remove();
-            }, 5000);
-        }
-
-        // 🔄 FUNÇÕES DE ORDENAÇÃO E FILTRO
-        function applySortingAndFiltering() {
-            filterItems();
-            sortItems();
-        }
-
-        function filterItems() {
-            const term = state.searchTerm.toLowerCase().trim();
-            
-            if (!term) {
-                state.filteredItems = [...state.items];
-            } else {
-                state.filteredItems = state.items.filter(item => 
-                    item.codigo.toLowerCase().includes(term) ||
-                    item.nome.toLowerCase().includes(term) ||
-                    item.plataforma.toLowerCase().includes(term) ||
-                    (item.observacoes && item.observacoes.toLowerCase().includes(term))
-                );
-            }
-        }
-
-        function sortItems() {
-            state.filteredItems.sort((a, b) => {
-                let valueA, valueB;
-                
-                switch (state.sortField) {
-                    case 'codigo':
-                        valueA = a.codigo.toLowerCase();
-                        valueB = b.codigo.toLowerCase();
-                        break;
-                    case 'nome':
-                        valueA = a.nome.toLowerCase();
-                        valueB = b.nome.toLowerCase();
-                        break;
-                    case 'quantidade':
-                        valueA = a.quantidade;
-                        valueB = b.quantidade;
-                        break;
-                    case 'plataforma':
-                        valueA = a.plataforma.toLowerCase();
-                        valueB = b.plataforma.toLowerCase();
-                        break;
-                    case 'observacoes':
-                        valueA = (a.observacoes || '').toLowerCase();
-                        valueB = (b.observacoes || '').toLowerCase();
-                        break;
-                    case 'last_modified':
-                        valueA = new Date(a.last_modified || 0);
-                        valueB = new Date(b.last_modified || 0);
-                        break;
-                    default:
-                        valueA = a.codigo.toLowerCase();
-                        valueB = b.codigo.toLowerCase();
-                }
-                
-                if (state.sortDirection === 'asc') {
-                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
-                } else {
-                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
-                }
-            });
-        }
-
-        // 🔍 FUNÇÕES DE PESQUISA
-        function handleSearchInput(event) {
-            const value = event.target.value;
-            state.searchTerm = value;
-            
-            clearTimeout(state.searchTimeout);
-            state.searchTimeout = setTimeout(() => {
-                applySortingAndFiltering();
-                render();
-                setTimeout(() => {
-                    const searchInput = document.getElementById('searchInput');
-                    if (searchInput) {
-                        searchInput.focus();
-                        const length = searchInput.value.length;
-                        searchInput.setSelectionRange(length, length);
-                    }
-                }, 50);
-            }, 800);
-        }
-
-        function handleSearchKeyPress(event) {
-            if (event.key === 'Enter') {
-                const value = event.target.value;
-                state.searchTerm = value;
-                
-                clearTimeout(state.searchTimeout);
-                applySortingAndFiltering();
-                render();
-                
-                setTimeout(() => {
-                    const searchInput = document.getElementById('searchInput');
-                    if (searchInput) {
-                        searchInput.focus();
-                        const length = searchInput.value.length;
-                        searchInput.setSelectionRange(length, length);
-                    }
-                }, 50);
-                
-                if (window.innerWidth < 768) {
-                    setTimeout(() => {
-                        document.activeElement.blur();
-                    }, 1000);
-                }
-            }
-        }
-
-        function clearSearch() {
-            state.searchTerm = '';
-            applySortingAndFiltering();
-            render();
-            
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.focus();
-                }
-            }, 10);
-        }
-
-        // 📋 ORDENAR POR CAMPO
-        function sortBy(field) {
-            if (state.sortField === field) {
-                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                state.sortField = field;
-                state.sortDirection = 'asc';
-            }
-            applySortingAndFiltering();
-            render();
-        }
-
-        function getSortIcon(field) {
-            if (state.sortField !== field) {
-                return '↕️';
-            }
-            return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
-        }
-
-        // 💾 LOCALSTORAGE
-        async function loadFromLocalStorage() {
-            const savedItems = localStorage.getItem('estoque_compartilhado');
-            if (savedItems) {
-                state.items = JSON.parse(savedItems);
-                applySortingAndFiltering();
-                console.log('📱 Dados carregados do localStorage:', state.items.length, 'itens');
-                state.loading = false;
-                render();
-                return true;
-            }
-            return false;
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem('estoque_compartilhado', JSON.stringify(state.items));
-        }
-
-        // ➕ ADICIONAR NOVO PRODUTO
-        function addNewProduct() {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem adicionar produtos.');
-                return;
-            }
-            
-            state.editingItem = {
-                id: 'new_' + Date.now(),
-                codigo: '',
-                nome: '',
-                quantidade: 0,
-                plataforma: '',
-                observacoes: '',
-                data_entrada: new Date().toISOString().split('T')[0],
-                updated_at: new Date().toISOString(),
-                last_modified: new Date().toISOString(),
-                user_modified: true
-            };
-            state.isNewProduct = true;
-            render();
-        }
-
-        // ✏️ EDITAR PRODUTO
-        function editItem(item) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem editar produtos.');
-                return;
-            }
-            
-            state.editingItem = { ...item };
-            state.isNewProduct = false;
-            render();
-        }
-
-        // 💾 SALVAR PRODUTO
-        async function saveProduct() {
-            try {
-                if (!state.editingItem.codigo || !state.editingItem.nome) {
-                    alert('❌ Código e nome são obrigatórios!');
-                    return;
-                }
-                
-                if (state.isNewProduct) {
-                    state.editingItem.last_modified = new Date().toISOString();
-                    state.editingItem.user_modified = true;
-                    state.items.unshift(state.editingItem);
-                    alert('✅ Produto adicionado!');
-                } else {
-                    const index = state.items.findIndex(item => item.id === state.editingItem.id);
-                    if (index !== -1) {
-                        state.items[index] = {
-                            ...state.editingItem,
-                            updated_at: new Date().toISOString(),
-                            last_modified: new Date().toISOString(),
-                            user_modified: true
-                        };
-                        alert('✅ Produto atualizado!');
-                    }
-                }
-                
-                applySortingAndFiltering();
-                saveToLocalStorage();
-                
-                state.editingItem = null;
-                state.isNewProduct = false;
-                render();
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar produto:', error);
-                alert('Erro ao salvar produto: ' + error.message);
-            }
-        }
-
-        // ❌ CANCELAR EDIÇÃO
-        function cancelEdit() {
-            state.editingItem = null;
-            state.isNewProduct = false;
-            render();
-        }
-
-        // 🗑️ EXCLUIR PRODUTO
-        async function deleteItem(id) {
-            if (!state.isEstoquista) {
-                alert('❌ Apenas estoquistas podem excluir produtos.');
-                return;
-            }
-            
-            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-            
-            state.items = state.items.filter(item => item.id !== id);
-            state.filteredItems = state.filteredItems.filter(item => item.id !== id);
-            saveToLocalStorage();
-            
-            render();
-            alert('✅ Produto excluído!');
-        }
-
-        // 📊 FORMATAR OBSERVAÇÕES - CORRIGIDO
+        // 📊 FORMATAR OBSERVAÇÕES
         function formatObservacoes(observacoes) {
             if (!observacoes || observacoes.trim() === '') {
                 return '<span class="status-tag status-default">Sem informações</span>';
@@ -1507,6 +314,123 @@
             }).join('');
         }
 
+        // 🔍 FUNÇÕES DE PESQUISA E ORDENAÇÃO
+        function handleSearchInput(event) {
+            state.searchTerm = event.target.value;
+            applySortingAndFiltering();
+            render();
+        }
+
+        function clearSearch() {
+            state.searchTerm = '';
+            applySortingAndFiltering();
+            render();
+        }
+
+        function sortBy(field) {
+            if (state.sortField === field) {
+                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sortField = field;
+                state.sortDirection = 'asc';
+            }
+            applySortingAndFiltering();
+            render();
+        }
+
+        function getSortIcon(field) {
+            if (state.sortField !== field) {
+                return '↕️';
+            }
+            return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
+        }
+
+        function applySortingAndFiltering() {
+            // Filtrar
+            const term = state.searchTerm.toLowerCase().trim();
+            
+            if (!term) {
+                state.filteredItems = [...state.items];
+            } else {
+                state.filteredItems = state.items.filter(item => 
+                    item.codigo.toLowerCase().includes(term) ||
+                    item.nome.toLowerCase().includes(term) ||
+                    item.plataforma.toLowerCase().includes(term) ||
+                    (item.observacoes && item.observacoes.toLowerCase().includes(term))
+                );
+            }
+            
+            // Ordenar
+            state.filteredItems.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch (state.sortField) {
+                    case 'codigo':
+                        valueA = a.codigo.toLowerCase();
+                        valueB = b.codigo.toLowerCase();
+                        break;
+                    case 'nome':
+                        valueA = a.nome.toLowerCase();
+                        valueB = b.nome.toLowerCase();
+                        break;
+                    case 'quantidade':
+                        valueA = a.quantidade;
+                        valueB = b.quantidade;
+                        break;
+                    case 'plataforma':
+                        valueA = a.plataforma.toLowerCase();
+                        valueB = b.plataforma.toLowerCase();
+                        break;
+                    default:
+                        valueA = a.codigo.toLowerCase();
+                        valueB = b.codigo.toLowerCase();
+                }
+                
+                if (state.sortDirection === 'asc') {
+                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                } else {
+                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                }
+            });
+        }
+
+        // 🔔 NOTIFICAÇÃO
+        function showNotification(message) {
+            // Notificação simples
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">×</button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) notification.remove();
+            }, 3000);
+        }
+
+        // 🎯 INICIALIZAÇÃO
+        async function initApp() {
+            console.log('🚀 Iniciando sistema de estoque...');
+            
+            // Modo simples - sem senha por enquanto
+            state.isEstoquista = confirm('Deseja acessar como ESTOQUISTA?\n\nCancelar para modo VENDEDOR');
+            
+            if (state.isEstoquista) {
+                showNotification('✅ Modo ESTOQUISTA ativado!');
+            } else {
+                showNotification('👤 Modo VENDEDOR ativado');
+            }
+            
+            await loadFromGoogleSheets();
+            
+            // Atualizar a cada 2 minutos
+            setInterval(loadFromGoogleSheets, 120000);
+        }
+
         // 🎨 RENDERIZAÇÃO PRINCIPAL
         function render() {
             if (state.loading) return;
@@ -1514,43 +438,36 @@
             const app = document.getElementById('app');
             app.innerHTML = `
                 <!-- HEADER -->
-                <header class="brand-gradient shadow-lg header-mobile">
+                <header class="brand-gradient shadow-lg">
                     <div class="container mx-auto px-4 py-4">
                         <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div class="flex items-center gap-4">
-                                ${renderLogo()}
+                                <div class="brand-gradient rounded-xl p-2 text-white font-bold text-xl flex items-center justify-center h-16 w-48 shadow-md">
+                                    <div class="flex items-center">
+                                        <span class="text-white">SUPER</span>
+                                        <span class="text-yellow-300 ml-1">BRUNO</span>
+                                    </div>
+                                </div>
                                 <div>
-                                    <h1 class="text-white text-xl md:text-2xl font-bold mobile-text-sm">Sistema de Estoque</h1>
+                                    <h1 class="text-white text-xl md:text-2xl font-bold">Sistema de Estoque</h1>
                                     <p class="text-yellow-200 text-sm mobile-hidden">SUPER BRUNO ATACADO</p>
                                 </div>
                             </div>
                             
-                            <div class="flex flex-col md:flex-row items-center gap-4">
-                                <div class="flex items-center gap-2 text-white">
-                                    <span class="text-sm mobile-text-sm">👤 ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}</span>
-                                    <button onclick="switchUserMode()" 
-                                            class="text-xs bg-white bg-opacity-20 hover:bg-opacity-30 px-2 py-1 rounded transition-all">
-                                        🔄 Trocar
-                                    </button>
+                            <div class="flex items-center gap-4">
+                                <div class="text-white">
+                                    <span class="text-sm">👤 ${state.isEstoquista ? 'ESTOQUISTA' : 'VENDEDOR'}</span>
                                 </div>
                                 
-                                <div class="flex items-center gap-2 btn-group-mobile">
+                                <div class="flex gap-2">
                                     <button onclick="loadFromGoogleSheets()" 
-                                            class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all mobile-text-sm btn-mobile">
-                                        ${state.syncInProgress ? '<div class="loading-spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>' : '🔄'}
-                                        <span class="mobile-hidden">Atualizar</span>
+                                            class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                                        🔄 Atualizar
                                     </button>
-                                    
-                                    ${state.isEstoquista ? `
-                                        <button onclick="addNewProduct()" 
-                                                class="btn-accent px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all mobile-text-sm btn-mobile">
-                                            ➕ <span class="mobile-hidden">Novo</span>
-                                        </button>
-                                        <button onclick="state.activeModal = 'settings'; render()" 
-                                                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all mobile-text-sm btn-mobile">
-                                            ⚙️ <span class="mobile-hidden">Config</span>
-                                        </button>
-                                    ` : ''}
+                                    <button onclick="location.reload()" 
+                                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium">
+                                        🔁 Trocar Modo
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1558,47 +475,47 @@
                 </header>
 
                 <!-- MAIN CONTENT -->
-                <main class="container mx-auto px-2 md:px-4 py-4 md:py-6">
+                <main class="container mx-auto px-4 py-6">
                     <!-- STATUS BAR -->
-                    <div class="card p-4 mb-4 md:mb-6">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
-                            <div class="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 mobile-text-sm">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium">📦 Total:</span>
-                                    <span class="brand-text-primary font-bold">${state.items.length}</span>
-                                </div>
-                                
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium">🔍 Filtrados:</span>
-                                    <span class="brand-text-primary font-bold">${state.filteredItems.length}</span>
-                                </div>
-                                
-                                ${state.lastUpdate ? `
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-medium">🕒 Atualizado:</span>
-                                        <span class="brand-text-dark font-bold mobile-text-sm">${state.lastUpdate}</span>
-                                    </div>
-                                ` : ''}
-                                
-                                ${state.connectionError ? `
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-medium text-red-600">⚠️ Modo Offline</span>
-                                    </div>
-                                ` : ''}
+                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium">📦 Total:</span>
+                                <span class="text-red-600 font-bold">${state.items.length}</span>
                             </div>
+                            
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium">🔍 Filtrados:</span>
+                                <span class="text-red-600 font-bold">${state.filteredItems.length}</span>
+                            </div>
+                            
+                            ${state.lastUpdate ? `
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">🕒 Atualizado:</span>
+                                    <span class="text-gray-700">${state.lastUpdate}</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${state.connectionError ? `
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-orange-600">⚠️ Modo Offline</span>
+                                </div>
+                            ` : `
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-green-600">✅ Conectado</span>
+                                </div>
+                            `}
                         </div>
                     </div>
 
                     <!-- SEARCH BAR -->
-                    <div class="card p-4 mb-4 md:mb-6">
+                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
                         <div class="relative">
                             <input type="text" 
-                                   id="searchInput"
                                    placeholder="🔍 Pesquisar por código, nome, plataforma..."
                                    value="${state.searchTerm}"
                                    oninput="handleSearchInput(event)"
-                                   onkeypress="handleSearchKeyPress(event)"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent search-input">
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
                             
                             ${state.searchTerm ? `
                                 <button onclick="clearSearch()" 
@@ -1610,100 +527,56 @@
                     </div>
 
                     <!-- PRODUCTS TABLE -->
-                    <div class="card overflow-hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
                         <div class="overflow-x-auto">
-                            <table class="w-full table-mobile">
+                            <table class="w-full">
                                 <thead>
-                                    <tr class="table-header">
-                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('codigo')">
+                                    <tr class="bg-gradient-to-r from-red-700 to-red-900 text-white">
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('codigo')">
                                             Código ${getSortIcon('codigo')}
                                         </th>
-                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('nome')">
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('nome')">
                                             Nome ${getSortIcon('nome')}
                                         </th>
-                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('quantidade')">
+                                        <th class="px-4 py-3 text-left sortable" onclick="sortBy('quantidade')">
                                             Qtd ${getSortIcon('quantidade')}
                                         </th>
-                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-hidden" onclick="sortBy('plataforma')">
+                                        <th class="px-4 py-3 text-left sortable mobile-hidden" onclick="sortBy('plataforma')">
                                             Plataforma ${getSortIcon('plataforma')}
                                         </th>
-                                        <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-text-sm" onclick="sortBy('observacoes')">
-                                            Status ${getSortIcon('observacoes')}
-                                        </th>
-                                        ${state.isEstoquista ? `
-                                            <th class="px-3 py-2 md:px-4 md:py-3 text-left sortable mobile-hidden" onclick="sortBy('last_modified')">
-                                                Modificação ${getSortIcon('last_modified')}
-                                            </th>
-                                            <th class="px-3 py-2 md:px-4 md:py-3 text-center mobile-text-sm">Ações</th>
-                                        ` : ''}
+                                        <th class="px-4 py-3 text-left">Local/Status</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
+                                <tbody class="divide-y divide-gray-200">
                                     ${state.filteredItems.length === 0 ? `
                                         <tr>
-                                            <td colspan="${state.isEstoquista ? 7 : 5}" class="px-4 py-8 text-center text-gray-500 loading-mobile">
+                                            <td colspan="5" class="px-4 py-8 text-center text-gray-500">
                                                 ${state.searchTerm ? 'Nenhum produto encontrado para sua pesquisa.' : 'Nenhum produto cadastrado.'}
                                             </td>
                                         </tr>
                                     ` : ''}
                                     
                                     ${state.filteredItems.map(item => `
-                                        <tr class="hover:bg-gray-50 transition-colors ${isUserModified(item.last_modified) ? 'user-modified' : ''}">
-                                            <td class="px-3 py-2 md:px-4 md:py-3 font-mono text-sm brand-text-dark font-bold mobile-text-sm">${item.codigo}</td>
-                                            <td class="px-3 py-2 md:px-4 md:py-3">
-                                                <div class="font-medium mobile-text-sm">${item.nome}</div>
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 font-mono font-bold text-red-700">${item.codigo}</td>
+                                            <td class="px-4 py-3">
+                                                <div class="font-medium">${item.nome}</div>
                                             </td>
-                                            <td class="px-3 py-2 md:px-4 md:py-3">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="font-bold ${item.quantidade === 0 ? 'text-red-600' : 'text-green-600'} mobile-text-sm">
-                                                        ${item.quantidade}
-                                                    </span>
-                                                    ${state.isEstoquista ? `
-                                                        <div class="flex gap-1">
-                                                            <button onclick="decreaseQuantity('${item.id}')" 
-                                                                    class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded flex items-center justify-center text-xs transition-colors">
-                                                                -
-                                                            </button>
-                                                            <button onclick="increaseQuantity('${item.id}')" 
-                                                                    class="w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded flex items-center justify-center text-xs transition-colors">
-                                                                +
-                                                            </button>
-                                                        </div>
-                                                    ` : ''}
-                                                </div>
+                                            <td class="px-4 py-3">
+                                                <span class="font-bold ${item.quantidade === 0 ? 'text-red-600' : 'text-green-600'}">
+                                                    ${item.quantidade}
+                                                </span>
                                             </td>
-                                            <td class="px-3 py-2 md:px-4 md:py-3 mobile-hidden">
-                                                <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                                            <td class="px-4 py-3 mobile-hidden">
+                                                <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
                                                     ${item.plataforma}
                                                 </span>
                                             </td>
-                                            <td class="px-3 py-2 md:px-4 md:py-3">
+                                            <td class="px-4 py-3">
                                                 <div class="flex flex-wrap gap-1">
                                                     ${formatObservacoes(item.observacoes)}
                                                 </div>
                                             </td>
-                                            ${state.isEstoquista ? `
-                                                <td class="px-3 py-2 md:px-4 md:py-3 text-sm text-gray-600 mobile-hidden">
-                                                    ${item.last_modified ? `
-                                                        <div>
-                                                            <div class="mobile-text-sm">${formatFullDate(item.last_modified)}</div>
-                                                            <div class="time-ago">${getTimeAgo(item.last_modified)}</div>
-                                                        </div>
-                                                    ` : 'Nunca modificado'}
-                                                </td>
-                                                <td class="px-3 py-2 md:px-4 md:py-3">
-                                                    <div class="flex justify-center gap-1 md:gap-2">
-                                                        <button onclick="editItem(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                                                class="btn-secondary px-2 py-1 md:px-3 md:py-1 rounded text-sm transition-colors mobile-text-sm">
-                                                            ✏️
-                                                        </button>
-                                                        <button onclick="deleteItem('${item.id}')" 
-                                                                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 md:px-3 md:py-1 rounded text-sm transition-colors mobile-text-sm">
-                                                            🗑️
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            ` : ''}
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -1711,200 +584,24 @@
                         </div>
                     </div>
 
-                    <!-- MOBILE FOOTER ACTIONS -->
-                    <div class="fixed bottom-4 right-4 md:hidden">
-                        <div class="flex flex-col gap-2">
-                            ${state.isEstoquista ? `
-                                <button onclick="addNewProduct()" 
-                                        class="bg-green-500 hover:bg-green-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl">
-                                    ➕
-                                </button>
-                            ` : ''}
-                            <button onclick="loadFromGoogleSheets()" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl">
-                                🔄
-                            </button>
+                    <!-- LEGENDA -->
+                    <div class="mt-6 bg-white rounded-lg p-4 shadow">
+                        <h3 class="font-bold text-gray-800 mb-2">🎨 Legenda dos Status:</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="status-tag status-mostruario">Mostruário</span>
+                            <span class="status-tag status-embalado">Embalado</span>
+                            <span class="status-tag status-frentedeloja">Frente de Loja</span>
+                            <span class="status-tag status-separadocd">Separado p/CD</span>
+                            <span class="status-tag status-montagem">Montagem</span>
+                            <span class="status-tag status-assistencia">Assistência</span>
                         </div>
                     </div>
                 </main>
-
-                <!-- MODAIS -->
-                ${state.activeModal === 'settings' ? renderSettingsModal() : ''}
-                ${state.editingItem ? renderEditModal() : ''}
-            `;
-
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.setSelectionRange(state.searchTerm.length, state.searchTerm.length);
-                }
-            }, 100);
-        }
-
-        // ⚙️ MODAL DE CONFIGURAÇÕES
-        function renderSettingsModal() {
-            return `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div class="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto modal-mobile">
-                        <div class="flex justify-between items-center mb-4 p-6 border-b">
-                            <h2 class="text-xl font-bold brand-text-dark">⚙️ Configurações</h2>
-                            <button onclick="state.activeModal = null; render()" 
-                                    class="text-gray-500 hover:text-gray-700 text-2xl">
-                                ✕
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-6 p-6 modal-content-mobile">
-                            <!-- LOGO PERSONALIZADA -->
-                            <div>
-                                <h3 class="font-medium mb-2">🖼️ Logo Personalizada</h3>
-                                <div class="flex items-center gap-4 mb-2">
-                                    ${renderLogo()}
-                                </div>
-                                <div class="flex gap-2">
-                                    <label class="btn-secondary px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-2">
-                                        📁 Escolher Logo
-                                        <input type="file" accept="image/*" 
-                                               onchange="handleImageUpload(event, 'logo')" 
-                                               class="hidden">
-                                    </label>
-                                    ${state.customLogo ? `
-                                        <button onclick="removeCustomLogo()" 
-                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded text-sm">
-                                            🗑️ Remover
-                                        </button>
-                                    ` : ''}
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Recomendado: PNG transparente, max. 2MB</p>
-                            </div>
-                            
-                            <!-- FAVICON PERSONALIZADO -->
-                            <div>
-                                <h3 class="font-medium mb-2">🔵 Favicon Personalizado</h3>
-                                <div class="flex items-center gap-4 mb-2">
-                                    ${renderFaviconPreview()}
-                                </div>
-                                <div class="flex gap-2">
-                                    <label class="btn-secondary px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-2">
-                                        📁 Escolher Favicon
-                                        <input type="file" accept="image/*" 
-                                               onchange="handleImageUpload(event, 'favicon')" 
-                                               class="hidden">
-                                    </label>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Recomendado: Quadrado, 32x32px, max. 2MB</p>
-                            </div>
-                            
-                            <div class="pt-4 border-t">
-                                <button onclick="state.activeModal = null; render()" 
-                                        class="btn-primary w-full py-3 rounded-lg font-medium">
-                                    Fechar Configurações
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // ✏️ MODAL DE EDIÇÃO
-        function renderEditModal() {
-            const item = state.editingItem;
-            
-            return `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div class="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto modal-mobile">
-                        <div class="flex justify-between items-center mb-4 p-6 border-b">
-                            <h2 class="text-xl font-bold brand-text-dark">
-                                ${state.isNewProduct ? '➕ Novo Produto' : '✏️ Editar Produto'}
-                            </h2>
-                            <button onclick="cancelEdit()" 
-                                    class="text-gray-500 hover:text-gray-700 text-2xl">
-                                ✕
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-4 p-6 modal-content-mobile">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
-                                <input type="text" 
-                                       value="${item.codigo}"
-                                       oninput="state.editingItem.codigo = this.value"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                       placeholder="Ex: BR001">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                                <input type="text" 
-                                       value="${item.nome}"
-                                       oninput="state.editingItem.nome = this.value"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                       placeholder="Ex: Smartphone Samsung">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
-                                <input type="number" 
-                                       value="${item.quantidade}"
-                                       oninput="state.editingItem.quantidade = parseInt(this.value) || 0"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                       min="0">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Plataforma</label>
-                                <input type="text" 
-                                       value="${item.plataforma}"
-                                       oninput="state.editingItem.plataforma = this.value"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                       placeholder="Ex: Mercado Livre, Shopee">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                                <textarea 
-                                    oninput="state.editingItem.observacoes = this.value"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    rows="3"
-                                    placeholder="Ex: Mostruario, Embalado, Frente de Loja, Separado p/CD, Montagem, Assistencia">${item.observacoes || ''}</textarea>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    Separe por vírgulas: "Mostruario, Embalado, Frente de Loja"
-                                </p>
-                            </div>
-                            
-                            <div class="flex gap-2 pt-4">
-                                <button onclick="saveProduct()" 
-                                        class="btn-primary flex-1 py-3 rounded-lg font-medium">
-                                    💾 Salvar
-                                </button>
-                                <button onclick="cancelEdit()" 
-                                        class="bg-gray-500 hover:bg-gray-600 text-white flex-1 py-3 rounded-lg font-medium">
-                                    ❌ Cancelar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             `;
         }
 
         // 🚀 INICIAR APLICATIVO
         initApp();
-
-        // Service Worker Registration para PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(function(error) {
-                        console.log('ServiceWorker registration failed');
-                    });
-            });
-        }
     </script>
 </body>
 </html>
