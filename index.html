@@ -334,6 +334,7 @@
         };
 
         let searchDebounceTimer = null;
+        let lastFocusedElementId = null; // Para rastrear o último elemento com foco
 
         // 📊 BUSCAR DADOS AO VIVO DA PLANILHA
         async function fetchLiveData() {
@@ -759,10 +760,16 @@
             } else {
                 render(); // Renderização completa apenas para atualizações manuais
             }
+            
+            // Restaurar o foco após renderizar
+            restoreFocus();
         }
 
         // 🔄 ATUALIZAR APENAS OS COMPONENTES DINÂMICOS
         function updateDynamicComponents() {
+            // Salvar o elemento atualmente focado antes de atualizar
+            saveCurrentFocus();
+            
             // Atualizar estatísticas do estoque
             updateStatsDisplay();
             
@@ -781,6 +788,86 @@
             // Se estiver na aba de histórico, atualizar também
             if (state.currentTab === 'historico') {
                 updateHistoryDisplay();
+            }
+            
+            // Restaurar o foco após atualizar
+            restoreFocus();
+        }
+
+        // 💾 SALVAR O ELEMENTO ATUALMENTE FOCADO
+        function saveCurrentFocus() {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.id) {
+                lastFocusedElementId = activeElement.id;
+                console.log('💾 Salvando foco no elemento:', lastFocusedElementId);
+            }
+        }
+
+        // 🔄 RESTAURAR O FOCO APÓS ATUALIZAÇÃO
+        function restoreFocus() {
+            if (lastFocusedElementId) {
+                setTimeout(() => {
+                    const elementToFocus = document.getElementById(lastFocusedElementId);
+                    if (elementToFocus) {
+                        elementToFocus.focus();
+                        
+                        // Para inputs de texto, mover o cursor para o final
+                        if (elementToFocus.tagName === 'INPUT' || elementToFocus.tagName === 'TEXTAREA') {
+                            const length = elementToFocus.value.length;
+                            elementToFocus.setSelectionRange(length, length);
+                        }
+                        
+                        console.log('🎯 Foco restaurado no elemento:', lastFocusedElementId);
+                    }
+                }, 10);
+            }
+        }
+
+        // 🔍 BUSCA COM DEBOUNCE - VERSÃO MELHORADA
+        function handleSearchInput(event) {
+            const value = event.target.value;
+            
+            // Salvar o foco atual
+            lastFocusedElementId = event.target.id;
+            
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                state.searchTerm = value;
+                applySortingAndFiltering();
+                
+                // Se for uma busca simples (não uma atualização completa), use updateDynamicComponents
+                if (state.currentTab === 'estoque') {
+                    updateDynamicComponents();
+                } else {
+                    render();
+                }
+                
+                // Garantir que o foco seja mantido
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Mover o cursor para o final
+                        const length = searchInput.value.length;
+                        searchInput.setSelectionRange(length, length);
+                    }
+                }, 20);
+            }, 300);
+        }
+
+        function clearSearch() {
+            state.searchTerm = '';
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus(); // Manter foco na barra de pesquisa
+            }
+            applySortingAndFiltering();
+            
+            if (state.currentTab === 'estoque') {
+                updateDynamicComponents();
+            } else {
+                render();
             }
         }
 
@@ -1075,26 +1162,6 @@
             }).join(' ');
         }
 
-        // 🔍 BUSCA COM DEBOUNCE
-        function handleSearchInput(event) {
-            const value = event.target.value;
-            
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => {
-                state.searchTerm = value;
-                applySortingAndFiltering();
-                render();
-            }, 300);
-        }
-
-        function clearSearch() {
-            state.searchTerm = '';
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) searchInput.value = '';
-            applySortingAndFiltering();
-            render();
-        }
-
         // 🔄 ORDENAÇÃO
         function sortBy(field) {
             if (state.sortField === field) {
@@ -1112,23 +1179,52 @@
             return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
         }
 
-        // 🎯 FILTROS AVANÇADOS
+        // 🎯 FILTROS AVANÇADOS - VERSÃO MELHORADA
         function setLocationFilter(filter) {
             state.locationFilter = filter;
             applySortingAndFiltering();
-            render();
+            
+            // Salvar o foco atual
+            saveCurrentFocus();
+            
+            if (state.currentTab === 'estoque') {
+                updateDynamicComponents();
+            } else {
+                render();
+            }
+            
+            // Restaurar foco
+            restoreFocus();
         }
 
         function setStockFilter(filter) {
             state.stockFilter = filter;
             applySortingAndFiltering();
-            render();
+            
+            // Salvar o foco atual
+            saveCurrentFocus();
+            
+            if (state.currentTab === 'estoque') {
+                updateDynamicComponents();
+            } else {
+                render();
+            }
+            
+            // Restaurar foco
+            restoreFocus();
         }
 
         // 📊 FILTROS DE HISTÓRICO
         function setHistoryFilter(filter) {
             state.historyFilter = filter;
+            
+            // Salvar o foco atual
+            saveCurrentFocus();
+            
             updateHistoryDisplay();
+            
+            // Restaurar foco
+            restoreFocus();
         }
 
         // 🔍 APLICAR FILTROS E ORDENAÇÃO
@@ -1256,6 +1352,16 @@
         function switchTab(tabName) {
             state.currentTab = tabName;
             render();
+            
+            // Se mudar para a aba de estoque, focar na barra de pesquisa
+            if (tabName === 'estoque') {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 100);
+            }
         }
 
         // ⚙️ AUTO REFRESH
@@ -1281,6 +1387,9 @@
             // Atualizar apenas o botão de auto-refresh
             updateAutoRefreshButton();
             updateSystemStatus();
+            
+            // Restaurar foco
+            restoreFocus();
         }
 
         // 🔄 ATUALIZAR BOTÃO DE AUTO-REFRESH
@@ -1385,6 +1494,9 @@
         // 🎨 RENDERIZAÇÃO PRINCIPAL
         function render() {
             if (state.loading && state.items.length === 0) return;
+            
+            // Salvar o foco atual antes de renderizar
+            saveCurrentFocus();
             
             const app = document.getElementById('app');
             app.innerHTML = `
@@ -1856,15 +1968,18 @@
                 updateHistoryDisplay();
             }
 
-            // Focar no campo de busca após renderizar (se estiver na aba de estoque)
-            setTimeout(() => {
-                if (state.currentTab === 'estoque') {
+            // Restaurar o foco após renderizar
+            restoreFocus();
+            
+            // Se estiver na aba de estoque e não houver termo de busca, focar na barra de pesquisa
+            if (state.currentTab === 'estoque' && !state.searchTerm) {
+                setTimeout(() => {
                     const searchInput = document.getElementById('searchInput');
-                    if (searchInput && !state.searchTerm) {
+                    if (searchInput) {
                         searchInput.focus();
                     }
-                }
-            }, 100);
+                }, 50);
+            }
         }
 
         // 🚀 INICIALIZAR APLICAÇÃO
@@ -1885,7 +2000,12 @@
                 e.preventDefault();
                 if (state.currentTab === 'estoque') {
                     const searchInput = document.getElementById('searchInput');
-                    if (searchInput) searchInput.focus();
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Mover o cursor para o final
+                        const length = searchInput.value.length;
+                        searchInput.setSelectionRange(length, length);
+                    }
                 }
             }
             
@@ -1910,6 +2030,12 @@
             if (e.ctrlKey && e.key === '2') {
                 e.preventDefault();
                 switchTab('historico');
+            }
+            
+            // Tab para navegar entre elementos (preserva o comportamento padrão)
+            if (e.key === 'Tab') {
+                // Permitir o comportamento padrão do Tab
+                // O foco será automaticamente restaurado pela nossa lógica de restoreFocus
             }
         });
     </script>
