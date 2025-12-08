@@ -8,7 +8,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <style>
-        /* Reset e configurações base */
         * {
             margin: 0;
             padding: 0;
@@ -18,9 +17,7 @@
         :root {
             --primary-red: #a00b08;
             --primary-yellow: #f4cf08;
-            --primary-beige: #d8cfc4;
             --primary-dark-red: #4d0505;
-            --primary-purple: #9c7c84;
             --gray-50: #f9fafb;
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
@@ -31,23 +28,13 @@
             --gray-700: #374151;
             --gray-800: #1f2937;
             --gray-900: #111827;
-            --green-500: #10b981;
-            --green-600: #059669;
-            --red-500: #ef4444;
-            --red-600: #dc2626;
-            --orange-500: #f97316;
-            --yellow-500: #eab308;
-            --blue-500: #3b82f6;
-            --blue-600: #2563eb;
-            --purple-500: #8b5cf6;
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--gray-50);
             color: var(--gray-900);
             line-height: 1.5;
-            -webkit-font-smoothing: antialiased;
         }
         
         .container {
@@ -57,151 +44,6 @@
             padding: 0 1rem;
         }
         
-        @media (min-width: 768px) {
-            .container {
-                padding: 0 2rem;
-            }
-        }
-        
-        /* Utilitários */
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .flex-wrap { flex-wrap: wrap; }
-        .items-center { align-items: center; }
-        .items-start { align-items: flex-start; }
-        .justify-center { justify-content: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-2 { gap: 0.5rem; }
-        .gap-3 { gap: 0.75rem; }
-        .gap-4 { gap: 1rem; }
-        .gap-6 { gap: 1.5rem; }
-        .hidden { display: none; }
-        .block { display: block; }
-        .inline-block { display: inline-block; }
-        .w-full { width: 100%; }
-        .w-auto { width: auto; }
-        .max-w-md { max-width: 28rem; }
-        .max-w-lg { max-width: 32rem; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
-        .my-6 { margin-top: 1.5rem; margin-bottom: 1.5rem; }
-        .mt-2 { margin-top: 0.5rem; }
-        .mt-3 { margin-top: 0.75rem; }
-        .mt-4 { margin-top: 1rem; }
-        .mt-6 { margin-top: 1.5rem; }
-        .mt-8 { margin-top: 2rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .ml-1 { margin-left: 0.25rem; }
-        .mr-2 { margin-right: 0.5rem; }
-        .p-3 { padding: 0.75rem; }
-        .p-4 { padding: 1rem; }
-        .p-5 { padding: 1.25rem; }
-        .p-6 { padding: 1.5rem; }
-        .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-        .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-        .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
-        .pt-4 { padding-top: 1rem; }
-        .pb-6 { padding-bottom: 1.5rem; }
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-        .text-sm { font-size: 0.875rem; }
-        .text-base { font-size: 1rem; }
-        .text-lg { font-size: 1.125rem; }
-        .text-xl { font-size: 1.25rem; }
-        .text-2xl { font-size: 1.5rem; }
-        .text-4xl { font-size: 2.25rem; }
-        .font-medium { font-weight: 500; }
-        .font-bold { font-weight: 700; }
-        .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-        .rounded { border-radius: 0.25rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .rounded-xl { border-radius: 0.75rem; }
-        .rounded-full { border-radius: 9999px; }
-        .border { border: 1px solid var(--gray-300); }
-        .border-t { border-top: 1px solid var(--gray-300); }
-        .border-b { border-bottom: 1px solid var(--gray-300); }
-        .border-l-4 { border-left: 4px solid; }
-        .bg-white { background-color: white; }
-        .bg-gray-50 { background-color: var(--gray-50); }
-        .bg-gray-100 { background-color: var(--gray-100); }
-        .bg-gray-200 { background-color: var(--gray-200); }
-        .bg-red-50 { background-color: #fef2f2; }
-        .bg-red-100 { background-color: #fee2e2; }
-        .bg-red-500 { background-color: var(--red-500); }
-        .bg-red-600 { background-color: var(--red-600); }
-        .bg-red-700 { background-color: #b91c1c; }
-        .bg-green-50 { background-color: #f0fdf4; }
-        .bg-green-100 { background-color: #dcfce7; }
-        .bg-green-500 { background-color: var(--green-500); }
-        .bg-green-600 { background-color: var(--green-600); }
-        .bg-yellow-50 { background-color: #fefce8; }
-        .bg-yellow-100 { background-color: #fef9c3; }
-        .bg-yellow-500 { background-color: var(--yellow-500); }
-        .bg-blue-50 { background-color: #eff6ff; }
-        .bg-blue-100 { background-color: #dbeafe; }
-        .bg-blue-500 { background-color: var(--blue-500); }
-        .bg-blue-600 { background-color: var(--blue-600); }
-        .bg-orange-500 { background-color: var(--orange-500); }
-        .bg-purple-500 { background-color: var(--purple-500); }
-        .bg-purple-600 { background-color: #7c3aed; }
-        .text-white { color: white; }
-        .text-gray-400 { color: var(--gray-400); }
-        .text-gray-500 { color: var(--gray-500); }
-        .text-gray-600 { color: var(--gray-600); }
-        .text-gray-700 { color: var(--gray-700); }
-        .text-gray-800 { color: var(--gray-800); }
-        .text-gray-900 { color: var(--gray-900); }
-        .text-red-600 { color: var(--red-600); }
-        .text-red-700 { color: #b91c1c; }
-        .text-green-600 { color: var(--green-600); }
-        .text-green-700 { color: #047857; }
-        .text-yellow-600 { color: #ca8a04; }
-        .text-yellow-700 { color: #a16207; }
-        .text-blue-600 { color: var(--blue-600); }
-        .text-orange-600 { color: #ea580c; }
-        .text-purple-600 { color: var(--purple-600); }
-        .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
-        .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .overflow-hidden { overflow: hidden; }
-        .overflow-x-auto { overflow-x: auto; }
-        .overflow-y-auto { overflow-y: auto; }
-        .whitespace-nowrap { white-space: nowrap; }
-        .divide-y > * + * { border-top: 1px solid var(--gray-200); }
-        
-        /* Grid */
-        .grid { display: grid; }
-        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-        
-        @media (min-width: 768px) {
-            .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-            .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-            .md\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-            .md\:flex-row { flex-direction: row; }
-            .md\:items-center { align-items: center; }
-            .md\:px-4 { padding-left: 1rem; padding-right: 1rem; }
-            .md\:py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-            .md\:py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-            .md\:text-2xl { font-size: 1.5rem; }
-            .md\:hidden { display: none; }
-            .md\:block { display: block; }
-        }
-        
-        /* Estilos específicos */
         .brand-gradient {
             background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
         }
@@ -213,86 +55,12 @@
             cursor: pointer;
             font-weight: 500;
             transition: all 0.2s;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
         }
         
         .btn-primary:hover {
             background-color: var(--primary-dark-red);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .btn-secondary {
-            background-color: var(--primary-yellow);
-            color: var(--primary-dark-red);
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        
-        .btn-secondary:hover {
-            background-color: #e0c000;
-            transform: translateY(-1px);
-        }
-        
-        .status-tag {
-            display: inline-block !important;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin: 2px;
-            line-height: 1.2;
-            white-space: nowrap;
-            border: 1px solid;
-            transition: all 0.2s;
-        }
-        
-        .status-tag:hover {
-            transform: scale(1.05);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        .status-mostruario {
-            background-color: #fef9e7 !important;
-            color: #7d6608 !important;
-            border-color: #f4cf08 !important;
-        }
-        
-        .status-embalado {
-            background-color: #e8f8ef !important;
-            color: #186a3b !important;
-            border-color: #2ecc71 !important;
-        }
-        
-        .status-frentedeloja {
-            background-color: #e8f4fd !important;
-            color: #1a5276 !important;
-            border-color: #3498db !important;
-        }
-        
-        .status-separadocd {
-            background-color: #f4ecf7 !important;
-            color: #6c3483 !important;
-            border-color: #9b59b6 !important;
-        }
-        
-        .status-montagem {
-            background-color: #ebedef !important;
-            color: #2c3e50 !important;
-            border-color: #34495e !important;
-        }
-        
-        .status-assistencia {
-            background-color: #fdedec !important;
-            color: #943126 !important;
-            border-color: #e74c3c !important;
-        }
-        
-        .status-default {
-            background-color: var(--gray-100) !important;
-            color: var(--gray-700) !important;
-            border-color: var(--gray-300) !important;
         }
         
         .loading-spinner {
@@ -302,6 +70,7 @@
             border-radius: 50%;
             width: 48px;
             height: 48px;
+            margin: 0 auto;
         }
         
         @keyframes spin {
@@ -309,215 +78,41 @@
             100% { transform: rotate(360deg); }
         }
         
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        /* Kanban Styles */
-        .kanban-column {
-            min-height: 400px;
-            background: var(--gray-100);
-            border-radius: 12px;
-            padding: 15px;
-        }
-        
-        .kanban-item {
-            background: white;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            cursor: grab;
-            transition: all 0.3s;
-        }
-        
-        .kanban-item:active {
-            cursor: grabbing;
-        }
-        
-        .kanban-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-        }
-        
-        .kanban-column-header {
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            font-weight: 600;
-            text-align: center;
-        }
-        
-        /* QR Code Modal */
-        .qr-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .qr-modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        /* Tab Styles */
-        .tab-button {
-            padding: 12px 20px;
-            border-radius: 8px 8px 0 0;
-            background: var(--gray-100);
-            border: 1px solid var(--gray-300);
-            border-bottom: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        
-        .tab-button.active {
-            background: white;
-            color: var(--primary-red);
-            font-weight: 600;
-            border-color: var(--gray-300);
-            position: relative;
-            z-index: 10;
-        }
-        
-        .tab-button:hover:not(.active) {
-            background: var(--gray-200);
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 20px;
-            border: 1px solid var(--gray-300);
-            border-radius: 0 8px 8px 8px;
-            background: white;
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        .filter-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+        .status-tag {
+            display: inline-block;
             padding: 6px 12px;
-            background-color: var(--gray-200);
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 2px;
+            white-space: nowrap;
+            border: 1px solid;
         }
         
-        .filter-badge:hover {
-            background-color: var(--gray-300);
+        .status-mostruario {
+            background-color: #fef9e7;
+            color: #7d6608;
+            border-color: #f4cf08;
         }
         
-        .filter-badge.active {
-            background-color: var(--primary-red);
-            color: white;
+        .status-embalado {
+            background-color: #e8f8ef;
+            color: #186a3b;
+            border-color: #2ecc71;
         }
         
-        .stat-card {
-            transition: all 0.3s;
-            min-height: 100px;
+        .status-frentedeloja {
+            background-color: #e8f4fd;
+            color: #1a5276;
+            border-color: #3498db;
         }
         
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        .status-default {
+            background-color: var(--gray-100);
+            color: var(--gray-700);
+            border-color: var(--gray-300);
         }
         
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .kanban-column {
-                min-height: 300px;
-                margin-bottom: 20px;
-            }
-            
-            .tab-button {
-                padding: 10px 15px;
-                font-size: 0.9rem;
-            }
-            
-            .qr-modal-content {
-                margin: 10% auto;
-                width: 95%;
-            }
-            
-            .mobile-hidden {
-                display: none;
-            }
-        }
-        
-        /* Print styles */
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            
-            body {
-                background: white !important;
-            }
-            
-            .print-full-width {
-                width: 100% !important;
-            }
-        }
-        
-        /* Accessibility improvements */
-        button:focus,
-        input:focus,
-        select:focus {
-            outline: 2px solid var(--primary-red);
-            outline-offset: 2px;
-        }
-        
-        /* Form elements */
-        input, select, textarea {
-            font-family: inherit;
-            font-size: inherit;
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--gray-300);
-            border-radius: 0.375rem;
-            width: 100%;
-        }
-        
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary-red);
-            box-shadow: 0 0 0 3px rgba(160, 11, 8, 0.1);
-        }
-        
-        /* Table styles */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -527,6 +122,8 @@
             text-align: left;
             font-weight: 600;
             padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
+            color: white;
         }
         
         td {
@@ -534,204 +131,109 @@
             border-top: 1px solid var(--gray-200);
         }
         
-        tbody tr:hover {
+        tbody tr:nth-child(even) {
             background-color: var(--gray-50);
+        }
+        
+        tbody tr:hover {
+            background-color: #fff3f3;
+        }
+        
+        input, select {
+            font-family: inherit;
+            font-size: inherit;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.375rem;
+            width: 100%;
+        }
+        
+        input:focus, select:focus {
+            outline: 2px solid var(--primary-red);
+            outline-offset: 2px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        @media (min-width: 768px) {
+            .grid-cols-md-4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
     </style>
 </head>
 <body>
     <div id="app">
-        <div class="flex items-center justify-center" style="min-height: 100vh;">
-            <div class="text-center">
-                <div class="loading-spinner mx-auto mb-4"></div>
-                <p class="text-gray-600">Iniciando sistema...</p>
-                <p class="text-gray-400 text-sm mt-2">Carregando módulos e dados</p>
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+            <div style="text-align: center;">
+                <div class="loading-spinner"></div>
+                <p style="color: var(--gray-600); margin-top: 1rem;">Iniciando sistema...</p>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal QR Code -->
-    <div id="qrModal" class="qr-modal">
-        <div class="qr-modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">📱 QR Code do Produto</h3>
-                <button onclick="closeQRModal()" class="text-gray-500 hover:text-gray-700" style="font-size: 1.5rem;">
-                    ×
-                </button>
-            </div>
-            <div id="qrCodeContainer" class="flex justify-center my-6">
-                <!-- QR Code será gerado aqui -->
-            </div>
-            <div id="qrProductInfo" class="text-center mb-4">
-                <!-- Informações do produto -->
-            </div>
-            <div class="flex gap-2">
-                <button onclick="printQRCode()" class="btn-primary flex-1 py-3 rounded-lg">
-                    🖨️ Imprimir
-                </button>
-                <button onclick="shareViaWhatsApp()" class="bg-green-600 hover:bg-green-700 text-white flex-1 py-3 rounded-lg">
-                    📱 WhatsApp
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Scanner -->
-    <div id="scannerModal" class="qr-modal">
-        <div class="qr-modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">🔍 Scanner de QR Code</h3>
-                <button onclick="closeScanner()" class="text-gray-500 hover:text-gray-700" style="font-size: 1.5rem;">
-                    ×
-                </button>
-            </div>
-            <div class="scanner-container relative" id="scannerContainer">
-                <div id="qr-reader"></div>
-            </div>
-            <div id="scannerResult" class="mt-4 p-4 bg-gray-100 rounded-lg hidden">
-                <!-- Resultado do scan aparecerá aqui -->
-            </div>
-            <div class="mt-4 text-center text-sm text-gray-500">
-                Aponte a câmera para o QR Code do produto
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Lembrete -->
-    <div id="reminderModal" class="qr-modal">
-        <div class="qr-modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">📅 Novo Lembrete</h3>
-                <button onclick="closeReminderModal()" class="text-gray-500 hover:text-gray-700" style="font-size: 1.5rem;">
-                    ×
-                </button>
-            </div>
-            <form id="reminderForm" onsubmit="saveReminder(event)">
-                <div class="space-y-4">
-                    <div>
-                        <label for="reminderProduct" class="block text-sm font-medium text-gray-700 mb-1">
-                            Produto relacionado
-                        </label>
-                        <select id="reminderProduct" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="">Selecionar produto...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="reminderTitle" class="block text-sm font-medium text-gray-700 mb-1">
-                            Título do lembrete
-                        </label>
-                        <input type="text" id="reminderTitle" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label for="reminderDescription" class="block text-sm font-medium text-gray-700 mb-1">
-                            Descrição
-                        </label>
-                        <textarea id="reminderDescription" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
-                    </div>
-                    <div>
-                        <label for="reminderDate" class="block text-sm font-medium text-gray-700 mb-1">
-                            Data
-                        </label>
-                        <input type="date" id="reminderDate" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label for="reminderStatus" class="block text-sm font-medium text-gray-700 mb-1">
-                            Status
-                        </label>
-                        <select id="reminderStatus" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="pendente">Pendente</option>
-                            <option value="andamento">Em andamento</option>
-                            <option value="concluido">Concluído</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mt-6 flex gap-2">
-                    <button type="submit" class="btn-primary flex-1 py-3 rounded-lg">
-                        💾 Salvar Lembrete
-                    </button>
-                    <button type="button" onclick="closeReminderModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 flex-1 py-3 rounded-lg">
-                        Cancelar
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
     <script>
-        // 🔧 CONFIGURAÇÃO PRINCIPAL
         const CONFIG = {
-            GOOGLE_SHEET_ID: '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M',
             PUBLISHED_ID: '2PACX-1vTXIBXGqrCkz3-Fg07OBUq5Xv4jrXhpAvIXWrk9GiNoeD_so8qTHaxdPXBRTTOvkN1EUujUtVOPDU8f',
-            SHEET_NAME: 'Página1',
-            AUTO_REFRESH_INTERVAL: 30000,
-            
-            // Keys para localStorage
             BACKUP_KEY: 'estoque_backup_v4',
-            REMINDERS_KEY: 'estoque_reminders_v4',
-            KANBAN_KEY: 'estoque_kanban_v4',
-            
-            DEBUG_MODE: true,
-            USE_PUBLISHED_VERSION: true
+            AUTO_REFRESH_INTERVAL: 30000,
+            // Dados de exemplo caso não consiga conectar
+            DEMO_DATA: [
+                { id: 'demo1', codigo: 'A001', nome: 'Produto Exemplo 1', quantidade: 10, plataforma: 'A1', observacoes: 'Embalado' },
+                { id: 'demo2', codigo: 'A002', nome: 'Produto Exemplo 2', quantidade: 0, plataforma: 'B2', observacoes: 'Mostruário' },
+                { id: 'demo3', codigo: 'A003', nome: 'Produto Exemplo 3', quantidade: 2, plataforma: 'C3', observacoes: 'Frente de loja' },
+            ]
         };
 
-        // 🗃️ ESTADO GLOBAL
         let state = {
             items: [],
             filteredItems: [],
             loading: true,
             searchTerm: '',
-            sortField: 'codigo',
-            currentTab: 'estoque',
-            locationFilter: 'all',
-            stockFilter: 'all',
-            
-            // Configurações
-            autoRefresh: true,
-            syncInterval: null,
             connectionError: false,
-            lastUpdate: null,
-            
-            // Estatísticas
             stats: {
                 total: 0,
                 inStock: 0,
                 outOfStock: 0,
                 lowStock: 0
-            },
-            
-            // Novos módulos
-            reminders: [],
-            kanbanTasks: {
-                pendente: [],
-                andamento: [],
-                concluido: []
-            },
-            currentQRProduct: null
+            }
         };
 
-        // 📊 BUSCAR DADOS DA PLANILHA
         async function fetchLiveData() {
             try {
-                console.log('🔄 Buscando dados da planilha...');
+                console.log('📡 Tentando conectar à planilha...');
                 
-                let url;
-                if (CONFIG.USE_PUBLISHED_VERSION) {
-                    url = `https://docs.google.com/spreadsheets/d/e/${CONFIG.PUBLISHED_ID}/pub?output=csv&gid=0&t=${Date.now()}`;
-                } else {
-                    url = `https://docs.google.com/spreadsheets/d/${CONFIG.GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(CONFIG.SHEET_NAME)}&t=${Date.now()}`;
-                }
+                // Tentar primeiro com CORS proxy se necessário
+                const baseUrl = `https://docs.google.com/spreadsheets/d/e/${CONFIG.PUBLISHED_ID}/pub?output=csv&gid=0`;
+                const url = `${baseUrl}&t=${Date.now()}`;
                 
-                const response = await fetch(url, {
-                    cache: 'no-cache'
+                const response = await fetch(url, { 
+                    cache: 'no-cache',
+                    mode: 'cors'
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
+                    throw new Error(`HTTP ${response.status}`);
                 }
                 
                 const csvData = await response.text();
+                console.log('✅ Dados recebidos:', csvData.substring(0, 100));
                 
-                if (!csvData || csvData.trim().length === 0) {
+                if (!csvData || csvData.length < 10) {
                     throw new Error('Planilha vazia');
                 }
                 
@@ -740,77 +242,55 @@
                 if (items.length > 0) {
                     state.items = items;
                     state.connectionError = false;
-                    state.lastUpdate = new Date();
-                    console.log(`✅ ${items.length} produtos carregados`);
-                    
-                    // Salvar backup
-                    try {
-                        localStorage.setItem(CONFIG.BACKUP_KEY, JSON.stringify({
-                            items: items,
-                            timestamp: Date.now()
-                        }));
-                    } catch (e) {
-                        console.warn('Erro ao salvar backup:', e);
-                    }
-                    
+                    localStorage.setItem(CONFIG.BACKUP_KEY, JSON.stringify({
+                        items: items,
+                        timestamp: Date.now()
+                    }));
                     updateStats();
+                    console.log(`✅ ${items.length} produtos carregados`);
                     return true;
                 } else {
                     throw new Error('Nenhum produto encontrado');
                 }
-                
             } catch (error) {
                 console.error('❌ Erro ao buscar dados:', error);
+                state.connectionError = true;
                 return false;
             }
         }
 
-        // 📝 PARSER CSV
         function parseCSVData(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
             const items = [];
             
             for (let i = 1; i < lines.length; i++) {
                 try {
-                    const line = lines[i];
-                    // Parse CSV simples
-                    const cells = line.split(',').map(cell => {
+                    const cells = lines[i].split(',').map(cell => {
                         cell = cell.trim();
-                        // Remover aspas se existirem
                         if (cell.startsWith('"') && cell.endsWith('"')) {
                             cell = cell.slice(1, -1);
                         }
                         return cell;
                     });
                     
-                    if (cells.length < 3) continue;
-                    
-                    const codigo = cells[0] || '';
-                    const nome = cells[1] || '';
-                    const quantidade = parseInt(cells[2]) || 0;
-                    const plataforma = cells[3] || 'Não informado';
-                    const observacoes = cells[4] || '';
-                    
-                    if (codigo && nome) {
+                    if (cells.length >= 3) {
                         items.push({
-                            id: `item_${i}_${Date.now()}`,
-                            codigo,
-                            nome,
-                            quantidade,
-                            plataforma,
-                            observacoes,
-                            data_entrada: new Date().toISOString().split('T')[0]
+                            id: `item_${i}`,
+                            codigo: cells[0] || '',
+                            nome: cells[1] || '',
+                            quantidade: parseInt(cells[2]) || 0,
+                            plataforma: cells[3] || 'Não informado',
+                            observacoes: cells[4] || ''
                         });
                     }
                 } catch (error) {
-                    console.warn(`Erro na linha ${i}:`, error);
+                    console.warn(`Erro na linha ${i}`);
                 }
             }
             
             return items;
         }
 
-        // 📊 ATUALIZAR ESTATÍSTICAS
         function updateStats() {
             const total = state.items.length;
             const inStock = state.items.filter(i => i.quantidade > 0).length;
@@ -820,95 +300,37 @@
             state.stats = { total, inStock, outOfStock, lowStock };
         }
 
-        // 💾 CARREGAR BACKUP
         function loadBackup() {
             try {
                 const backup = localStorage.getItem(CONFIG.BACKUP_KEY);
                 if (backup) {
                     const data = JSON.parse(backup);
                     state.items = data.items || [];
-                    state.lastUpdate = new Date(data.timestamp || Date.now());
                     updateStats();
-                    console.log(`💾 Backup carregado: ${state.items.length} produtos`);
+                    console.log('💾 Backup carregado:', state.items.length, 'produtos');
                     return true;
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar backup:', error);
+                console.error('Erro ao carregar backup');
             }
+            
+            // Se não há backup, usar dados demo
+            console.log('📦 Usando dados de demonstração');
+            state.items = CONFIG.DEMO_DATA;
+            updateStats();
             return false;
         }
 
-        // 🔄 SINCRONIZAÇÃO
-        async function syncWithSheet(silent = false) {
-            if (!silent) {
-                state.loading = true;
-                render();
-            }
-            
-            const success = await fetchLiveData();
-            
-            if (success) {
-                if (!silent) {
-                    showNotification('✅ Dados atualizados!', 'success');
-                }
-                applySortingAndFiltering();
-                updateDynamicComponents();
-            } else {
-                // Tentar carregar do backup
-                const backupLoaded = loadBackup();
-                if (backupLoaded) {
-                    state.connectionError = true;
-                    applySortingAndFiltering();
-                    updateDynamicComponents();
-                    if (!silent) {
-                        showNotification('⚠️ Usando dados salvos localmente', 'warning');
-                    }
-                } else if (!silent) {
-                    showNotification('❌ Erro ao carregar dados', 'error');
-                }
-            }
-            
-            state.loading = false;
-            
-            if (!silent) {
-                render();
-            }
-        }
-
-        // 🔍 BUSCA E FILTROS
         function handleSearchInput(event) {
-            const value = event.target.value;
-            state.searchTerm = value;
+            state.searchTerm = event.target.value;
             applySortingAndFiltering();
-            updateDynamicComponents();
+            updateProductTable();
         }
 
-        function clearSearch() {
-            state.searchTerm = '';
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) searchInput.value = '';
-            applySortingAndFiltering();
-            updateDynamicComponents();
-        }
-
-        function setLocationFilter(filter) {
-            state.locationFilter = filter;
-            applySortingAndFiltering();
-            updateDynamicComponents();
-        }
-
-        function setStockFilter(filter) {
-            state.stockFilter = filter;
-            applySortingAndFiltering();
-            updateDynamicComponents();
-        }
-
-        // 🔄 APLICAR FILTROS
         function applySortingAndFiltering() {
             const term = state.searchTerm.toLowerCase().trim();
             
-            // Filtrar por busca
-            let filtered = term ? 
+            state.filteredItems = term ? 
                 state.items.filter(item => 
                     item.codigo.toLowerCase().includes(term) ||
                     item.nome.toLowerCase().includes(term) ||
@@ -916,1083 +338,218 @@
                     (item.observacoes && item.observacoes.toLowerCase().includes(term))
                 ) : [...state.items];
             
-            // Filtrar por localização
-            if (state.locationFilter !== 'all') {
-                filtered = filtered.filter(item => {
-                    const obs = (item.observacoes || '').toLowerCase();
-                    switch(state.locationFilter) {
-                        case 'mostruario': return obs.includes('mostruario') || obs.includes('mostruário');
-                        case 'embalado': return obs.includes('embalado') || obs.includes('caixa');
-                        case 'frente': return obs.includes('frente') || obs.includes('loja');
-                        case 'cd': return obs.includes('separado') || obs.includes('cd');
-                        case 'montagem': return obs.includes('montagem') || obs.includes('montar');
-                        case 'assistencia': return obs.includes('assistencia') || obs.includes('assistência');
-                        default: return true;
-                    }
-                });
-            }
-            
-            // Filtrar por estoque
-            if (state.stockFilter !== 'all') {
-                filtered = filtered.filter(item => {
-                    switch(state.stockFilter) {
-                        case 'in': return item.quantidade > 0;
-                        case 'out': return item.quantidade === 0;
-                        case 'low': return item.quantidade > 0 && item.quantidade <= 3;
-                        default: return true;
-                    }
-                });
-            }
-            
-            // Ordenar
-            filtered.sort((a, b) => {
-                let valueA, valueB;
-                
-                switch (state.sortField) {
-                    case 'codigo':
-                        valueA = a.codigo.toLowerCase();
-                        valueB = b.codigo.toLowerCase();
-                        break;
-                    case 'nome':
-                        valueA = a.nome.toLowerCase();
-                        valueB = b.nome.toLowerCase();
-                        break;
-                    case 'quantidade':
-                        valueA = a.quantidade;
-                        valueB = b.quantidade;
-                        break;
-                    case 'plataforma':
-                        valueA = a.plataforma.toLowerCase();
-                        valueB = b.plataforma.toLowerCase();
-                        break;
-                    default:
-                        valueA = a.codigo.toLowerCase();
-                        valueB = b.codigo.toLowerCase();
-                }
-                
-                return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
-            });
-            
-            state.filteredItems = filtered;
+            state.filteredItems.sort((a, b) => a.codigo.localeCompare(b.codigo));
         }
 
-        // 🎨 FORMATAR OBSERVAÇÕES
         function formatObservacoes(observacoes) {
             if (!observacoes || observacoes.trim() === '') {
                 return '<span class="status-tag status-default">Sem informações</span>';
             }
 
             const textoLimpo = observacoes.trim();
-            const partes = textoLimpo.split(/[,\.]| e |\//).filter(p => p.trim());
-            
-            if (partes.length === 0) partes.push(textoLimpo);
+            const partes = textoLimpo.split(/[,.]| e |\//).filter(p => p.trim());
             
             return partes.map(parte => {
                 const texto = parte.trim().toLowerCase();
                 let statusClass = 'status-default';
                 
-                const statusMap = {
-                    'status-mostruario': ['mostruario', 'mostruário', 'amostra', 'vitrine'],
-                    'status-embalado': ['embalado', 'caixa', 'box', 'lacrado'],
-                    'status-frentedeloja': ['frente', 'loja', 'vitrine', 'exposi', 'prateleira'],
-                    'status-separadocd': ['separado', 'cd', 'centro', 'distribui', 'deposito', 'depósito'],
-                    'status-montagem': ['montar', 'montagem', 'montado', 'armar', 'desmontado'],
-                    'status-assistencia': ['assistencia', 'assistência', 'conserto', 'reparo', 'manuten', 'defeito']
-                };
-                
-                for (const [className, keywords] of Object.entries(statusMap)) {
-                    if (keywords.some(keyword => texto.includes(keyword))) {
-                        statusClass = className;
-                        break;
-                    }
+                if (texto.includes('mostruario') || texto.includes('mostruário')) {
+                    statusClass = 'status-mostruario';
+                } else if (texto.includes('embalado') || texto.includes('caixa')) {
+                    statusClass = 'status-embalado';
+                } else if (texto.includes('frente') || texto.includes('loja')) {
+                    statusClass = 'status-frentedeloja';
                 }
 
                 return `<span class="status-tag ${statusClass}">${parte.trim()}</span>`;
             }).join(' ');
         }
 
-        // 📢 NOTIFICAÇÃO
-        function showNotification(message, type = 'info') {
-            const colors = {
-                success: 'bg-green-600',
-                error: 'bg-red-600',
-                warning: 'bg-orange-500',
-                info: 'bg-blue-600'
-            };
-            
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md fade-in`;
-            notification.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <span class="flex-1">${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200 font-bold text-xl leading-none">
-                        ×
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 4000);
-        }
-
-        // 🕒 TEMPO DESDE ATUALIZAÇÃO
-        function getTimeSinceUpdate() {
-            if (!state.lastUpdate) return 'Nunca';
-            
-            const diff = Date.now() - state.lastUpdate.getTime();
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(minutes / 60);
-            
-            if (minutes < 60) return `${minutes}min atrás`;
-            if (hours < 24) return `${hours}h atrás`;
-            return state.lastUpdate.toLocaleDateString('pt-BR');
-        }
-
-        // 🔄 TOGGLE AUTO REFRESH
-        function toggleAutoRefresh() {
-            state.autoRefresh = !state.autoRefresh;
-            
-            if (state.autoRefresh) {
-                state.syncInterval = setInterval(() => {
-                    syncWithSheet(true);
-                }, CONFIG.AUTO_REFRESH_INTERVAL);
-                showNotification('🔄 Atualização automática ativada', 'success');
-            } else {
-                if (state.syncInterval) {
-                    clearInterval(state.syncInterval);
-                    state.syncInterval = null;
-                }
-                showNotification('⏸️ Atualização automática pausada', 'warning');
-            }
-            
-            updateDynamicComponents();
-        }
-
-        // ==================== FUNCIONALIDADES AVANÇADAS ====================
-
-        // 📅 MÓDULO: LEMBRETES
-        function loadReminders() {
-            try {
-                const saved = localStorage.getItem(CONFIG.REMINDERS_KEY);
-                if (saved) {
-                    state.reminders = JSON.parse(saved);
-                    console.log(`📅 ${state.reminders.length} lembretes carregados`);
-                    return true;
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar lembretes:', error);
-            }
-            return false;
-        }
-
-        function saveReminder(e) {
-            e.preventDefault();
-            
-            const reminder = {
-                id: `rem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                productId: document.getElementById('reminderProduct').value,
-                productCode: document.getElementById('reminderProduct').selectedOptions[0]?.dataset.code || '',
-                productName: document.getElementById('reminderProduct').selectedOptions[0]?.dataset.name || '',
-                title: document.getElementById('reminderTitle').value,
-                description: document.getElementById('reminderDescription').value,
-                date: document.getElementById('reminderDate').value,
-                status: document.getElementById('reminderStatus').value,
-                created: new Date().toISOString()
-            };
-            
-            state.reminders.push(reminder);
-            
-            // Salvar no localStorage
-            try {
-                localStorage.setItem(CONFIG.REMINDERS_KEY, JSON.stringify(state.reminders));
-            } catch (e) {
-                console.warn('Erro ao salvar lembrete:', e);
-            }
-            
-            // Adicionar ao Kanban
-            if (!state.kanbanTasks[reminder.status]) {
-                state.kanbanTasks[reminder.status] = [];
-            }
-            state.kanbanTasks[reminder.status].push(reminder);
-            
-            closeReminderModal();
-            showNotification('📅 Lembrete salvo!', 'success');
-            
-            // Atualizar exibição se estiver na aba correta
-            if (state.currentTab === 'lembretes') {
-                updateRemindersDisplay();
-            }
-        }
-
-        function openReminderModal(prefillDate = '') {
-            // Popular select de produtos
-            const productSelect = document.getElementById('reminderProduct');
-            productSelect.innerHTML = '<option value="">Selecionar produto...</option>';
-            
-            state.items.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.id;
-                option.dataset.code = item.codigo;
-                option.dataset.name = item.nome;
-                option.textContent = `${item.codigo} - ${item.nome}`;
-                productSelect.appendChild(option);
-            });
-            
-            // Preencher data
-            const dateInput = document.getElementById('reminderDate');
-            if (prefillDate) {
-                dateInput.value = prefillDate;
-            } else {
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                dateInput.value = tomorrow.toISOString().split('T')[0];
-            }
-            
-            document.getElementById('reminderModal').style.display = 'flex';
-        }
-
-        function closeReminderModal() {
-            document.getElementById('reminderModal').style.display = 'none';
-            document.getElementById('reminderForm').reset();
-        }
-
-        // 🎨 MÓDULO: KANBAN
-        function loadKanbanTasks() {
-            try {
-                const saved = localStorage.getItem(CONFIG.KANBAN_KEY);
-                if (saved) {
-                    state.kanbanTasks = JSON.parse(saved);
-                    console.log(`🎨 Kanban carregado`);
-                    return true;
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar Kanban:', error);
-            }
-            return false;
-        }
-
-        // 🔲 MÓDULO: QR CODES (implementação simplificada)
-        function generateQRCode(product) {
-            const data = {
-                codigo: product.codigo,
-                nome: product.nome,
-                quantidade: product.quantidade,
-                plataforma: product.plataforma,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Atualizar informações do produto
-            document.getElementById('qrProductInfo').innerHTML = `
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <div class="font-bold text-lg">${product.nome}</div>
-                    <div class="text-gray-600">Código: <span class="font-mono">${product.codigo}</span></div>
-                    <div class="text-gray-600">Estoque: ${product.quantidade} unidades</div>
-                    <div class="text-gray-600">Local: ${product.plataforma}</div>
-                </div>
-            `;
-            
-            // Salvar produto atual
-            state.currentQRProduct = product;
-            
-            // Abrir modal
-            document.getElementById('qrModal').style.display = 'flex';
-        }
-
-        function closeQRModal() {
-            document.getElementById('qrModal').style.display = 'none';
-            state.currentQRProduct = null;
-        }
-
-        function printQRCode() {
-            if (!state.currentQRProduct) return;
-            
-            const product = state.currentQRProduct;
-            const printWindow = window.open('', '_blank');
-            
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>QR Code - ${product.nome}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-                        h1 { color: #a00b08; }
-                        .info { margin: 20px 0; }
-                        .footer { margin-top: 30px; font-size: 12px; color: #666; }
-                        @media print {
-                            body { margin: 0; padding: 10px; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>SUPER BRUNO ATACADO</h1>
-                    <h2>QR Code do Produto</h2>
-                    
-                    <div class="info">
-                        <h3>${product.nome}</h3>
-                        <p><strong>Código:</strong> ${product.codigo}</p>
-                        <p><strong>Estoque:</strong> ${product.quantidade} unidades</p>
-                        <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-                    </div>
-                    
-                    <div style="border: 2px solid #a00b08; padding: 20px; display: inline-block; margin: 20px;">
-                        <div style="font-family: monospace; font-size: 14px;">
-                            <strong>QR CODE</strong><br>
-                            Produto: ${product.nome}<br>
-                            Código: ${product.codigo}<br>
-                            Estoque: ${product.quantidade}<br>
-                            Data: ${new Date().toLocaleDateString('pt-BR')}
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>Sistema de Estoque - Super Bruno Atacado</p>
-                    </div>
-                    
-                    <script>
-                        window.print();
-                        setTimeout(() => window.close(), 1000);
-                    </script>
-                </body>
-                </html>
-            `);
-        }
-
-        function shareViaWhatsApp() {
-            if (!state.currentQRProduct) return;
-            
-            const product = state.currentQRProduct;
-            const message = encodeURIComponent(
-                `📦 *${product.nome}*\n` +
-                `📋 Código: ${product.codigo}\n` +
-                `📊 Estoque: ${product.quantidade} unidades\n` +
-                `📍 Local: ${product.plataforma}\n` +
-                `_Enviado via Sistema de Estoque - Super Bruno_`
-            );
-            
-            const whatsappUrl = `https://wa.me/?text=${message}`;
-            window.open(whatsappUrl, '_blank');
-        }
-
-        // 🔍 MÓDULO: SCANNER (implementação simplificada)
-        function openScanner() {
-            showNotification('🔍 Funcionalidade de scanner em desenvolvimento', 'info');
-            
-            // Simulação de scanner
-            document.getElementById('scannerModal').style.display = 'flex';
-            
-            const scannerResult = document.getElementById('scannerResult');
-            scannerResult.classList.remove('hidden');
-            scannerResult.innerHTML = `
-                <div class="bg-blue-50 p-4 rounded-lg">
-                    <div class="flex items-center gap-2 text-blue-700 mb-2">
-                        <span class="text-2xl">ℹ️</span>
-                        <span class="font-bold">Scanner QR Code</span>
-                    </div>
-                    <div class="text-gray-800">
-                        <p>Para usar o scanner, instale um aplicativo de QR Code no seu celular e aponte para os códigos gerados pelo sistema.</p>
-                        <p class="mt-2 text-sm text-gray-600">Alternativamente, você pode digitar o código do produto na barra de busca.</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        function closeScanner() {
-            document.getElementById('scannerModal').style.display = 'none';
-            document.getElementById('scannerResult').classList.add('hidden');
-        }
-
-        // 🔄 FUNÇÕES DE ATUALIZAÇÃO
-        function updateDynamicComponents() {
-            updateStatsDisplay();
-            updateProductCount();
-            updateProductTable();
-            updateLastUpdateTime();
-            updateSystemStatus();
-            
-            if (state.currentTab === 'dashboard') {
-                updateDashboardDisplay();
-            }
-        }
-
-        function updateStatsDisplay() {
-            const container = document.querySelector('.stats-container');
-            if (container && state.currentTab === 'estoque') {
-                container.innerHTML = `
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Total</div>
-                            <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
-                            <div class="text-xs text-gray-400">produtos</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Em Estoque</div>
-                            <div class="text-2xl font-bold text-green-600">${state.stats.inStock}</div>
-                            <div class="text-xs text-gray-400">disponíveis</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Esgotados</div>
-                            <div class="text-2xl font-bold text-orange-600">${state.stats.outOfStock}</div>
-                            <div class="text-xs text-gray-400">sem estoque</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Estoque Baixo</div>
-                            <div class="text-2xl font-bold text-yellow-600">${state.stats.lowStock}</div>
-                            <div class="text-xs text-gray-400">≤ 3 unidades</div>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        function updateProductCount() {
-            const element = document.querySelector('.product-count');
-            if (element && state.currentTab === 'estoque') {
-                element.innerHTML = `📊 Mostrando <span class="font-bold text-red-600">${state.filteredItems.length}</span> de <span class="font-bold">${state.items.length}</span> produtos`;
-            }
-        }
-
         function updateProductTable() {
-            if (state.currentTab !== 'estoque') return;
-            
             const tbody = document.querySelector('#productTable tbody');
             if (!tbody) return;
             
             if (state.filteredItems.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="px-4 py-12 text-center">
-                            <div class="text-gray-400 text-4xl mb-3">📦</div>
-                            <div class="text-gray-600 font-medium mb-1">
-                                ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
-                                    'Nenhum produto encontrado' : 
-                                    'Nenhum produto cadastrado'}
-                            </div>
+                        <td colspan="5" style="padding: 3rem; text-align: center; color: var(--gray-500);">
+                            Nenhum produto encontrado
                         </td>
                     </tr>
                 `;
             } else {
-                tbody.innerHTML = state.filteredItems.map((item, index) => `
-                    <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-                        <td class="px-3 py-3 md:px-4 md:py-4">
-                            <div class="font-mono font-bold text-red-700 text-sm md:text-base">
+                tbody.innerHTML = state.filteredItems.map(item => `
+                    <tr>
+                        <td>
+                            <div style="font-family: monospace; font-weight: bold; color: var(--primary-red);">
                                 ${item.codigo}
                             </div>
                         </td>
-                        <td class="px-3 py-3 md:px-4 md:py-4">
-                            <div class="font-medium text-gray-900 text-sm md:text-base">
+                        <td>
+                            <div style="font-weight: 500;">
                                 ${item.nome}
                             </div>
-                            <button onclick="generateQRCode(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                    class="text-xs text-blue-600 hover:text-blue-800 mt-1">
-                                🔲 Gerar QR Code
-                            </button>
                         </td>
-                        <td class="px-3 py-3 md:px-4 md:py-4 text-center">
-                            <span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold
-                                ${item.quantidade === 0 ? 'bg-red-100 text-red-700' : 
-                                  item.quantidade <= 3 ? 'bg-yellow-100 text-yellow-700' : 
-                                  'bg-green-100 text-green-700'}">
+                        <td style="text-align: center;">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 999px; font-weight: bold; font-size: 0.875rem;
+                                background-color: ${item.quantidade === 0 ? '#fee2e2' : item.quantidade <= 3 ? '#fef9c3' : '#dcfce7'};
+                                color: ${item.quantidade === 0 ? '#b91c1c' : item.quantidade <= 3 ? '#a16207' : '#047857'};">
                                 ${item.quantidade}
                             </span>
                         </td>
-                        <td class="px-3 py-3 md:px-4 md:py-4 mobile-hidden">
-                            <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
+                        <td>
+                            <span style="display: inline-block; background-color: var(--gray-100); padding: 4px 12px; border-radius: 999px; font-size: 0.875rem;">
                                 ${item.plataforma}
                             </span>
                         </td>
-                        <td class="px-3 py-3 md:px-4 md:py-4">
-                            <div class="flex flex-wrap gap-1">
-                                ${formatObservacoes(item.observacoes)}
-                            </div>
+                        <td>
+                            ${formatObservacoes(item.observacoes)}
                         </td>
                     </tr>
                 `).join('');
             }
         }
 
-        function updateLastUpdateTime() {
-            const elements = document.querySelectorAll('.last-update');
-            elements.forEach(el => {
-                el.innerHTML = `🕒 ${getTimeSinceUpdate()}`;
-            });
-        }
-
-        function updateSystemStatus() {
-            const footer = document.querySelector('footer .system-status');
-            if (footer) {
-                footer.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        ${state.connectionError ? 
-                            '<span class="text-orange-600">⚠️ Modo Offline</span>' :
-                            '<span class="text-green-600">✅ Sistema Online</span>'}
-                    </div>
-                `;
-            }
-        }
-
-        // 📊 DASHBOARD SIMPLIFICADO
-        function updateDashboardDisplay() {
-            const container = document.getElementById('dashboardContent');
-            if (!container) return;
-            
-            // Contar produtos por localização
-            const mostruario = state.items.filter(item => 
-                item.observacoes && item.observacoes.toLowerCase().includes('mostruario')).length;
-            const embalado = state.items.filter(item => 
-                item.observacoes && item.observacoes.toLowerCase().includes('embalado')).length;
-            const frente = state.items.filter(item => 
-                item.observacoes && item.observacoes.toLowerCase().includes('frente')).length;
-            const cd = state.items.filter(item => 
-                item.observacoes && item.observacoes.toLowerCase().includes('cd')).length;
-            const montagem = state.items.filter(item => 
-                item.observacoes && item.observacoes.toLowerCase().includes('montagem')).length;
-            const assistencia = state.items.filter(item => 
-                item.observacoes && item.observacoes.toLowerCase().includes('assistencia')).length;
-            
-            container.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="font-bold text-lg mb-4">📊 Estatísticas do Estoque</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center">
-                                <span>Total de Produtos:</span>
-                                <span class="font-bold">${state.stats.total}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span>Em Estoque:</span>
-                                <span class="font-bold text-green-600">${state.stats.inStock}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span>Estoque Baixo:</span>
-                                <span class="font-bold text-yellow-600">${state.stats.lowStock}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span>Esgotados:</span>
-                                <span class="font-bold text-red-600">${state.stats.outOfStock}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="font-bold text-lg mb-4">📅 Lembretes Ativos</h3>
-                        <div class="space-y-3">
-                            ${state.reminders.slice(0, 5).map(reminder => `
-                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
-                                    <div>
-                                        <span class="font-medium">${reminder.title}</span>
-                                        <div class="text-sm text-gray-600">${reminder.productName || 'Sem produto'}</div>
-                                    </div>
-                                    <span class="text-sm text-gray-500">
-                                        ${new Date(reminder.date).toLocaleDateString('pt-BR')}
-                                    </span>
-                                </div>
-                            `).join('')}
-                            ${state.reminders.length === 0 ? '<p class="text-gray-500 text-center py-4">Nenhum lembrete</p>' : ''}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-6 bg-white p-6 rounded-lg shadow">
-                    <h3 class="font-bold text-lg mb-4">📍 Distribuição por Localização</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <div class="text-center p-4 bg-yellow-50 rounded">
-                            <div class="text-2xl font-bold">${mostruario}</div>
-                            <div class="text-sm">Mostruário</div>
-                        </div>
-                        <div class="text-center p-4 bg-green-50 rounded">
-                            <div class="text-2xl font-bold">${embalado}</div>
-                            <div class="text-sm">Embalado</div>
-                        </div>
-                        <div class="text-center p-4 bg-blue-50 rounded">
-                            <div class="text-2xl font-bold">${frente}</div>
-                            <div class="text-sm">Frente</div>
-                        </div>
-                        <div class="text-center p-4 bg-purple-50 rounded">
-                            <div class="text-2xl font-bold">${cd}</div>
-                            <div class="text-sm">CD</div>
-                        </div>
-                        <div class="text-center p-4 bg-gray-50 rounded">
-                            <div class="text-2xl font-bold">${montagem}</div>
-                            <div class="text-sm">Montagem</div>
-                        </div>
-                        <div class="text-center p-4 bg-red-50 rounded">
-                            <div class="text-2xl font-bold">${assistencia}</div>
-                            <div class="text-sm">Assistência</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function updateRemindersDisplay() {
-            const container = document.getElementById('remindersContent');
-            if (!container) return;
-            
-            container.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Calendário simplificado -->
-                    <div class="bg-white p-4 rounded-lg shadow">
-                        <h3 class="font-bold text-lg mb-4">📅 Calendário</h3>
-                        <div class="text-center py-8">
-                            <div class="text-4xl mb-2">📅</div>
-                            <p class="text-gray-600">Clique no botão abaixo para adicionar um novo lembrete</p>
-                            <button onclick="openReminderModal()" class="btn-primary px-6 py-3 rounded-lg mt-4">
-                                + Novo Lembrete
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Lista de Lembretes -->
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <h3 class="font-bold text-lg">📋 Lembretes</h3>
-                            <button onclick="openReminderModal()" class="btn-primary px-4 py-2 rounded-lg">
-                                + Novo
-                            </button>
-                        </div>
-                        
-                        ${state.reminders.length === 0 ? `
-                            <div class="text-center py-12">
-                                <div class="text-gray-400 text-4xl mb-3">📅</div>
-                                <div class="text-gray-600 font-medium">Nenhum lembrete</div>
-                            </div>
-                        ` : `
-                            <div class="space-y-3 max-h-[500px] overflow-y-auto">
-                                ${state.reminders.map(reminder => `
-                                    <div class="bg-gray-50 p-4 rounded-lg">
-                                        <div class="flex justify-between items-start">
-                                            <div>
-                                                <div class="font-bold flex items-center gap-2">
-                                                    ${reminder.title}
-                                                    <span class="text-xs px-2 py-1 rounded ${reminder.status === 'pendente' ? 'bg-red-100 text-red-700' : 
-                                                                           reminder.status === 'andamento' ? 'bg-yellow-100 text-yellow-700' : 
-                                                                           'bg-green-100 text-green-700'}">
-                                                        ${reminder.status}
-                                                    </span>
-                                                </div>
-                                                <div class="text-sm text-gray-600 mt-1">${reminder.description}</div>
-                                                ${reminder.productName ? `
-                                                    <div class="text-sm text-gray-500 mt-2">
-                                                        📦 ${reminder.productName} (${reminder.productCode})
-                                                    </div>
-                                                ` : ''}
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="text-sm font-medium text-gray-600">
-                                                    ${new Date(reminder.date).toLocaleDateString('pt-BR')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `}
-                    </div>
-                </div>
-            `;
-        }
-
-        function updateKanbanDisplay() {
-            const container = document.getElementById('kanbanContent');
-            if (!container) return;
-            
-            container.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Coluna Pendente -->
-                    <div>
-                        <div class="kanban-column-header bg-red-100 text-red-700">
-                            📝 Pendente (${state.kanbanTasks.pendente.length})
-                        </div>
-                        <div id="kanban-pendente" class="kanban-column">
-                            ${state.kanbanTasks.pendente.map(task => `
-                                <div class="kanban-item" data-task-id="${task.id}">
-                                    <div class="font-bold">${task.title}</div>
-                                    <div class="text-sm text-gray-600 mt-1">${task.description}</div>
-                                    ${task.productName ? `
-                                        <div class="text-xs text-gray-500 mt-2">
-                                            📦 ${task.productName}
-                                        </div>
-                                    ` : ''}
-                                    <div class="text-xs text-gray-400 mt-2">
-                                        📅 ${new Date(task.date).toLocaleDateString('pt-BR')}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    
-                    <!-- Coluna Em Andamento -->
-                    <div>
-                        <div class="kanban-column-header bg-yellow-100 text-yellow-700">
-                            🔄 Em Andamento (${state.kanbanTasks.andamento.length})
-                        </div>
-                        <div id="kanban-andamento" class="kanban-column">
-                            ${state.kanbanTasks.andamento.map(task => `
-                                <div class="kanban-item" data-task-id="${task.id}">
-                                    <div class="font-bold">${task.title}</div>
-                                    <div class="text-sm text-gray-600 mt-1">${task.description}</div>
-                                    ${task.productName ? `
-                                        <div class="text-xs text-gray-500 mt-2">
-                                            📦 ${task.productName}
-                                        </div>
-                                    ` : ''}
-                                    <div class="text-xs text-gray-400 mt-2">
-                                        📅 ${new Date(task.date).toLocaleDateString('pt-BR')}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    
-                    <!-- Coluna Concluído -->
-                    <div>
-                        <div class="kanban-column-header bg-green-100 text-green-700">
-                            ✅ Concluído (${state.kanbanTasks.concluido.length})
-                        </div>
-                        <div id="kanban-concluido" class="kanban-column">
-                            ${state.kanbanTasks.concluido.map(task => `
-                                <div class="kanban-item" data-task-id="${task.id}">
-                                    <div class="font-bold">${task.title}</div>
-                                    <div class="text-sm text-gray-600 mt-1">${task.description}</div>
-                                    ${task.productName ? `
-                                        <div class="text-xs text-gray-500 mt-2">
-                                            📦 ${task.productName}
-                                        </div>
-                                    ` : ''}
-                                    <div class="text-xs text-gray-400 mt-2">
-                                        📅 ${new Date(task.date).toLocaleDateString('pt-BR')}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-6 text-center">
-                    <button onclick="openReminderModal()" class="btn-primary px-6 py-3 rounded-lg">
-                        📝 Nova Tarefa
-                    </button>
-                </div>
-            `;
-        }
-
-        // 🔄 ALTERNAR ENTRE ABAS
-        function switchTab(tabName) {
-            state.currentTab = tabName;
-            render();
-            
-            // Inicializar componentes específicos da aba
-            setTimeout(() => {
-                if (tabName === 'dashboard') {
-                    updateDashboardDisplay();
-                } else if (tabName === 'lembretes') {
-                    updateRemindersDisplay();
-                } else if (tabName === 'kanban') {
-                    updateKanbanDisplay();
-                } else if (tabName === 'estoque') {
-                    const searchInput = document.getElementById('searchInput');
-                    if (searchInput) {
-                        searchInput.focus();
-                    }
-                }
-            }, 100);
-        }
-
-        // 🎨 RENDERIZAÇÃO PRINCIPAL
         function render() {
-            if (state.loading && state.items.length === 0) return;
-            
             const app = document.getElementById('app');
             app.innerHTML = `
-                <!-- HEADER -->
-                <header class="brand-gradient shadow-lg no-print">
-                    <div class="container">
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-4 py-4">
-                            <div class="flex items-center gap-4">
-                                <div class="brand-gradient rounded-xl p-3 text-white font-bold text-xl shadow-md">
-                                    <span class="text-white">SUPER</span>
-                                    <span class="text-yellow-300 ml-1">BRUNO</span>
-                                </div>
-                                <div>
-                                    <h1 class="text-white text-xl md:text-2xl font-bold">Mapa de Estoque Inteligente</h1>
-                                    <p class="text-yellow-200 text-sm flex items-center gap-2">
-                                        ${state.connectionError ? 
-                                            '<span class="pulse">⚠️ Modo Offline</span>' : 
-                                            '<span>✅ Sistema Online</span>'}
-                                    </p>
-                                </div>
+                <header class="brand-gradient" style="box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <div class="container" style="padding: 1.5rem 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <h1 style="color: white; font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">
+                                    SUPER BRUNO ATACADO
+                                </h1>
+                                <p style="color: #fef08a; font-size: 0.875rem;">
+                                    Sistema de Estoque
+                                </p>
                             </div>
-                            
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="openScanner()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium">
-                                    🔍 Scanner
-                                </button>
-                                <button onclick="toggleAutoRefresh()" class="${state.autoRefresh ? 'btn-secondary' : 'bg-gray-500 text-white'} px-4 py-2 rounded-lg font-medium">
-                                    ${state.autoRefresh ? '🔄 Auto' : '⏸️ Manual'}
-                                </button>
-                                <button onclick="syncWithSheet()" class="btn-primary px-4 py-2 rounded-lg font-medium">
-                                    🔄 Sincronizar
-                                </button>
+                            <button onclick="syncData()" class="btn-primary">
+                                🔄 Atualizar
+                            </button>
+                            <div id="connectionStatus" style="font-size: 0.875rem; margin-top: 0.5rem;">
+                                ${state.connectionError ? '⚠️ Modo Offline' : '✅ Conectado'}
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <!-- ABAS PRINCIPAIS -->
-                <div class="container">
-                    <div class="flex overflow-x-auto border-b border-gray-200 mt-4 no-print">
-                        <button class="tab-button ${state.currentTab === 'estoque' ? 'active' : ''}" onclick="switchTab('estoque')">
-                            📦 Estoque (${state.stats.total})
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">
-                            📊 Dashboard
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'lembretes' ? 'active' : ''}" onclick="switchTab('lembretes')">
-                            📅 Lembretes ${state.reminders.length > 0 ? `(${state.reminders.length})` : ''}
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'kanban' ? 'active' : ''}" onclick="switchTab('kanban')">
-                            🎨 Kanban
-                        </button>
-                    </div>
-                </div>
-
-                <!-- CONTEÚDO DAS ABAS -->
-                <main class="container py-4 md:py-6">
-                    <div id="tabContent">
-                        ${getTabContent()}
-                    </div>
-                </main>
-
-                <!-- FOOTER -->
-                <footer class="mt-8 pb-6 text-center text-gray-500 text-sm no-print">
-                    <div class="container">
-                        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
-                            <div class="flex items-center gap-2 system-status">
-                                ${state.connectionError ? 
-                                    '<span class="text-orange-600">⚠️ Modo Offline</span>' :
-                                    '<span class="text-green-600">✅ Sistema Online</span>'}
-                            </div>
-                            <div class="hidden md:block text-gray-300">|</div>
-                            <div>
-                                🔄 ${state.autoRefresh ? 'Auto (30s)' : 'Manual'}
-                            </div>
-                            ${state.lastUpdate ? `
-                                <div class="hidden md:block text-gray-300">|</div>
-                                <div class="text-gray-600 last-update">
-                                    🕒 ${getTimeSinceUpdate()}
-                                </div>
-                            ` : ''}
+                <main class="container" style="padding: 2rem 1rem;">
+                    <!-- Estatísticas -->
+                    <div class="grid grid-cols-2 grid-cols-md-4" style="margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <div style="color: var(--gray-500); font-size: 0.875rem;">Total</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-red);">${state.stats.total}</div>
                         </div>
-                        <div class="mt-4 text-xs text-gray-400">
-                            Sistema desenvolvido para Super Bruno Atacado © ${new Date().getFullYear()}
+                        <div class="stat-card">
+                            <div style="color: var(--gray-500); font-size: 0.875rem;">Em Estoque</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #059669;">${state.stats.inStock}</div>
                         </div>
-                    </div>
-                </footer>
-            `;
-            
-            // Inicializar conteúdo da aba atual
-            setTimeout(() => {
-                if (state.currentTab === 'dashboard') {
-                    updateDashboardDisplay();
-                } else if (state.currentTab === 'lembretes') {
-                    updateRemindersDisplay();
-                } else if (state.currentTab === 'kanban') {
-                    updateKanbanDisplay();
-                } else if (state.currentTab === 'estoque') {
-                    // Renderizar conteúdo do estoque
-                    const tabContent = document.getElementById('tabContent');
-                    tabContent.innerHTML = getEstoqueContent();
-                    
-                    // Aplicar filtros e ordenação
-                    applySortingAndFiltering();
-                    updateDynamicComponents();
-                }
-            }, 50);
-        }
-
-        function getTabContent() {
-            switch(state.currentTab) {
-                case 'dashboard':
-                    return '<div id="dashboardContent"></div>';
-                case 'lembretes':
-                    return '<div id="remindersContent"></div>';
-                case 'kanban':
-                    return '<div id="kanbanContent"></div>';
-                case 'estoque':
-                default:
-                    return getEstoqueContent();
-            }
-        }
-
-        function getEstoqueContent() {
-            return `
-                <div class="tab-content active">
-                    <!-- ESTATÍSTICAS -->
-                    <div class="stats-container"></div>
-
-                    <!-- BUSCA E FILTROS -->
-                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
-                        <div class="relative mb-4">
-                            <input type="text" 
-                                   id="searchInput"
-                                   placeholder="🔍 Buscar por código, nome, plataforma ou localização..."
-                                   value="${state.searchTerm}"
-                                   oninput="handleSearchInput(event)"
-                                   class="w-full px-4 py-3 border rounded-lg">
-                            
-                            ${state.searchTerm ? `
-                                <button onclick="clearSearch()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
-                                    ×
-                                </button>
-                            ` : ''}
+                        <div class="stat-card">
+                            <div style="color: var(--gray-500); font-size: 0.875rem;">Esgotados</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #ea580c;">${state.stats.outOfStock}</div>
                         </div>
-
-                        <!-- FILTROS RÁPIDOS -->
-                        <div class="space-y-3">
-                            <div>
-                                <div class="text-sm font-medium text-gray-700 mb-2">📍 Localização:</div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button onclick="setLocationFilter('all')" class="filter-badge ${state.locationFilter === 'all' ? 'active' : ''}">
-                                        Todas
-                                    </button>
-                                    <button onclick="setLocationFilter('mostruario')" class="filter-badge ${state.locationFilter === 'mostruario' ? 'active' : ''}">
-                                        🎨 Mostruário
-                                    </button>
-                                    <button onclick="setLocationFilter('embalado')" class="filter-badge ${state.locationFilter === 'embalado' ? 'active' : ''}">
-                                        📦 Embalado
-                                    </button>
-                                    <button onclick="setLocationFilter('frente')" class="filter-badge ${state.locationFilter === 'frente' ? 'active' : ''}">
-                                        🏪 Frente de Loja
-                                    </button>
-                                    <button onclick="setLocationFilter('cd')" class="filter-badge ${state.locationFilter === 'cd' ? 'active' : ''}">
-                                        🏭 CD
-                                    </button>
-                                    <button onclick="setLocationFilter('montagem')" class="filter-badge ${state.locationFilter === 'montagem' ? 'active' : ''}">
-                                        🔧 Montagem
-                                    </button>
-                                    <button onclick="setLocationFilter('assistencia')" class="filter-badge ${state.locationFilter === 'assistencia' ? 'active' : ''}">
-                                        🔨 Assistência
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <div class="text-sm font-medium text-gray-700 mb-2">📊 Estoque:</div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button onclick="setStockFilter('all')" class="filter-badge ${state.stockFilter === 'all' ? 'active' : ''}">
-                                        Todos
-                                    </button>
-                                    <button onclick="setStockFilter('in')" class="filter-badge ${state.stockFilter === 'in' ? 'active' : ''}">
-                                        ✅ Disponível
-                                    </button>
-                                    <button onclick="setStockFilter('low')" class="filter-badge ${state.stockFilter === 'low' ? 'active' : ''}">
-                                        ⚠️ Baixo (≤3)
-                                    </button>
-                                    <button onclick="setStockFilter('out')" class="filter-badge ${state.stockFilter === 'out' ? 'active' : ''}">
-                                        ❌ Esgotado
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
-                            <div class="text-gray-600 product-count">
-                                📊 Mostrando <span class="font-bold text-red-600">${state.filteredItems.length}</span> de <span class="font-bold">${state.items.length}</span> produtos
-                            </div>
-                            <div class="text-gray-500 last-update">
-                                🕒 ${getTimeSinceUpdate()}
-                            </div>
+                        <div class="stat-card">
+                            <div style="color: var(--gray-500); font-size: 0.875rem;">Estoque Baixo</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #ca8a04;">${state.stats.lowStock}</div>
                         </div>
                     </div>
 
-                    <!-- TABELA DE PRODUTOS -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden fade-in">
-                        <div class="overflow-x-auto">
-                            <table class="w-full" id="productTable">
+                    <!-- Busca -->
+                    <div style="background: white; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                        <input type="text" 
+                               id="searchInput"
+                               placeholder="🔍 Buscar por código, nome, plataforma ou localização..."
+                               value="${state.searchTerm}"
+                               oninput="handleSearchInput(event)">
+                        <div style="margin-top: 0.75rem; color: var(--gray-600); font-size: 0.875rem;">
+                            Mostrando <strong style="color: var(--primary-red);">${state.filteredItems.length}</strong> de <strong>${state.items.length}</strong> produtos
+                        </div>
+                    </div>
+
+                    <!-- Tabela -->
+                    <div style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                        <div style="overflow-x: auto;">
+                            <table id="productTable">
                                 <thead>
-                                    <tr class="bg-gradient-to-r from-red-700 to-red-900 text-white">
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">Código</th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">Nome do Produto</th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-center">Qtd</th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left mobile-hidden">Plataforma</th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">Localização</th>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nome do Produto</th>
+                                        <th style="text-align: center;">Qtd</th>
+                                        <th>Plataforma</th>
+                                        <th>Localização</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    <!-- Conteúdo será preenchido por updateProductTable() -->
+                                <tbody>
+                                    <!-- Preenchido dinamicamente -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                </main>
 
-                    <!-- LEGENDA DE LOCALIZAÇÃO -->
-                    <div class="mt-6 bg-white rounded-lg p-5 shadow no-print">
-                        <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                            🎨 Legenda de Localização
-                        </h3>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            <div class="flex items-center gap-2">
-                                <span class="status-tag status-mostruario">Mostruário</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-tag status-embalado">Embalado</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-tag status-frentedeloja">Frente de Loja</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-tag status-separadocd">Separado p/CD</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-tag status-montagem">Montagem</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-tag status-assistencia">Assistência</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <footer style="text-align: center; padding: 2rem 1rem; color: var(--gray-500); font-size: 0.875rem;">
+                    Sistema desenvolvido para Super Bruno Atacado © ${new Date().getFullYear()}
+                </footer>
             `;
+            
+            applySortingAndFiltering();
+            updateProductTable();
         }
 
-        // 🚀 INICIALIZAÇÃO
+        async function syncData() {
+            state.loading = true;
+            
+            // Mostrar indicador de carregamento
+            const statusDiv = document.getElementById('connectionStatus');
+            if (statusDiv) {
+                statusDiv.innerHTML = '🔄 Sincronizando...';
+                statusDiv.style.color = '#3b82f6';
+            }
+            
+            const success = await fetchLiveData();
+            
+            if (success) {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '✅ Conectado';
+                    statusDiv.style.color = '#059669';
+                }
+                render();
+            } else {
+                // Tentar carregar backup
+                const hasBackup = loadBackup();
+                if (statusDiv) {
+                    statusDiv.innerHTML = hasBackup ? '⚠️ Modo Offline (usando backup)' : '❌ Erro de conexão';
+                    statusDiv.style.color = hasBackup ? '#ea580c' : '#dc2626';
+                }
+                render();
+            }
+            
+            state.loading = false;
+        }
+
         async function initApp() {
             console.log('🚀 Iniciando sistema...');
             
-            try {
-                // Carregar dados básicos primeiro
-                loadBackup();
-                loadReminders();
-                loadKanbanTasks();
-                
-                // Tentar sincronizar
-                await syncWithSheet();
-                
-                // Iniciar auto-refresh se ativado
-                if (state.autoRefresh) {
-                    state.syncInterval = setInterval(() => {
-                        syncWithSheet(true);
-                    }, CONFIG.AUTO_REFRESH_INTERVAL);
-                }
-                
-                console.log('✅ Sistema pronto!');
-            } catch (error) {
-                console.error('❌ Erro na inicialização:', error);
-                showNotification('⚠️ Erro ao carregar o sistema. Recarregue a página.', 'error');
+            // Primeiro, tentar carregar backup para exibição imediata
+            const hasBackup = loadBackup();
+            if (hasBackup) {
+                console.log('💾 Backup local carregado');
+                render();
             }
+            
+            // Depois tentar sincronizar com a planilha
+            await syncData();
+            
+            // Auto-refresh a cada 30 segundos
+            setInterval(() => {
+                syncData();
+            }, CONFIG.AUTO_REFRESH_INTERVAL);
+            
+            console.log('✅ Sistema pronto!');
         }
 
-        // 📱 INICIALIZAR QUANDO A PÁGINA CARREGAR
-        document.addEventListener('DOMContentLoaded', function() {
-            // Iniciar aplicação
-            initApp();
-        });
-
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
