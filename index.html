@@ -4,44 +4,16 @@
     <meta charset="UTF-8">
     <title>Mapa de Estoque - SUPER BRUNO ATACADO</title>
     <meta name="theme-color" content="#a00b08">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         :root {
             --primary-red: #a00b08;
             --primary-yellow: #f4cf08;
+            --primary-beige: #d8cfc4;
             --primary-dark-red: #4d0505;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--gray-50);
-            color: var(--gray-900);
-            line-height: 1.5;
-        }
-        
-        .container {
-            width: 100%;
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 1rem;
+            --primary-purple: #9c7c84;
         }
         
         .brand-gradient {
@@ -51,190 +23,375 @@
         .btn-primary {
             background-color: var(--primary-red);
             color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
             transition: all 0.2s;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
         }
-        
         .btn-primary:hover {
             background-color: var(--primary-dark-red);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
-        .loading-spinner {
-            animation: spin 1s linear infinite;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary-red);
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            margin: 0 auto;
+        .btn-secondary {
+            background-color: var(--primary-yellow);
+            color: var(--primary-dark-red);
+            transition: all 0.2s;
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .btn-secondary:hover {
+            background-color: #e0c000;
+            transform: translateY(-1px);
         }
         
         .status-tag {
-            display: inline-block;
+            display: inline-block !important;
             padding: 6px 12px;
             border-radius: 8px;
             font-size: 0.75rem;
             font-weight: 600;
             margin: 2px;
+            line-height: 1.2;
             white-space: nowrap;
             border: 1px solid;
+            transition: all 0.2s;
+        }
+        .status-tag:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .status-mostruario {
-            background-color: #fef9e7;
-            color: #7d6608;
-            border-color: #f4cf08;
+            background-color: #fef9e7 !important;
+            color: #7d6608 !important;
+            border-color: #f4cf08 !important;
         }
         
         .status-embalado {
-            background-color: #e8f8ef;
-            color: #186a3b;
-            border-color: #2ecc71;
+            background-color: #e8f8ef !important;
+            color: #186a3b !important;
+            border-color: #2ecc71 !important;
         }
         
         .status-frentedeloja {
-            background-color: #e8f4fd;
-            color: #1a5276;
-            border-color: #3498db;
+            background-color: #e8f4fd !important;
+            color: #1a5276 !important;
+            border-color: #3498db !important;
+        }
+        
+        .status-separadocd {
+            background-color: #f4ecf7 !important;
+            color: #6c3483 !important;
+            border-color: #9b59b6 !important;
+        }
+        
+        .status-montagem {
+            background-color: #ebedef !important;
+            color: #2c3e50 !important;
+            border-color: #34495e !important;
+        }
+        
+        .status-assistencia {
+            background-color: #fdedec !important;
+            color: #943126 !important;
+            border-color: #e74c3c !important;
         }
         
         .status-default {
-            background-color: var(--gray-100);
-            color: var(--gray-700);
-            border-color: var(--gray-300);
+            background-color: #f8f9fa !important;
+            color: #495057 !important;
+            border-color: #dee2e6 !important;
+        }
+
+        .history-added {
+            background-color: #e8f6f3 !important;
+            color: #0d6251 !important;
+            border-left: 4px solid #2ecc71 !important;
         }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .history-removed {
+            background-color: #fde8e8 !important;
+            color: #9b2c2c !important;
+            border-left: 4px solid #e53e3e !important;
         }
         
-        th {
-            text-align: left;
-            font-weight: 600;
-            padding: 0.75rem 1rem;
-            background: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-dark-red) 100%);
-            color: white;
+        .history-modified {
+            background-color: #fef3e2 !important;
+            color: #b45309 !important;
+            border-left: 4px solid #ed8936 !important;
         }
         
-        td {
-            padding: 0.75rem 1rem;
-            border-top: 1px solid var(--gray-200);
+        .history-stock-up {
+            background-color: #e6fffa !important;
+            color: #234e52 !important;
+            border-left: 4px solid #38b2ac !important;
         }
         
-        tbody tr:nth-child(even) {
-            background-color: var(--gray-50);
+        .history-stock-down {
+            background-color: #fff5f5 !important;
+            color: #9b2c2c !important;
+            border-left: 4px solid #fc8181 !important;
         }
-        
-        tbody tr:hover {
-            background-color: #fff3f3;
+
+        .loading-spinner {
+            animation: spin 1s linear infinite;
         }
-        
-        input, select {
-            font-family: inherit;
-            font-size: inherit;
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--gray-300);
-            border-radius: 0.375rem;
-            width: 100%;
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        
-        input:focus, select:focus {
-            outline: 2px solid var(--primary-red);
-            outline-offset: 2px;
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
         }
-        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .search-input {
+            font-size: 16px !important;
+        }
+
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        .sortable:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
         .stat-card {
-            background: white;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
         }
-        
-        .grid {
-            display: grid;
-            gap: 1rem;
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        
-        .grid-cols-2 {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        @media (min-width: 768px) {
-            .grid-cols-md-4 {
-                grid-template-columns: repeat(4, 1fr);
+
+        @media (max-width: 768px) {
+            .mobile-hidden {
+                display: none;
+            }
+            .mobile-text-sm {
+                font-size: 0.875rem;
+            }
+            .search-input {
+                height: 52px;
+                padding: 14px 16px;
             }
         }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-full-width {
+                width: 100% !important;
+            }
+        }
+
+        .notification-enter {
+            animation: slideInRight 0.3s ease-out;
+        }
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background-color: #e0e0e0;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-badge:hover {
+            background-color: #d0d0d0;
+        }
+        .filter-badge.active {
+            background-color: var(--primary-red);
+            color: white;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            border-radius: 8px 8px 0 0;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            background: white;
+            color: var(--primary-red);
+            font-weight: 600;
+            border-color: #dee2e6;
+            position: relative;
+            z-index: 10;
+        }
+        .tab-button:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 0 8px 8px 8px;
+            background: white;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .history-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+        .badge-added { background: #d1f7c4; color: #0d6251; }
+        .badge-removed { background: #ffe0e0; color: #9b2c2c; }
+        .badge-modified { background: #fff4d9; color: #b45309; }
+        .badge-stock-up { background: #d1f7f7; color: #234e52; }
+        .badge-stock-down { background: #ffe0e0; color: #9b2c2c; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50">
     <div id="app">
-        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
-            <div style="text-align: center;">
-                <div class="loading-spinner"></div>
-                <p style="color: var(--gray-600); margin-top: 1rem;">Iniciando sistema...</p>
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <div class="loading-spinner w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p class="text-gray-600">Conectando com a planilha ao vivo...</p>
+                <p class="text-gray-400 text-sm mt-2">Aguarde enquanto carregamos os dados</p>
             </div>
         </div>
     </div>
 
     <script>
-        const CONFIG = {
-            PUBLISHED_ID: '2PACX-1vTXIBXGqrCkz3-Fg07OBUq5Xv4jrXhpAvIXWrk9GiNoeD_so8qTHaxdPXBRTTOvkN1EUujUtVOPDU8f',
-            BACKUP_KEY: 'estoque_backup_v4',
-            AUTO_REFRESH_INTERVAL: 30000,
-            // Dados de exemplo caso não consiga conectar
-            DEMO_DATA: [
-                { id: 'demo1', codigo: 'A001', nome: 'Produto Exemplo 1', quantidade: 10, plataforma: 'A1', observacoes: 'Embalado' },
-                { id: 'demo2', codigo: 'A002', nome: 'Produto Exemplo 2', quantidade: 0, plataforma: 'B2', observacoes: 'Mostruário' },
-                { id: 'demo3', codigo: 'A003', nome: 'Produto Exemplo 3', quantidade: 2, plataforma: 'C3', observacoes: 'Frente de loja' },
-            ]
-        };
-
+        // 🔧 CONFIGURAÇÃO DA PLANILHA
+        const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
+        const PUBLISHED_ID = '2PACX-1vTXIBXGqrCkz3-Fg07OBUq5Xv4jrXhpAvIXWrk9GiNoeD_so8qTHaxdPXBRTTOvkN1EUujUtVOPDU8f'; // ID da versão publicada
+        const SHEET_NAME = 'Página1'; // ⚠️ AJUSTE O NOME DA ABA AQUI SE NECESSÁRIO
+        const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
+        const BACKUP_KEY = 'estoque_live_backup';
+        const HISTORY_KEY = 'estoque_history';
+        const DEBUG_MODE = true; // Ativa logs detalhados
+        const USE_PUBLISHED_VERSION = true; // Usar versão publicada (mais estável)
+        
         let state = {
             items: [],
-            filteredItems: [],
+            previousItems: [],
             loading: true,
             searchTerm: '',
+            filteredItems: [],
+            lastUpdate: null,
             connectionError: false,
+            sortField: 'codigo',
+            sortDirection: 'asc',
+            autoRefresh: true,
+            syncInterval: null,
+            locationFilter: 'all',
+            stockFilter: 'all',
+            currentTab: 'estoque', // 'estoque' ou 'historico'
+            historyFilter: 'all', // 'all', 'added', 'removed', 'modified', 'stock-up', 'stock-down'
             stats: {
                 total: 0,
                 inStock: 0,
                 outOfStock: 0,
                 lowStock: 0
+            },
+            history: [],
+            historyStats: {
+                today: 0,
+                added: 0,
+                removed: 0,
+                modified: 0
             }
         };
 
+        let searchDebounceTimer = null;
+        let lastFocusedElementId = null; // Para rastrear o último elemento com foco
+
+        // 📊 BUSCAR DADOS AO VIVO DA PLANILHA
         async function fetchLiveData() {
             try {
-                console.log('📡 Tentando conectar à planilha...');
+                if (DEBUG_MODE) console.log('🔄 Buscando dados ao vivo...');
                 
-                // Tentar primeiro com CORS proxy se necessário
-                const baseUrl = `https://docs.google.com/spreadsheets/d/e/${CONFIG.PUBLISHED_ID}/pub?output=csv&gid=0`;
-                const url = `${baseUrl}&t=${Date.now()}`;
+                // Salvar os itens anteriores para comparação
+                state.previousItems = [...state.items];
                 
-                const response = await fetch(url, { 
+                // Escolher entre versão publicada ou versão direta
+                let url;
+                if (USE_PUBLISHED_VERSION) {
+                    url = `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?output=csv&gid=0&t=${Date.now()}`;
+                    if (DEBUG_MODE) console.log('📘 Usando versão PUBLICADA');
+                } else {
+                    url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+                    if (DEBUG_MODE) console.log('📗 Usando versão DIRETA (requer compartilhamento público)');
+                }
+                
+                if (DEBUG_MODE) console.log('🔗 URL:', url);
+                
+                const response = await fetch(url, {
                     cache: 'no-cache',
-                    mode: 'cors'
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
                 });
                 
+                if (DEBUG_MODE) console.log('📡 Status HTTP:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
                 }
                 
                 const csvData = await response.text();
-                console.log('✅ Dados recebidos:', csvData.substring(0, 100));
                 
-                if (!csvData || csvData.length < 10) {
-                    throw new Error('Planilha vazia');
+                if (DEBUG_MODE) {
+                    console.log('📄 Dados recebidos:', csvData.length, 'caracteres');
+                    console.log('📝 Primeiros 300 caracteres:', csvData.substring(0, 300));
+                }
+                
+                // Verificar erros comuns
+                if (!csvData || csvData.trim().length === 0) {
+                    throw new Error('❌ Planilha vazia ou inacessível');
+                }
+                
+                if (csvData.includes('autocrat demo job')) {
+                    throw new Error('❌ ERRO: Planilha não está compartilhada publicamente! Mude USE_PUBLISHED_VERSION para true ou compartilhe a planilha.');
+                }
+                
+                if (csvData.includes('Error') || csvData.includes('error')) {
+                    throw new Error('❌ Erro retornado pela planilha: ' + csvData.substring(0, 100));
+                }
+                
+                if (csvData.length < 20) {
+                    throw new Error('❌ Dados muito curtos. Verifique se há dados na planilha');
                 }
                 
                 const items = parseCSVData(csvData);
@@ -242,55 +399,328 @@
                 if (items.length > 0) {
                     state.items = items;
                     state.connectionError = false;
-                    localStorage.setItem(CONFIG.BACKUP_KEY, JSON.stringify({
-                        items: items,
-                        timestamp: Date.now()
-                    }));
+                    state.lastUpdate = new Date();
+                    console.log('✅ Dados ao vivo carregados:', items.length, 'produtos');
+                    
+                    // Salvar backup local
+                    try {
+                        localStorage.setItem(BACKUP_KEY, JSON.stringify({
+                            items: items,
+                            timestamp: Date.now()
+                        }));
+                    } catch (e) {
+                        console.warn('⚠️ Erro ao salvar backup:', e);
+                    }
+                    
+                    // Analisar mudanças e registrar no histórico
+                    if (state.previousItems.length > 0) {
+                        analyzeChanges(state.previousItems, items);
+                    }
+                    
                     updateStats();
-                    console.log(`✅ ${items.length} produtos carregados`);
+                    loadHistory();
                     return true;
                 } else {
                     throw new Error('Nenhum produto encontrado');
                 }
+                
             } catch (error) {
-                console.error('❌ Erro ao buscar dados:', error);
-                state.connectionError = true;
+                console.error('❌ Erro ao buscar dados ao vivo:', error);
+                
+                // Tentar carregar do backup
+                const backupLoaded = loadBackup();
+                if (backupLoaded) {
+                    state.connectionError = true;
+                    updateStats();
+                    return true;
+                }
+                
                 return false;
             }
         }
 
+        // 📈 ANALISAR MUDANÇAS ENTRE ATUALIZAÇÕES
+        function analyzeChanges(oldItems, newItems) {
+            console.log('📊 Analisando mudanças...');
+            
+            const changes = [];
+            const now = new Date();
+            
+            // Mapear itens antigos por código
+            const oldMap = {};
+            oldItems.forEach(item => {
+                oldMap[item.codigo] = item;
+            });
+            
+            // Mapear itens novos por código
+            const newMap = {};
+            newItems.forEach(item => {
+                newMap[item.codigo] = item;
+            });
+            
+            // Encontrar produtos novos (adicionados)
+            newItems.forEach(newItem => {
+                if (!oldMap[newItem.codigo]) {
+                    changes.push({
+                        type: 'added',
+                        timestamp: now,
+                        product: newItem.codigo,
+                        name: newItem.nome,
+                        details: `Produto adicionado ao estoque`,
+                        quantity: newItem.quantidade,
+                        platform: newItem.plataforma,
+                        notes: newItem.observacoes
+                    });
+                }
+            });
+            
+            // Encontrar produtos removidos
+            oldItems.forEach(oldItem => {
+                if (!newMap[oldItem.codigo]) {
+                    changes.push({
+                        type: 'removed',
+                        timestamp: now,
+                        product: oldItem.codigo,
+                        name: oldItem.nome,
+                        details: `Produto removido do estoque`,
+                        quantity: 0,
+                        platform: oldItem.plataforma,
+                        notes: oldItem.observacoes
+                    });
+                }
+            });
+            
+            // Comparar produtos existentes
+            newItems.forEach(newItem => {
+                const oldItem = oldMap[newItem.codigo];
+                if (oldItem) {
+                    // Verificar mudança na quantidade
+                    if (oldItem.quantidade !== newItem.quantidade) {
+                        const diff = newItem.quantidade - oldItem.quantidade;
+                        changes.push({
+                            type: diff > 0 ? 'stock-up' : 'stock-down',
+                            timestamp: now,
+                            product: newItem.codigo,
+                            name: newItem.nome,
+                            details: `Estoque alterado: ${oldItem.quantidade} → ${newItem.quantidade}`,
+                            quantity: newItem.quantidade,
+                            oldQuantity: oldItem.quantidade,
+                            difference: Math.abs(diff),
+                            platform: newItem.plataforma,
+                            notes: newItem.observacoes
+                        });
+                    }
+                    
+                    // Verificar mudanças em outros campos
+                    const fieldsChanged = [];
+                    if (oldItem.nome !== newItem.nome) fieldsChanged.push('nome');
+                    if (oldItem.plataforma !== newItem.plataforma) fieldsChanged.push('plataforma');
+                    if (oldItem.observacoes !== newItem.observacoes) fieldsChanged.push('observações');
+                    
+                    if (fieldsChanged.length > 0) {
+                        changes.push({
+                            type: 'modified',
+                            timestamp: now,
+                            product: newItem.codigo,
+                            name: newItem.nome,
+                            details: `Campos modificados: ${fieldsChanged.join(', ')}`,
+                            quantity: newItem.quantidade,
+                            platform: newItem.plataforma,
+                            notes: newItem.observacoes,
+                            fieldsChanged: fieldsChanged
+                        });
+                    }
+                }
+            });
+            
+            // Adicionar mudanças ao histórico
+            if (changes.length > 0) {
+                console.log(`📝 Encontradas ${changes.length} mudanças`);
+                changes.forEach(change => {
+                    addToHistory(change);
+                });
+                
+                // Mostrar notificação se houver mudanças significativas
+                if (changes.length <= 5) {
+                    changes.forEach(change => {
+                        let emoji = '📝';
+                        if (change.type === 'added') emoji = '🆕';
+                        if (change.type === 'removed') emoji = '🗑️';
+                        if (change.type === 'stock-up') emoji = '📈';
+                        if (change.type === 'stock-down') emoji = '📉';
+                        
+                        showNotification(`${emoji} ${change.details}`, 'info');
+                    });
+                } else {
+                    showNotification(`📊 ${changes.length} mudanças detectadas no estoque`, 'info');
+                }
+            }
+            
+            return changes;
+        }
+
+        // 📝 ADICIONAR ENTRADA AO HISTÓRICO
+        function addToHistory(entry) {
+            try {
+                // Carregar histórico existente
+                let history = [];
+                const savedHistory = localStorage.getItem(HISTORY_KEY);
+                if (savedHistory) {
+                    history = JSON.parse(savedHistory);
+                }
+                
+                // Adicionar nova entrada
+                entry.id = `hist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                history.unshift(entry); // Adicionar no início
+                
+                // Manter apenas os últimos 500 registros
+                if (history.length > 500) {
+                    history = history.slice(0, 500);
+                }
+                
+                // Salvar no localStorage
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                
+                // Atualizar histórico no state
+                state.history = history;
+                updateHistoryStats();
+                
+                console.log(`📝 Histórico atualizado: ${entry.type} - ${entry.product}`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar no histórico:', error);
+            }
+        }
+
+        // 📚 CARREGAR HISTÓRICO
+        function loadHistory() {
+            try {
+                const savedHistory = localStorage.getItem(HISTORY_KEY);
+                if (savedHistory) {
+                    state.history = JSON.parse(savedHistory);
+                    console.log(`📚 Histórico carregado: ${state.history.length} registros`);
+                    updateHistoryStats();
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar histórico:', error);
+            }
+            return false;
+        }
+
+        // 📊 ATUALIZAR ESTATÍSTICAS DO HISTÓRICO
+        function updateHistoryStats() {
+            const today = new Date().toDateString();
+            const todayEntries = state.history.filter(entry => 
+                new Date(entry.timestamp).toDateString() === today
+            );
+            
+            state.historyStats = {
+                today: todayEntries.length,
+                added: state.history.filter(entry => entry.type === 'added').length,
+                removed: state.history.filter(entry => entry.type === 'removed').length,
+                modified: state.history.filter(entry => entry.type === 'modified').length,
+                stockUp: state.history.filter(entry => entry.type === 'stock-up').length,
+                stockDown: state.history.filter(entry => entry.type === 'stock-down').length
+            };
+        }
+
+        // 💾 CARREGAR BACKUP
+        function loadBackup() {
+            try {
+                const backup = localStorage.getItem(BACKUP_KEY);
+                if (backup) {
+                    const data = JSON.parse(backup);
+                    const backupAge = Date.now() - data.timestamp;
+                    const hoursOld = Math.floor(backupAge / (1000 * 60 * 60));
+                    
+                    state.items = data.items;
+                    state.lastUpdate = new Date(data.timestamp);
+                    console.log(`💾 Backup carregado: ${state.items.length} produtos (${hoursOld}h atrás)`);
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar backup:', error);
+            }
+            return false;
+        }
+
+        // 🔍 ANALISAR DADOS CSV - VERSÃO MELHORADA
         function parseCSVData(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
             const items = [];
             
+            console.log('📋 Total de linhas:', lines.length);
+            
+            // Pular cabeçalho e processar dados
             for (let i = 1; i < lines.length; i++) {
                 try {
-                    const cells = lines[i].split(',').map(cell => {
-                        cell = cell.trim();
-                        if (cell.startsWith('"') && cell.endsWith('"')) {
-                            cell = cell.slice(1, -1);
-                        }
-                        return cell;
-                    });
+                    const cells = parseCSVLine(lines[i]);
                     
-                    if (cells.length >= 3) {
+                    if (cells.length < 3) continue;
+                    
+                    const codigo = cells[0]?.trim() || '';
+                    const nome = cells[1]?.trim() || '';
+                    const quantidade = parseInt(cells[2]) || 0;
+                    const plataforma = cells[3]?.trim() || 'Não informado';
+                    const observacoes = cells[4]?.trim() || '';
+                    
+                    if (codigo && nome) {
                         items.push({
-                            id: `item_${i}`,
-                            codigo: cells[0] || '',
-                            nome: cells[1] || '',
-                            quantidade: parseInt(cells[2]) || 0,
-                            plataforma: cells[3] || 'Não informado',
-                            observacoes: cells[4] || ''
+                            id: `item_${i}_${Date.now()}`,
+                            codigo,
+                            nome,
+                            quantidade,
+                            plataforma,
+                            observacoes,
+                            data_entrada: new Date().toISOString().split('T')[0],
+                            updated_at: new Date().toISOString()
                         });
                     }
                 } catch (error) {
-                    console.warn(`Erro na linha ${i}`);
+                    console.warn(`⚠️ Erro na linha ${i}:`, error);
                 }
             }
             
+            console.log('🎯 Produtos processados:', items.length);
             return items;
         }
 
+        // 📝 PARSER CSV ROBUSTO
+        function parseCSVLine(line) {
+            const cells = [];
+            let current = '';
+            let inQuotes = false;
+            let quoteChar = null;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                
+                if ((char === '"' || char === "'") && !inQuotes) {
+                    inQuotes = true;
+                    quoteChar = char;
+                } else if (char === quoteChar && inQuotes) {
+                    if (nextChar === quoteChar) {
+                        current += char;
+                        i++;
+                    } else {
+                        inQuotes = false;
+                        quoteChar = null;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    cells.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            cells.push(current.trim());
+            return cells.map(cell => cell.replace(/^["']|["']$/g, ''));
+        }
+
+        // 📊 ATUALIZAR ESTATÍSTICAS
         function updateStats() {
             const total = state.items.length;
             const inStock = state.items.filter(i => i.quantidade > 0).length;
@@ -300,37 +730,509 @@
             state.stats = { total, inStock, outOfStock, lowStock };
         }
 
-        function loadBackup() {
-            try {
-                const backup = localStorage.getItem(CONFIG.BACKUP_KEY);
-                if (backup) {
-                    const data = JSON.parse(backup);
-                    state.items = data.items || [];
-                    updateStats();
-                    console.log('💾 Backup carregado:', state.items.length, 'produtos');
-                    return true;
-                }
-            } catch (error) {
-                console.error('Erro ao carregar backup');
+        // 🔄 SINCRONIZAÇÃO AUTOMÁTICA - VERSÃO CORRIGIDA
+        async function syncWithSheet(silent = false) {
+            const wasLoading = state.loading;
+            
+            // Se for atualização silenciosa (automática), não mostra loading na interface completa
+            if (!silent) {
+                state.loading = true;
+                render(); // Só renderiza completamente se NÃO for silencioso
             }
             
-            // Se não há backup, usar dados demo
-            console.log('📦 Usando dados de demonstração');
-            state.items = CONFIG.DEMO_DATA;
-            updateStats();
-            return false;
-        }
-
-        function handleSearchInput(event) {
-            state.searchTerm = event.target.value;
+            const success = await fetchLiveData();
+            
+            state.loading = false;
+            
+            if (!success) {
+                if (!silent) {
+                    showNotification('❌ Erro ao conectar. Usando dados salvos.', 'error');
+                }
+            } else if (!wasLoading && !silent) {
+                showNotification('✅ Dados atualizados!', 'success');
+            }
+            
             applySortingAndFiltering();
-            updateProductTable();
+            
+            // Se for atualização silenciosa, atualiza apenas os componentes que mudam
+            if (silent) {
+                updateDynamicComponents();
+            } else {
+                render(); // Renderização completa apenas para atualizações manuais
+            }
+            
+            // Restaurar o foco após renderizar
+            restoreFocus();
         }
 
+        // 🔄 ATUALIZAR APENAS OS COMPONENTES DINÂMICOS
+        function updateDynamicComponents() {
+            // Salvar o elemento atualmente focado antes de atualizar
+            saveCurrentFocus();
+            
+            // Atualizar estatísticas do estoque
+            updateStatsDisplay();
+            
+            // Atualizar contador de produtos
+            updateProductCount();
+            
+            // Atualizar tabela de produtos
+            updateProductTable();
+            
+            // Atualizar tempo da última atualização
+            updateLastUpdateTime();
+            
+            // Atualizar status do sistema
+            updateSystemStatus();
+            
+            // Se estiver na aba de histórico, atualizar também
+            if (state.currentTab === 'historico') {
+                updateHistoryDisplay();
+            }
+            
+            // Restaurar o foco após atualizar
+            restoreFocus();
+        }
+
+        // 💾 SALVAR O ELEMENTO ATUALMENTE FOCADO
+        function saveCurrentFocus() {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.id) {
+                lastFocusedElementId = activeElement.id;
+                console.log('💾 Salvando foco no elemento:', lastFocusedElementId);
+            }
+        }
+
+        // 🔄 RESTAURAR O FOCO APÓS ATUALIZAÇÃO
+        function restoreFocus() {
+            if (lastFocusedElementId) {
+                setTimeout(() => {
+                    const elementToFocus = document.getElementById(lastFocusedElementId);
+                    if (elementToFocus) {
+                        elementToFocus.focus();
+                        
+                        // Para inputs de texto, mover o cursor para o final
+                        if (elementToFocus.tagName === 'INPUT' || elementToFocus.tagName === 'TEXTAREA') {
+                            const length = elementToFocus.value.length;
+                            elementToFocus.setSelectionRange(length, length);
+                        }
+                        
+                        console.log('🎯 Foco restaurado no elemento:', lastFocusedElementId);
+                    }
+                }, 10);
+            }
+        }
+
+        // 🔍 BUSCA COM DEBOUNCE - VERSÃO MELHORADA
+        function handleSearchInput(event) {
+            const value = event.target.value;
+            
+            // Salvar o foco atual
+            lastFocusedElementId = event.target.id;
+            
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                state.searchTerm = value;
+                applySortingAndFiltering();
+                
+                // Se for uma busca simples (não uma atualização completa), use updateDynamicComponents
+                if (state.currentTab === 'estoque') {
+                    updateDynamicComponents();
+                } else {
+                    render();
+                }
+                
+                // Garantir que o foco seja mantido
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Mover o cursor para o final
+                        const length = searchInput.value.length;
+                        searchInput.setSelectionRange(length, length);
+                    }
+                }, 20);
+            }, 300);
+        }
+
+        function clearSearch() {
+            state.searchTerm = '';
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus(); // Manter foco na barra de pesquisa
+            }
+            applySortingAndFiltering();
+            
+            if (state.currentTab === 'estoque') {
+                updateDynamicComponents();
+            } else {
+                render();
+            }
+        }
+
+        // 📊 ATUALIZAR EXIBIÇÃO DAS ESTATÍSTICAS
+        function updateStatsDisplay() {
+            const statsContainer = document.querySelector('.grid.grid-cols-2.md\\:grid-cols-4.gap-4.mb-6');
+            if (statsContainer && state.currentTab === 'estoque') {
+                statsContainer.innerHTML = `
+                    <div class="stat-card bg-white rounded-lg p-4 shadow">
+                        <div class="text-gray-500 text-sm font-medium">Total</div>
+                        <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
+                        <div class="text-xs text-gray-400">produtos</div>
+                    </div>
+                    <div class="stat-card bg-white rounded-lg p-4 shadow">
+                        <div class="text-gray-500 text-sm font-medium">Em Estoque</div>
+                        <div class="text-2xl font-bold text-green-600">${state.stats.inStock}</div>
+                        <div class="text-xs text-gray-400">disponíveis</div>
+                    </div>
+                    <div class="stat-card bg-white rounded-lg p-4 shadow">
+                        <div class="text-gray-500 text-sm font-medium">Esgotados</div>
+                        <div class="text-2xl font-bold text-orange-600">${state.stats.outOfStock}</div>
+                        <div class="text-xs text-gray-400">sem estoque</div>
+                    </div>
+                    <div class="stat-card bg-white rounded-lg p-4 shadow">
+                        <div class="text-gray-500 text-sm font-medium">Estoque Baixo</div>
+                        <div class="text-2xl font-bold text-yellow-600">${state.stats.lowStock}</div>
+                        <div class="text-xs text-gray-400">≤ 3 unidades</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 🔢 ATUALIZAR CONTADOR DE PRODUTOS
+        function updateProductCount() {
+            const countElement = document.querySelector('.mt-4.pt-4.border-t.border-gray-200 .text-gray-600');
+            if (countElement && state.currentTab === 'estoque') {
+                countElement.innerHTML = `📊 Mostrando <span class="font-bold text-red-600">${state.filteredItems.length}</span> de <span class="font-bold">${state.items.length}</span> produtos`;
+            }
+        }
+
+        // 📋 ATUALIZAR TABELA DE PRODUTOS
+        function updateProductTable() {
+            if (state.currentTab !== 'estoque') return;
+            
+            const tbody = document.querySelector('tbody');
+            if (!tbody) return;
+            
+            if (state.filteredItems.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-4 py-12 text-center">
+                            <div class="text-gray-400 text-4xl mb-3">📦</div>
+                            <div class="text-gray-600 font-medium mb-1">
+                                ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
+                                    'Nenhum produto encontrado com os filtros aplicados' : 
+                                    'Nenhum produto cadastrado'}
+                            </div>
+                            <div class="text-gray-400 text-sm">
+                                ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
+                                    'Tente ajustar os filtros ou buscar por outros termos' : 
+                                    'Aguardando sincronização com a planilha'}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = state.filteredItems.map((item, index) => `
+                    <tr class="hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                        <td class="px-3 py-3 md:px-4 md:py-4">
+                            <div class="font-mono font-bold text-red-700 text-sm md:text-base">
+                                ${item.codigo}
+                            </div>
+                        </td>
+                        <td class="px-3 py-3 md:px-4 md:py-4">
+                            <div class="font-medium text-gray-900 text-sm md:text-base">
+                                ${item.nome}
+                            </div>
+                        </td>
+                        <td class="px-3 py-3 md:px-4 md:py-4 text-center">
+                            <span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold
+                                ${item.quantidade === 0 ? 'bg-red-100 text-red-700' : 
+                                  item.quantidade <= 3 ? 'bg-yellow-100 text-yellow-700' : 
+                                  'bg-green-100 text-green-700'}">
+                                ${item.quantidade}
+                            </span>
+                        </td>
+                        <td class="px-3 py-3 md:px-4 md:py-4 mobile-hidden">
+                            <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
+                                ${item.plataforma}
+                            </span>
+                        </td>
+                        <td class="px-3 py-3 md:px-4 md:py-4">
+                            <div class="flex flex-wrap gap-1">
+                                ${formatObservacoes(item.observacoes)}
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // 🕒 ATUALIZAR TEMPO DA ÚLTIMA ATUALIZAÇÃO
+        function updateLastUpdateTime() {
+            const timeElements = document.querySelectorAll('.text-gray-500');
+            timeElements.forEach(element => {
+                if (element.textContent.includes('🕒')) {
+                    element.innerHTML = `🕒 ${getTimeSinceUpdate()}`;
+                }
+            });
+        }
+
+        // 🔄 ATUALIZAR STATUS DO SISTEMA
+        function updateSystemStatus() {
+            const footerStatus = document.querySelector('footer .flex.items-center.gap-2');
+            if (footerStatus) {
+                footerStatus.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        ${state.connectionError ? 
+                            '<span class="text-orange-600">⚠️ Modo Offline - Usando backup local</span>' :
+                            '<span class="text-green-600">✅ Sistema Online</span>'}
+                    </div>
+                    <div class="hidden md:block text-gray-300">|</div>
+                    <div>
+                        🔄 Atualização: ${state.autoRefresh ? 'Automática (30s)' : 'Manual'}
+                    </div>
+                    <div class="hidden md:block text-gray-300">|</div>
+                    <div>
+                        📊 ${state.items.length} produtos cadastrados
+                    </div>
+                    ${state.historyStats.today > 0 ? `
+                        <div class="hidden md:block text-gray-300">|</div>
+                        <div class="text-blue-600">
+                            📝 ${state.historyStats.today} mudanças hoje
+                        </div>
+                    ` : ''}
+                `;
+            }
+            
+            // Atualizar também a data da última sincronização
+            const lastSyncElement = document.querySelector('footer .mt-2.text-xs.text-gray-400');
+            if (lastSyncElement && state.lastUpdate) {
+                lastSyncElement.textContent = `Última sincronização: ${state.lastUpdate.toLocaleString('pt-BR')}`;
+            }
+        }
+
+        // 📝 ATUALIZAR EXIBIÇÃO DO HISTÓRICO
+        function updateHistoryDisplay() {
+            const historyContent = document.getElementById('historyContent');
+            if (!historyContent) return;
+            
+            // Filtrar histórico
+            let filteredHistory = [...state.history];
+            if (state.historyFilter !== 'all') {
+                filteredHistory = state.history.filter(entry => entry.type === state.historyFilter);
+            }
+            
+            if (filteredHistory.length === 0) {
+                historyContent.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="text-gray-400 text-4xl mb-3">📝</div>
+                        <div class="text-gray-600 font-medium mb-1">
+                            ${state.historyFilter !== 'all' ? 
+                                'Nenhum registro encontrado com este filtro' : 
+                                'Nenhum histórico disponível'}
+                        </div>
+                        <div class="text-gray-400 text-sm">
+                            ${state.historyFilter !== 'all' ? 
+                                'Tente ajustar os filtros' : 
+                                'As mudanças no estoque aparecerão aqui automaticamente'}
+                        </div>
+                    </div>
+                `;
+            } else {
+                historyContent.innerHTML = filteredHistory.map(entry => `
+                    <div class="history-item p-4 mb-3 rounded-lg ${getHistoryItemClass(entry.type)}">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="history-badge ${getHistoryBadgeClass(entry.type)}">
+                                        ${getHistoryTypeLabel(entry.type)}
+                                    </span>
+                                    <span class="font-mono font-bold text-gray-800">${entry.product}</span>
+                                    <span class="font-medium text-gray-700">${entry.name}</span>
+                                </div>
+                                <div class="text-sm text-gray-600 mb-1">${entry.details}</div>
+                                <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+                                    ${entry.platform ? `<span>📱 ${entry.platform}</span>` : ''}
+                                    ${entry.quantity !== undefined ? `<span>📦 Estoque: ${entry.quantity}</span>` : ''}
+                                    ${entry.oldQuantity !== undefined ? `<span>🔁 De: ${entry.oldQuantity}</span>` : ''}
+                                    ${entry.difference !== undefined ? `<span>${entry.type === 'stock-up' ? '⬆️' : '⬇️'} ${entry.difference} unidades</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-400 whitespace-nowrap">
+                                ${formatHistoryDate(entry.timestamp)}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 🎨 OBTER CLASSE CSS PARA ITEM DO HISTÓRICO
+        function getHistoryItemClass(type) {
+            switch(type) {
+                case 'added': return 'history-added';
+                case 'removed': return 'history-removed';
+                case 'modified': return 'history-modified';
+                case 'stock-up': return 'history-stock-up';
+                case 'stock-down': return 'history-stock-down';
+                default: return 'bg-gray-50';
+            }
+        }
+
+        // 🏷️ OBTER CLASSE CSS PARA BADGE DO HISTÓRICO
+        function getHistoryBadgeClass(type) {
+            switch(type) {
+                case 'added': return 'badge-added';
+                case 'removed': return 'badge-removed';
+                case 'modified': return 'badge-modified';
+                case 'stock-up': return 'badge-stock-up';
+                case 'stock-down': return 'badge-stock-down';
+                default: return 'bg-gray-200';
+            }
+        }
+
+        // 🏷️ OBTER LABEL PARA TIPO DE HISTÓRICO
+        function getHistoryTypeLabel(type) {
+            switch(type) {
+                case 'added': return 'ADICIONADO';
+                case 'removed': return 'REM OVIDO';
+                case 'modified': return 'MODIFICADO';
+                case 'stock-up': return 'ESTOQUE +';
+                case 'stock-down': return 'ESTOQUE -';
+                default: return 'ALTERAÇÃO';
+            }
+        }
+
+        // 📅 FORMATAR DATA DO HISTÓRICO
+        function formatHistoryDate(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 60) {
+                return `há ${diffMins} min`;
+            } else if (diffHours < 24) {
+                return `há ${diffHours}h`;
+            } else if (diffDays === 1) {
+                return 'ontem';
+            } else if (diffDays < 7) {
+                return `há ${diffDays} dias`;
+            } else {
+                return date.toLocaleDateString('pt-BR');
+            }
+        }
+
+        // 🎨 FORMATAR OBSERVAÇÕES
+        function formatObservacoes(observacoes) {
+            if (!observacoes || observacoes.trim() === '') {
+                return '<span class="status-tag status-default">Sem informações</span>';
+            }
+
+            const textoLimpo = observacoes.trim();
+            const partes = textoLimpo.split(/[,\.]| e |\//).filter(p => p.trim());
+            
+            if (partes.length === 0) partes.push(textoLimpo);
+            
+            return partes.map(parte => {
+                const texto = parte.trim().toLowerCase();
+                let statusClass = 'status-default';
+                
+                const statusMap = {
+                    'status-mostruario': ['mostruario', 'mostruário', 'amostra', 'vitrine'],
+                    'status-embalado': ['embalado', 'caixa', 'box', 'lacrado'],
+                    'status-frentedeloja': ['frente', 'loja', 'vitrine', 'exposi', 'prateleira'],
+                    'status-separadocd': ['separado', 'cd', 'centro', 'distribui', 'deposito', 'depósito'],
+                    'status-montagem': ['montar', 'montagem', 'montado', 'armar', 'desmontado'],
+                    'status-assistencia': ['assistencia', 'assistência', 'conserto', 'reparo', 'manuten', 'defeito']
+                };
+                
+                for (const [className, keywords] of Object.entries(statusMap)) {
+                    if (keywords.some(keyword => texto.includes(keyword))) {
+                        statusClass = className;
+                        break;
+                    }
+                }
+
+                return `<span class="status-tag ${statusClass}">${parte.trim()}</span>`;
+            }).join(' ');
+        }
+
+        // 🔄 ORDENAÇÃO
+        function sortBy(field) {
+            if (state.sortField === field) {
+                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sortField = field;
+                state.sortDirection = 'asc';
+            }
+            applySortingAndFiltering();
+            render();
+        }
+
+        function getSortIcon(field) {
+            if (state.sortField !== field) return '↕️';
+            return state.sortDirection === 'asc' ? '⬆️' : '⬇️';
+        }
+
+        // 🎯 FILTROS AVANÇADOS - VERSÃO MELHORADA
+        function setLocationFilter(filter) {
+            state.locationFilter = filter;
+            applySortingAndFiltering();
+            
+            // Salvar o foco atual
+            saveCurrentFocus();
+            
+            if (state.currentTab === 'estoque') {
+                updateDynamicComponents();
+            } else {
+                render();
+            }
+            
+            // Restaurar foco
+            restoreFocus();
+        }
+
+        function setStockFilter(filter) {
+            state.stockFilter = filter;
+            applySortingAndFiltering();
+            
+            // Salvar o foco atual
+            saveCurrentFocus();
+            
+            if (state.currentTab === 'estoque') {
+                updateDynamicComponents();
+            } else {
+                render();
+            }
+            
+            // Restaurar foco
+            restoreFocus();
+        }
+
+        // 📊 FILTROS DE HISTÓRICO
+        function setHistoryFilter(filter) {
+            state.historyFilter = filter;
+            
+            // Salvar o foco atual
+            saveCurrentFocus();
+            
+            updateHistoryDisplay();
+            
+            // Restaurar foco
+            restoreFocus();
+        }
+
+        // 🔍 APLICAR FILTROS E ORDENAÇÃO
         function applySortingAndFiltering() {
             const term = state.searchTerm.toLowerCase().trim();
             
-            state.filteredItems = term ? 
+            // Filtrar por busca
+            let filtered = term ? 
                 state.items.filter(item => 
                     item.codigo.toLowerCase().includes(term) ||
                     item.nome.toLowerCase().includes(term) ||
@@ -338,218 +1240,804 @@
                     (item.observacoes && item.observacoes.toLowerCase().includes(term))
                 ) : [...state.items];
             
-            state.filteredItems.sort((a, b) => a.codigo.localeCompare(b.codigo));
-        }
-
-        function formatObservacoes(observacoes) {
-            if (!observacoes || observacoes.trim() === '') {
-                return '<span class="status-tag status-default">Sem informações</span>';
+            // Filtrar por localização
+            if (state.locationFilter !== 'all') {
+                filtered = filtered.filter(item => {
+                    const obs = item.observacoes.toLowerCase();
+                    switch(state.locationFilter) {
+                        case 'mostruario': return obs.includes('mostruario') || obs.includes('mostruário');
+                        case 'embalado': return obs.includes('embalado') || obs.includes('caixa');
+                        case 'frente': return obs.includes('frente') || obs.includes('loja');
+                        case 'cd': return obs.includes('separado') || obs.includes('cd');
+                        case 'montagem': return obs.includes('montagem') || obs.includes('montar');
+                        case 'assistencia': return obs.includes('assistencia') || obs.includes('assistência');
+                        default: return true;
+                    }
+                });
             }
-
-            const textoLimpo = observacoes.trim();
-            const partes = textoLimpo.split(/[,.]| e |\//).filter(p => p.trim());
             
-            return partes.map(parte => {
-                const texto = parte.trim().toLowerCase();
-                let statusClass = 'status-default';
+            // Filtrar por estoque
+            if (state.stockFilter !== 'all') {
+                filtered = filtered.filter(item => {
+                    switch(state.stockFilter) {
+                        case 'in': return item.quantidade > 0;
+                        case 'out': return item.quantidade === 0;
+                        case 'low': return item.quantidade > 0 && item.quantidade <= 3;
+                        default: return true;
+                    }
+                });
+            }
+            
+            // Ordenar
+            filtered.sort((a, b) => {
+                let valueA, valueB;
                 
-                if (texto.includes('mostruario') || texto.includes('mostruário')) {
-                    statusClass = 'status-mostruario';
-                } else if (texto.includes('embalado') || texto.includes('caixa')) {
-                    statusClass = 'status-embalado';
-                } else if (texto.includes('frente') || texto.includes('loja')) {
-                    statusClass = 'status-frentedeloja';
+                switch (state.sortField) {
+                    case 'codigo':
+                        valueA = a.codigo.toLowerCase();
+                        valueB = b.codigo.toLowerCase();
+                        break;
+                    case 'nome':
+                        valueA = a.nome.toLowerCase();
+                        valueB = b.nome.toLowerCase();
+                        break;
+                    case 'quantidade':
+                        valueA = a.quantidade;
+                        valueB = b.quantidade;
+                        break;
+                    case 'plataforma':
+                        valueA = a.plataforma.toLowerCase();
+                        valueB = b.plataforma.toLowerCase();
+                        break;
+                    default:
+                        valueA = a.codigo.toLowerCase();
+                        valueB = b.codigo.toLowerCase();
                 }
-
-                return `<span class="status-tag ${statusClass}">${parte.trim()}</span>`;
-            }).join(' ');
+                
+                if (state.sortDirection === 'asc') {
+                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                } else {
+                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                }
+            });
+            
+            state.filteredItems = filtered;
         }
 
-        function updateProductTable() {
-            const tbody = document.querySelector('#productTable tbody');
-            if (!tbody) return;
+        // 📢 NOTIFICAÇÃO MELHORADA
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-orange-500',
+                info: 'bg-blue-600'
+            };
             
-            if (state.filteredItems.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" style="padding: 3rem; text-align: center; color: var(--gray-500);">
-                            Nenhum produto encontrado
-                        </td>
-                    </tr>
-                `;
-            } else {
-                tbody.innerHTML = state.filteredItems.map(item => `
-                    <tr>
-                        <td>
-                            <div style="font-family: monospace; font-weight: bold; color: var(--primary-red);">
-                                ${item.codigo}
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 500;">
-                                ${item.nome}
-                            </div>
-                        </td>
-                        <td style="text-align: center;">
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 999px; font-weight: bold; font-size: 0.875rem;
-                                background-color: ${item.quantidade === 0 ? '#fee2e2' : item.quantidade <= 3 ? '#fef9c3' : '#dcfce7'};
-                                color: ${item.quantidade === 0 ? '#b91c1c' : item.quantidade <= 3 ? '#a16207' : '#047857'};">
-                                ${item.quantidade}
-                            </span>
-                        </td>
-                        <td>
-                            <span style="display: inline-block; background-color: var(--gray-100); padding: 4px 12px; border-radius: 999px; font-size: 0.875rem;">
-                                ${item.plataforma}
-                            </span>
-                        </td>
-                        <td>
-                            ${formatObservacoes(item.observacoes)}
-                        </td>
-                    </tr>
-                `).join('');
+            const notification = document.createElement('div');
+            notification.className = `notification-enter fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md`;
+            notification.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="flex-1">${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="text-white hover:text-gray-200 font-bold text-xl leading-none">×</button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.opacity = '0';
+                    notification.style.transform = 'translateX(100%)';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 4000);
+        }
+
+        // 🕒 TEMPO DESDE ATUALIZAÇÃO
+        function getTimeSinceUpdate() {
+            if (!state.lastUpdate) return 'Nunca';
+            
+            const diff = Date.now() - state.lastUpdate.getTime();
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (seconds < 60) return 'Agora mesmo';
+            if (minutes < 60) return `${minutes}min atrás`;
+            if (hours < 24) return `${hours}h atrás`;
+            return state.lastUpdate.toLocaleDateString('pt-BR');
+        }
+
+        // 🔄 MUDAR ABA
+        function switchTab(tabName) {
+            state.currentTab = tabName;
+            render();
+            
+            // Se mudar para a aba de estoque, focar na barra de pesquisa
+            if (tabName === 'estoque') {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 100);
             }
         }
 
+        // ⚙️ AUTO REFRESH
+        function toggleAutoRefresh() {
+            state.autoRefresh = !state.autoRefresh;
+            
+            if (state.autoRefresh) {
+                state.syncInterval = setInterval(() => {
+                    syncWithSheet(true); // Silencioso para atualizações automáticas
+                }, AUTO_REFRESH_INTERVAL);
+                showNotification('🔄 Atualização automática ativada (30s)', 'success');
+                
+                // Fazer uma atualização silenciosa imediata
+                setTimeout(() => syncWithSheet(true), 100);
+            } else {
+                if (state.syncInterval) {
+                    clearInterval(state.syncInterval);
+                    state.syncInterval = null;
+                }
+                showNotification('⏸️ Atualização automática pausada', 'warning');
+            }
+            
+            // Atualizar apenas o botão de auto-refresh
+            updateAutoRefreshButton();
+            updateSystemStatus();
+            
+            // Restaurar foco
+            restoreFocus();
+        }
+
+        // 🔄 ATUALIZAR BOTÃO DE AUTO-REFRESH
+        function updateAutoRefreshButton() {
+            const autoRefreshBtn = document.querySelector('button[onclick="toggleAutoRefresh()"]');
+            if (autoRefreshBtn) {
+                autoRefreshBtn.className = state.autoRefresh ? 
+                    'btn-secondary px-4 py-2 rounded-lg font-medium' : 
+                    'bg-gray-500 text-white px-4 py-2 rounded-lg font-medium';
+                autoRefreshBtn.innerHTML = state.autoRefresh ? '🔄 Auto' : '⏸️ Manual';
+            }
+        }
+
+        // 📤 EXPORTAR DADOS
+        function exportToCSV() {
+            const headers = ['Código', 'Nome', 'Quantidade', 'Plataforma', 'Observações'];
+            const rows = state.filteredItems.map(item => [
+                item.codigo,
+                item.nome,
+                item.quantidade,
+                item.plataforma,
+                item.observacoes
+            ]);
+            
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `estoque_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            
+            showNotification('📥 Arquivo CSV exportado!', 'success');
+        }
+
+        // 📤 EXPORTAR HISTÓRICO
+        function exportHistory() {
+            const headers = ['Data/Hora', 'Tipo', 'Código', 'Nome', 'Detalhes', 'Quantidade', 'Plataforma'];
+            const rows = state.history.map(entry => [
+                new Date(entry.timestamp).toLocaleString('pt-BR'),
+                getHistoryTypeLabel(entry.type),
+                entry.product,
+                entry.name,
+                entry.details,
+                entry.quantity || '',
+                entry.platform || ''
+            ]);
+            
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `historico_estoque_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            
+            showNotification('📥 Histórico exportado!', 'success');
+        }
+
+        // 🗑️ LIMPAR HISTÓRICO
+        function clearHistory() {
+            if (confirm('Tem certeza que deseja limpar todo o histórico? Esta ação não pode ser desfeita.')) {
+                localStorage.removeItem(HISTORY_KEY);
+                state.history = [];
+                updateHistoryStats();
+                updateHistoryDisplay();
+                showNotification('🗑️ Histórico limpo com sucesso', 'success');
+            }
+        }
+
+        // 🖨️ IMPRIMIR
+        function printTable() {
+            window.print();
+        }
+
+        // 🎯 INICIALIZAÇÃO
+        async function initApp() {
+            console.log('🚀 Iniciando sistema ao vivo...');
+            
+            // Carregar histórico primeiro
+            loadHistory();
+            
+            await syncWithSheet();
+            
+            if (state.autoRefresh) {
+                state.syncInterval = setInterval(() => {
+                    syncWithSheet(true); // Usar modo silencioso para atualizações automáticas
+                }, AUTO_REFRESH_INTERVAL);
+            }
+            
+            if (!state.connectionError) {
+                showNotification('✅ Sistema online! Atualizando a cada 30s', 'success');
+            }
+        }
+
+        // 🎨 RENDERIZAÇÃO PRINCIPAL
         function render() {
+            if (state.loading && state.items.length === 0) return;
+            
+            // Salvar o foco atual antes de renderizar
+            saveCurrentFocus();
+            
             const app = document.getElementById('app');
             app.innerHTML = `
-                <header class="brand-gradient" style="box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                    <div class="container" style="padding: 1.5rem 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <h1 style="color: white; font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">
-                                    SUPER BRUNO ATACADO
-                                </h1>
-                                <p style="color: #fef08a; font-size: 0.875rem;">
-                                    Sistema de Estoque
-                                </p>
+                <!-- HEADER -->
+                <header class="brand-gradient shadow-lg no-print">
+                    <div class="container mx-auto px-4 py-4">
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div class="flex items-center gap-4">
+                                <div class="brand-gradient rounded-xl p-3 text-white font-bold text-xl shadow-md">
+                                    <span class="text-white">SUPER</span>
+                                    <span class="text-yellow-300 ml-1">BRUNO</span>
+                                </div>
+                                <div>
+                                    <h1 class="text-white text-xl md:text-2xl font-bold">Mapa de Estoque</h1>
+                                    <p class="text-yellow-200 text-sm flex items-center gap-2">
+                                        ${state.connectionError ? 
+                                            '<span class="pulse">⚠️ Modo Offline</span>' : 
+                                            '<span>✅ Ao Vivo</span>'}
+                                    </p>
+                                </div>
                             </div>
-                            <button onclick="syncData()" class="btn-primary">
-                                🔄 Atualizar
-                            </button>
-                            <div id="connectionStatus" style="font-size: 0.875rem; margin-top: 0.5rem;">
-                                ${state.connectionError ? '⚠️ Modo Offline' : '✅ Conectado'}
+                            
+                            <div class="flex items-center gap-2">
+                                <button onclick="toggleAutoRefresh()" 
+                                        class="${state.autoRefresh ? 'btn-secondary' : 'bg-gray-500 text-white'} px-4 py-2 rounded-lg font-medium">
+                                    ${state.autoRefresh ? '🔄 Auto' : '⏸️ Manual'}
+                                </button>
+                                <button onclick="syncWithSheet()" 
+                                        class="btn-primary px-4 py-2 rounded-lg font-medium"
+                                        ${state.loading ? 'disabled' : ''}>
+                                    ${state.loading ? '⏳' : '🔄'} Atualizar
+                                </button>
+                                <button onclick="exportToCSV()" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium">
+                                    📥 Exportar
+                                </button>
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <main class="container" style="padding: 2rem 1rem;">
-                    <!-- Estatísticas -->
-                    <div class="grid grid-cols-2 grid-cols-md-4" style="margin-bottom: 2rem;">
-                        <div class="stat-card">
-                            <div style="color: var(--gray-500); font-size: 0.875rem;">Total</div>
-                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-red);">${state.stats.total}</div>
+                <!-- MAIN CONTENT -->
+                <main class="container mx-auto px-2 md:px-4 py-4 md:py-6">
+                    <!-- ABAS -->
+                    <div class="flex mb-6 border-b border-gray-200 no-print">
+                        <button class="tab-button ${state.currentTab === 'estoque' ? 'active' : ''}" 
+                                onclick="switchTab('estoque')">
+                            📦 Estoque (${state.stats.total})
+                        </button>
+                        <button class="tab-button ${state.currentTab === 'historico' ? 'active' : ''}" 
+                                onclick="switchTab('historico')">
+                            📝 Histórico ${state.historyStats.today > 0 ? `(${state.historyStats.today} hoje)` : ''}
+                        </button>
+                    </div>
+
+                    <!-- CONTEÚDO DA ABA DE ESTOQUE -->
+                    <div class="tab-content ${state.currentTab === 'estoque' ? 'active' : ''}" id="estoqueContent">
+                        <!-- ESTATÍSTICAS -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Total</div>
+                                <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
+                                <div class="text-xs text-gray-400">produtos</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Em Estoque</div>
+                                <div class="text-2xl font-bold text-green-600">${state.stats.inStock}</div>
+                                <div class="text-xs text-gray-400">disponíveis</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Esgotados</div>
+                                <div class="text-2xl font-bold text-orange-600">${state.stats.outOfStock}</div>
+                                <div class="text-xs text-gray-400">sem estoque</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Estoque Baixo</div>
+                                <div class="text-2xl font-bold text-yellow-600">${state.stats.lowStock}</div>
+                                <div class="text-xs text-gray-400">≤ 3 unidades</div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div style="color: var(--gray-500); font-size: 0.875rem;">Em Estoque</div>
-                            <div style="font-size: 1.5rem; font-weight: bold; color: #059669;">${state.stats.inStock}</div>
+
+                        <!-- BUSCA E FILTROS -->
+                        <div class="bg-white rounded-lg p-4 mb-6 shadow">
+                            <div class="relative mb-4">
+                                <input type="text" 
+                                       id="searchInput"
+                                       placeholder="🔍 Buscar por código, nome, plataforma ou localização..."
+                                       value="${state.searchTerm}"
+                                       oninput="handleSearchInput(event)"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent search-input">
+                                
+                                ${state.searchTerm ? `
+                                    <button onclick="clearSearch()" 
+                                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
+                                        ×
+                                    </button>
+                                ` : ''}
+                            </div>
+
+                            <!-- FILTROS RÁPIDOS -->
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-700 mb-2">📍 Localização:</div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button onclick="setLocationFilter('all')" 
+                                                class="filter-badge ${state.locationFilter === 'all' ? 'active' : ''}">
+                                            Todas
+                                        </button>
+                                        <button onclick="setLocationFilter('mostruario')" 
+                                                class="filter-badge ${state.locationFilter === 'mostruario' ? 'active' : ''}">
+                                            🎨 Mostruário
+                                        </button>
+                                        <button onclick="setLocationFilter('embalado')" 
+                                                class="filter-badge ${state.locationFilter === 'embalado' ? 'active' : ''}">
+                                            📦 Embalado
+                                        </button>
+                                        <button onclick="setLocationFilter('frente')" 
+                                                class="filter-badge ${state.locationFilter === 'frente' ? 'active' : ''}">
+                                            🏪 Frente de Loja
+                                        </button>
+                                        <button onclick="setLocationFilter('cd')" 
+                                                class="filter-badge ${state.locationFilter === 'cd' ? 'active' : ''}">
+                                            🏭 CD
+                                        </button>
+                                        <button onclick="setLocationFilter('montagem')" 
+                                                class="filter-badge ${state.locationFilter === 'montagem' ? 'active' : ''}">
+                                            🔧 Montagem
+                                        </button>
+                                        <button onclick="setLocationFilter('assistencia')" 
+                                                class="filter-badge ${state.locationFilter === 'assistencia' ? 'active' : ''}">
+                                            🔨 Assistência
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="text-sm font-medium text-gray-700 mb-2">📊 Estoque:</div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button onclick="setStockFilter('all')" 
+                                                class="filter-badge ${state.stockFilter === 'all' ? 'active' : ''}">
+                                            Todos
+                                        </button>
+                                        <button onclick="setStockFilter('in')" 
+                                                class="filter-badge ${state.stockFilter === 'in' ? 'active' : ''}">
+                                            ✅ Disponível
+                                        </button>
+                                        <button onclick="setStockFilter('low')" 
+                                                class="filter-badge ${state.stockFilter === 'low' ? 'active' : ''}">
+                                            ⚠️ Baixo (≤3)
+                                        </button>
+                                        <button onclick="setStockFilter('out')" 
+                                                class="filter-badge ${state.stockFilter === 'out' ? 'active' : ''}">
+                                            ❌ Esgotado
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                                <div class="text-gray-600">
+                                    📊 Mostrando <span class="font-bold text-red-600">${state.filteredItems.length}</span> de <span class="font-bold">${state.items.length}</span> produtos
+                                </div>
+                                <div class="text-gray-500">
+                                    🕒 ${getTimeSinceUpdate()}
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div style="color: var(--gray-500); font-size: 0.875rem;">Esgotados</div>
-                            <div style="font-size: 1.5rem; font-weight: bold; color: #ea580c;">${state.stats.outOfStock}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div style="color: var(--gray-500); font-size: 0.875rem;">Estoque Baixo</div>
-                            <div style="font-size: 1.5rem; font-weight: bold; color: #ca8a04;">${state.stats.lowStock}</div>
+
+                        <!-- TABELA DE PRODUTOS -->
+                        <div class="bg-white rounded-lg shadow overflow-hidden fade-in">
+                            <div class="overflow-x-auto">
+                                <table class="w-full print-full-width">
+                                    <thead>
+                                        <tr class="bg-gradient-to-r from-red-700 to-red-900 text-white">
+                                            <th class="px-3 py-3 md:px-4 md:py-3 text-left sortable" onclick="sortBy('codigo')">
+                                                <div class="flex items-center gap-1">
+                                                    <span>Código</span>
+                                                    <span class="text-xs">${getSortIcon('codigo')}</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-3 py-3 md:px-4 md:py-3 text-left sortable" onclick="sortBy('nome')">
+                                                <div class="flex items-center gap-1">
+                                                    <span>Nome do Produto</span>
+                                                    <span class="text-xs">${getSortIcon('nome')}</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-3 py-3 md:px-4 md:py-3 text-center sortable" onclick="sortBy('quantidade')">
+                                                <div class="flex items-center justify-center gap-1">
+                                                    <span>Qtd</span>
+                                                    <span class="text-xs">${getSortIcon('quantidade')}</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-3 py-3 md:px-4 md:py-3 text-left sortable mobile-hidden" onclick="sortBy('plataforma')">
+                                                <div class="flex items-center gap-1">
+                                                    <span>Plataforma</span>
+                                                    <span class="text-xs">${getSortIcon('plataforma')}</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-3 py-3 md:px-4 md:py-3 text-left">
+                                                Localização
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        ${state.filteredItems.length === 0 ? `
+                                            <tr>
+                                                <td colspan="5" class="px-4 py-12 text-center">
+                                                    <div class="text-gray-400 text-4xl mb-3">📦</div>
+                                                    <div class="text-gray-600 font-medium mb-1">
+                                                        ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
+                                                            'Nenhum produto encontrado com os filtros aplicados' : 
+                                                            'Nenhum produto cadastrado'}
+                                                    </div>
+                                                    <div class="text-gray-400 text-sm">
+                                                        ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
+                                                            'Tente ajustar os filtros ou buscar por outros termos' : 
+                                                            'Aguardando sincronização com a planilha'}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ` : ''}
+                                        
+                                        ${state.filteredItems.map((item, index) => `
+                                            <tr class="hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                                <td class="px-3 py-3 md:px-4 md:py-4">
+                                                    <div class="font-mono font-bold text-red-700 text-sm md:text-base">
+                                                        ${item.codigo}
+                                                    </div>
+                                                </td>
+                                                <td class="px-3 py-3 md:px-4 md:py-4">
+                                                    <div class="font-medium text-gray-900 text-sm md:text-base">
+                                                        ${item.nome}
+                                                    </div>
+                                                </td>
+                                                <td class="px-3 py-3 md:px-4 md:py-4 text-center">
+                                                    <span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold
+                                                        ${item.quantidade === 0 ? 'bg-red-100 text-red-700' : 
+                                                          item.quantidade <= 3 ? 'bg-yellow-100 text-yellow-700' : 
+                                                          'bg-green-100 text-green-700'}">
+                                                        ${item.quantidade}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-3 md:px-4 md:py-4 mobile-hidden">
+                                                    <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
+                                                        ${item.plataforma}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-3 md:px-4 md:py-4">
+                                                    <div class="flex flex-wrap gap-1">
+                                                        ${formatObservacoes(item.observacoes)}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Busca -->
-                    <div style="background: white; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-                        <input type="text" 
-                               id="searchInput"
-                               placeholder="🔍 Buscar por código, nome, plataforma ou localização..."
-                               value="${state.searchTerm}"
-                               oninput="handleSearchInput(event)">
-                        <div style="margin-top: 0.75rem; color: var(--gray-600); font-size: 0.875rem;">
-                            Mostrando <strong style="color: var(--primary-red);">${state.filteredItems.length}</strong> de <strong>${state.items.length}</strong> produtos
+                    <!-- CONTEÚDO DA ABA DE HISTÓRICO -->
+                    <div class="tab-content ${state.currentTab === 'historico' ? 'active' : ''}" id="historicoContent">
+                        <!-- ESTATÍSTICAS DO HISTÓRICO -->
+                        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Hoje</div>
+                                <div class="text-2xl font-bold text-blue-600">${state.historyStats.today}</div>
+                                <div class="text-xs text-gray-400">mudanças</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Adicionados</div>
+                                <div class="text-2xl font-bold text-green-600">${state.historyStats.added}</div>
+                                <div class="text-xs text-gray-400">produtos</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Removidos</div>
+                                <div class="text-2xl font-bold text-red-600">${state.historyStats.removed}</div>
+                                <div class="text-xs text-gray-400">produtos</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Modificados</div>
+                                <div class="text-2xl font-bold text-orange-600">${state.historyStats.modified}</div>
+                                <div class="text-xs text-gray-400">produtos</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Estoque +</div>
+                                <div class="text-2xl font-bold text-teal-600">${state.historyStats.stockUp || 0}</div>
+                                <div class="text-xs text-gray-400">aumentos</div>
+                            </div>
+                            <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                <div class="text-gray-500 text-sm font-medium">Estoque -</div>
+                                <div class="text-2xl font-bold text-pink-600">${state.historyStats.stockDown || 0}</div>
+                                <div class="text-xs text-gray-400">reduções</div>
+                            </div>
+                        </div>
+
+                        <!-- CONTROLES DO HISTÓRICO -->
+                        <div class="bg-white rounded-lg p-4 mb-6 shadow">
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2">📝 Filtros do Histórico</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button onclick="setHistoryFilter('all')" 
+                                                class="filter-badge ${state.historyFilter === 'all' ? 'active' : ''}">
+                                            Todos
+                                        </button>
+                                        <button onclick="setHistoryFilter('added')" 
+                                                class="filter-badge ${state.historyFilter === 'added' ? 'active' : ''}">
+                                            🆕 Adicionados
+                                        </button>
+                                        <button onclick="setHistoryFilter('removed')" 
+                                                class="filter-badge ${state.historyFilter === 'removed' ? 'active' : ''}">
+                                            🗑️ Removidos
+                                        </button>
+                                        <button onclick="setHistoryFilter('modified')" 
+                                                class="filter-badge ${state.historyFilter === 'modified' ? 'active' : ''}">
+                                            🔧 Modificados
+                                        </button>
+                                        <button onclick="setHistoryFilter('stock-up')" 
+                                                class="filter-badge ${state.historyFilter === 'stock-up' ? 'active' : ''}">
+                                            📈 Estoque +
+                                        </button>
+                                        <button onclick="setHistoryFilter('stock-down')" 
+                                                class="filter-badge ${state.historyFilter === 'stock-down' ? 'active' : ''}">
+                                            📉 Estoque -
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex gap-2">
+                                    <button onclick="exportHistory()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium text-sm">
+                                        📥 Exportar
+                                    </button>
+                                    <button onclick="clearHistory()" 
+                                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm">
+                                        🗑️ Limpar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="text-sm text-gray-600">
+                                📚 Mostrando ${state.history.length} registros no total
+                            </div>
+                        </div>
+
+                        <!-- LISTA DO HISTÓRICO -->
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div id="historyContent" class="max-h-[500px] overflow-y-auto p-4">
+                                <!-- O conteúdo do histórico será carregado aqui -->
+                            </div>
+                        </div>
+                        
+                        <!-- LEGENDA DO HISTÓRICO -->
+                        <div class="mt-6 bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                🎨 Legenda do Histórico
+                            </h4>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-added px-3 py-1 rounded-full text-xs">ADICIONADO</span>
+                                    <span class="text-sm text-gray-600">Produto novo</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-removed px-3 py-1 rounded-full text-xs">REM OVIDO</span>
+                                    <span class="text-sm text-gray-600">Produto excluído</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-modified px-3 py-1 rounded-full text-xs">MODIFICADO</span>
+                                    <span class="text-sm text-gray-600">Dados alterados</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-stock-up px-3 py-1 rounded-full text-xs">ESTOQUE +</span>
+                                    <span class="text-sm text-gray-600">Estoque aumentou</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-stock-down px-3 py-1 rounded-full text-xs">ESTOQUE -</span>
+                                    <span class="text-sm text-gray-600">Estoque diminuiu</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Tabela -->
-                    <div style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
-                        <div style="overflow-x: auto;">
-                            <table id="productTable">
-                                <thead>
-                                    <tr>
-                                        <th>Código</th>
-                                        <th>Nome do Produto</th>
-                                        <th style="text-align: center;">Qtd</th>
-                                        <th>Plataforma</th>
-                                        <th>Localização</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Preenchido dinamicamente -->
-                                </tbody>
-                            </table>
+                    <!-- LEGENDA DE LOCALIZAÇÃO (só aparece na aba de estoque) -->
+                    ${state.currentTab === 'estoque' ? `
+                        <div class="mt-6 bg-white rounded-lg p-5 shadow no-print">
+                            <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                🎨 Legenda de Localização
+                            </h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="status-tag status-mostruario">Mostruário</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="status-tag status-embalado">Embalado</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="status-tag status-frentedeloja">Frente de Loja</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="status-tag status-separadocd">Separado p/CD</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="status-tag status-montagem">Montagem</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="status-tag status-assistencia">Assistência</span>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- INFORMAÇÕES DO SISTEMA -->
+                    <div class="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 shadow-sm no-print">
+                        <div class="flex items-start gap-3">
+                            <div class="text-2xl">💡</div>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-800 mb-2">Sobre este sistema</h4>
+                                <ul class="text-sm text-gray-600 space-y-1">
+                                    <li>✅ Conectado em tempo real com Google Sheets</li>
+                                    <li>🔄 Atualização automática a cada 30 segundos</li>
+                                    <li>📝 Sistema de histórico completo de mudanças</li>
+                                    <li>💾 Backup local para funcionamento offline</li>
+                                    <li>🔍 Busca inteligente por código, nome ou localização</li>
+                                    <li>📊 Filtros avançados por localização e quantidade</li>
+                                    <li>📥 Exportação de dados em CSV</li>
+                                    <li>📱 100% responsivo para mobile</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </main>
 
-                <footer style="text-align: center; padding: 2rem 1rem; color: var(--gray-500); font-size: 0.875rem;">
-                    Sistema desenvolvido para Super Bruno Atacado © ${new Date().getFullYear()}
+                <!-- FOOTER -->
+                <footer class="mt-8 pb-6 text-center text-gray-500 text-sm no-print">
+                    <div class="container mx-auto px-4">
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                            <div class="flex items-center gap-2">
+                                ${state.connectionError ? 
+                                    '<span class="text-orange-600">⚠️ Modo Offline - Usando backup local</span>' :
+                                    '<span class="text-green-600">✅ Sistema Online</span>'}
+                            </div>
+                            <div class="hidden md:block text-gray-300">|</div>
+                            <div>
+                                🔄 Atualização: ${state.autoRefresh ? 'Automática (30s)' : 'Manual'}
+                            </div>
+                            <div class="hidden md:block text-gray-300">|</div>
+                            <div>
+                                📊 ${state.items.length} produtos cadastrados
+                            </div>
+                            ${state.historyStats.today > 0 ? `
+                                <div class="hidden md:block text-gray-300">|</div>
+                                <div class="text-blue-600">
+                                    📝 ${state.historyStats.today} mudanças hoje
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${state.lastUpdate ? `
+                            <div class="mt-2 text-xs text-gray-400">
+                                Última sincronização: ${state.lastUpdate.toLocaleString('pt-BR')}
+                            </div>
+                        ` : ''}
+                    </div>
                 </footer>
             `;
+
+            // Atualizar o conteúdo do histórico se estiver na aba certa
+            if (state.currentTab === 'historico') {
+                updateHistoryDisplay();
+            }
+
+            // Restaurar o foco após renderizar
+            restoreFocus();
             
-            applySortingAndFiltering();
-            updateProductTable();
+            // Se estiver na aba de estoque e não houver termo de busca, focar na barra de pesquisa
+            if (state.currentTab === 'estoque' && !state.searchTerm) {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 50);
+            }
         }
 
-        async function syncData() {
-            state.loading = true;
-            
-            // Mostrar indicador de carregamento
-            const statusDiv = document.getElementById('connectionStatus');
-            if (statusDiv) {
-                statusDiv.innerHTML = '🔄 Sincronizando...';
-                statusDiv.style.color = '#3b82f6';
+        // 🚀 INICIALIZAR APLICAÇÃO
+        initApp();
+
+        // 🔄 RECARREGAR AO VOLTAR PARA A ABA
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && state.autoRefresh) {
+                // Usar modo silencioso ao voltar para a aba
+                syncWithSheet(true);
             }
-            
-            const success = await fetchLiveData();
-            
-            if (success) {
-                if (statusDiv) {
-                    statusDiv.innerHTML = '✅ Conectado';
-                    statusDiv.style.color = '#059669';
+        });
+
+        // ⌨️ ATALHOS DE TECLADO
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + F para focar na busca
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                if (state.currentTab === 'estoque') {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                        // Mover o cursor para o final
+                        const length = searchInput.value.length;
+                        searchInput.setSelectionRange(length, length);
+                    }
                 }
-                render();
-            } else {
-                // Tentar carregar backup
-                const hasBackup = loadBackup();
-                if (statusDiv) {
-                    statusDiv.innerHTML = hasBackup ? '⚠️ Modo Offline (usando backup)' : '❌ Erro de conexão';
-                    statusDiv.style.color = hasBackup ? '#ea580c' : '#dc2626';
-                }
-                render();
             }
             
-            state.loading = false;
-        }
-
-        async function initApp() {
-            console.log('🚀 Iniciando sistema...');
-            
-            // Primeiro, tentar carregar backup para exibição imediata
-            const hasBackup = loadBackup();
-            if (hasBackup) {
-                console.log('💾 Backup local carregado');
-                render();
+            // Ctrl/Cmd + R para atualizar
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                syncWithSheet();
             }
             
-            // Depois tentar sincronizar com a planilha
-            await syncData();
+            // ESC para limpar busca
+            if (e.key === 'Escape' && state.searchTerm) {
+                clearSearch();
+            }
             
-            // Auto-refresh a cada 30 segundos
-            setInterval(() => {
-                syncData();
-            }, CONFIG.AUTO_REFRESH_INTERVAL);
+            // Ctrl + 1 para aba Estoque
+            if (e.ctrlKey && e.key === '1') {
+                e.preventDefault();
+                switchTab('estoque');
+            }
             
-            console.log('✅ Sistema pronto!');
-        }
-
-        document.addEventListener('DOMContentLoaded', initApp);
+            // Ctrl + 2 para aba Histórico
+            if (e.ctrlKey && e.key === '2') {
+                e.preventDefault();
+                switchTab('historico');
+            }
+            
+            // Tab para navegar entre elementos (preserva o comportamento padrão)
+            if (e.key === 'Tab') {
+                // Permitir o comportamento padrão do Tab
+                // O foco será automaticamente restaurado pela nossa lógica de restoreFocus
+            }
+        });
     </script>
 </body>
 </html>
