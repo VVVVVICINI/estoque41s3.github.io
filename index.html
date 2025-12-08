@@ -4,19 +4,28 @@
     <meta charset="UTF-8">
     <title>Mapa de Estoque - SUPER BRUNO ATACADO</title>
     <meta name="theme-color" content="#a00b08">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- Bibliotecas -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Tailwind CSS local -->
+    <script src="https://cdn.tailwindcss.com/3.3.0"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-red': '#a00b08',
+                        'primary-yellow': '#f4cf08',
+                        'primary-dark-red': '#4d0505'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Outras bibliotecas com fallback -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     
     <style>
         :root {
@@ -143,15 +152,22 @@
 
         .loading-spinner {
             animation: spin 1s linear infinite;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-red);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
         }
+        
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .fade-in {
             animation: fadeIn 0.3s ease-in;
         }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -160,6 +176,7 @@
         .pulse {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -179,8 +196,12 @@
             padding: 12px;
             margin-bottom: 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            cursor: move;
+            cursor: grab;
             transition: all 0.3s;
+        }
+        
+        .kanban-item:active {
+            cursor: grabbing;
         }
         
         .kanban-item:hover {
@@ -206,11 +227,12 @@
             height: 100%;
             background: rgba(0,0,0,0.7);
             z-index: 1000;
+            align-items: center;
+            justify-content: center;
         }
         
         .qr-modal-content {
             background: white;
-            margin: 5% auto;
             padding: 25px;
             border-radius: 12px;
             width: 90%;
@@ -229,10 +251,6 @@
             background: #1a1a1a;
         }
         
-        #qr-reader {
-            width: 100% !important;
-        }
-        
         .scanner-overlay {
             position: absolute;
             top: 0;
@@ -241,32 +259,7 @@
             height: 100%;
             pointer-events: none;
             border: 2px solid #00ff00;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.7);
             border-radius: 12px;
-        }
-        
-        /* Calendar Styles */
-        .fc {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-        }
-        
-        .fc-toolbar {
-            padding: 10px;
-        }
-        
-        .fc-event {
-            border-radius: 6px !important;
-            padding: 4px !important;
-            font-size: 0.85rem;
-        }
-        
-        /* Dashboard Charts */
-        .chart-container {
-            position: relative;
-            height: 250px;
-            width: 100%;
         }
         
         /* Tab Styles */
@@ -281,6 +274,7 @@
             white-space: nowrap;
             flex-shrink: 0;
         }
+        
         .tab-button.active {
             background: white;
             color: var(--primary-red);
@@ -289,6 +283,7 @@
             position: relative;
             z-index: 10;
         }
+        
         .tab-button:hover:not(.active) {
             background: #e9ecef;
         }
@@ -300,6 +295,7 @@
             border-radius: 0 8px 8px 8px;
             background: white;
         }
+        
         .tab-content.active {
             display: block;
             animation: fadeIn 0.3s ease;
@@ -317,9 +313,11 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+        
         .filter-badge:hover {
             background-color: #d0d0d0;
         }
+        
         .filter-badge.active {
             background-color: var(--primary-red);
             color: white;
@@ -334,6 +332,7 @@
             font-weight: 600;
             margin-right: 6px;
         }
+        
         .badge-added { background: #d1f7c4; color: #0d6251; }
         .badge-removed { background: #ffe0e0; color: #9b2c2c; }
         .badge-modified { background: #fff4d9; color: #b45309; }
@@ -344,38 +343,70 @@
             transition: all 0.3s;
             min-height: 100px;
         }
+        
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
+        /* Responsive adjustments */
         @media (max-width: 768px) {
             .kanban-column {
                 min-height: 300px;
                 margin-bottom: 20px;
             }
             
-            .chart-container {
-                height: 200px;
-            }
-            
-            .fc {
-                padding: 10px;
-                font-size: 0.9rem;
-            }
-            
             .tab-button {
                 padding: 10px 15px;
                 font-size: 0.9rem;
             }
+            
+            .qr-modal-content {
+                margin: 10% auto;
+                width: 95%;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                background: white !important;
+            }
+            
+            .print-full-width {
+                width: 100% !important;
+            }
+        }
+        
+        /* Accessibility improvements */
+        button:focus,
+        input:focus,
+        select:focus {
+            outline: 2px solid var(--primary-red);
+            outline-offset: 2px;
+        }
+        
+        /* High contrast support */
+        @media (prefers-contrast: high) {
+            .btn-primary {
+                border: 2px solid black;
+            }
+            
+            .btn-secondary {
+                border: 2px solid black;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50" aria-label="Sistema de gerenciamento de estoque">
     <div id="app">
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
-                <div class="loading-spinner w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <div class="loading-spinner mx-auto mb-4"></div>
                 <p class="text-gray-600">Iniciando sistema...</p>
                 <p class="text-gray-400 text-sm mt-2">Carregando módulos e dados</p>
             </div>
@@ -383,23 +414,31 @@
     </div>
 
     <!-- Modal QR Code -->
-    <div id="qrModal" class="qr-modal">
+    <div id="qrModal" class="qr-modal" role="dialog" aria-label="Gerador de QR Code" aria-hidden="true">
         <div class="qr-modal-content">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">📱 QR Code do Produto</h3>
-                <button onclick="closeQRModal()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                <h3 class="text-xl font-bold" id="qrModalTitle">📱 QR Code do Produto</h3>
+                <button onclick="closeQRModal()" 
+                        class="text-gray-500 hover:text-gray-700 text-2xl"
+                        aria-label="Fechar modal">
+                    ×
+                </button>
             </div>
-            <div id="qrCodeContainer" class="flex justify-center my-6">
+            <div id="qrCodeContainer" class="flex justify-center my-6" role="img" aria-label="QR Code do produto">
                 <!-- QR Code será gerado aqui -->
             </div>
             <div id="qrProductInfo" class="text-center mb-4">
                 <!-- Informações do produto -->
             </div>
             <div class="flex gap-2">
-                <button onclick="printQRCode()" class="btn-primary flex-1 py-3 rounded-lg">
+                <button onclick="printQRCode()" 
+                        class="btn-primary flex-1 py-3 rounded-lg"
+                        aria-label="Imprimir QR Code">
                     🖨️ Imprimir
                 </button>
-                <button onclick="shareViaWhatsApp()" class="bg-green-600 hover:bg-green-700 text-white flex-1 py-3 rounded-lg">
+                <button onclick="shareViaWhatsApp()" 
+                        class="bg-green-600 hover:bg-green-700 text-white flex-1 py-3 rounded-lg"
+                        aria-label="Compartilhar via WhatsApp">
                     📱 WhatsApp
                 </button>
             </div>
@@ -407,17 +446,21 @@
     </div>
 
     <!-- Modal Scanner -->
-    <div id="scannerModal" class="qr-modal">
+    <div id="scannerModal" class="qr-modal" role="dialog" aria-label="Scanner de QR Code" aria-hidden="true">
         <div class="qr-modal-content">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">🔍 Scanner de QR Code</h3>
-                <button onclick="closeScanner()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                <h3 class="text-xl font-bold" id="scannerModalTitle">🔍 Scanner de QR Code</h3>
+                <button onclick="closeScanner()" 
+                        class="text-gray-500 hover:text-gray-700 text-2xl"
+                        aria-label="Fechar scanner">
+                    ×
+                </button>
             </div>
             <div class="scanner-container relative">
                 <div id="qr-reader"></div>
                 <div class="scanner-overlay"></div>
             </div>
-            <div id="scannerResult" class="mt-4 p-4 bg-gray-100 rounded-lg hidden">
+            <div id="scannerResult" class="mt-4 p-4 bg-gray-100 rounded-lg hidden" role="alert">
                 <!-- Resultado do scan aparecerá aqui -->
             </div>
             <div class="mt-4 text-center text-sm text-gray-500">
@@ -427,38 +470,66 @@
     </div>
 
     <!-- Modal Lembrete -->
-    <div id="reminderModal" class="qr-modal">
+    <div id="reminderModal" class="qr-modal" role="dialog" aria-label="Novo lembrete" aria-hidden="true">
         <div class="qr-modal-content">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">📅 Novo Lembrete</h3>
-                <button onclick="closeReminderModal()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                <h3 class="text-xl font-bold" id="reminderModalTitle">📅 Novo Lembrete</h3>
+                <button onclick="closeReminderModal()" 
+                        class="text-gray-500 hover:text-gray-700 text-2xl"
+                        aria-label="Fechar formulário de lembrete">
+                    ×
+                </button>
             </div>
-            <form id="reminderForm" onsubmit="saveReminder(event)">
+            <form id="reminderForm" onsubmit="saveReminder(event)" aria-labelledby="reminderModalTitle">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Produto relacionado</label>
-                        <select id="reminderProduct" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label for="reminderProduct" class="block text-sm font-medium text-gray-700 mb-1">
+                            Produto relacionado
+                        </label>
+                        <select id="reminderProduct" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                aria-label="Selecionar produto para o lembrete">
                             <option value="">Selecionar produto...</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Título do lembrete</label>
-                        <input type="text" id="reminderTitle" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label for="reminderTitle" class="block text-sm font-medium text-gray-700 mb-1">
+                            Título do lembrete
+                        </label>
+                        <input type="text" 
+                               id="reminderTitle" 
+                               required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                               aria-label="Título do lembrete"
+                               placeholder="Digite o título do lembrete">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                        <textarea id="reminderDescription" rows="3"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+                        <label for="reminderDescription" class="block text-sm font-medium text-gray-700 mb-1">
+                            Descrição
+                        </label>
+                        <textarea id="reminderDescription" 
+                                  rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                  aria-label="Descrição do lembrete"
+                                  placeholder="Digite a descrição do lembrete"></textarea>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
-                        <input type="date" id="reminderDate" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label for="reminderDate" class="block text-sm font-medium text-gray-700 mb-1">
+                            Data
+                        </label>
+                        <input type="date" 
+                               id="reminderDate" 
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                               aria-label="Data do lembrete">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="reminderStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label for="reminderStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                            Status
+                        </label>
+                        <select id="reminderStatus" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                aria-label="Status do lembrete">
                             <option value="pendente">Pendente</option>
                             <option value="andamento">Em andamento</option>
                             <option value="concluido">Concluído</option>
@@ -466,11 +537,15 @@
                     </div>
                 </div>
                 <div class="mt-6 flex gap-2">
-                    <button type="submit" class="btn-primary flex-1 py-3 rounded-lg">
+                    <button type="submit" 
+                            class="btn-primary flex-1 py-3 rounded-lg"
+                            aria-label="Salvar lembrete">
                         💾 Salvar Lembrete
                     </button>
-                    <button type="button" onclick="closeReminderModal()" 
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 flex-1 py-3 rounded-lg">
+                    <button type="button" 
+                            onclick="closeReminderModal()" 
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 flex-1 py-3 rounded-lg"
+                            aria-label="Cancelar e fechar formulário">
                         Cancelar
                     </button>
                 </div>
@@ -487,16 +562,16 @@
             AUTO_REFRESH_INTERVAL: 30000,
             
             // Keys para localStorage
-            BACKUP_KEY: 'estoque_live_backup_v2',
-            HISTORY_KEY: 'estoque_history_v2',
-            REMINDERS_KEY: 'estoque_reminders_v2',
-            KANBAN_KEY: 'estoque_kanban_v2',
-            SCAN_HISTORY_KEY: 'estoque_scan_history_v2',
+            BACKUP_KEY: 'estoque_backup_v3',
+            HISTORY_KEY: 'estoque_history_v3',
+            REMINDERS_KEY: 'estoque_reminders_v3',
+            KANBAN_KEY: 'estoque_kanban_v3',
+            SCAN_HISTORY_KEY: 'estoque_scan_history_v3',
             
             // WhatsApp config (substitua pelo número real)
             WHATSAPP_NUMBER: '5511999999999',
             
-            DEBUG_MODE: false,
+            DEBUG_MODE: true,
             USE_PUBLISHED_VERSION: true
         };
 
@@ -556,9 +631,7 @@
         let lastFocusedElementId = null;
         let html5QrCode = null;
 
-        // ==================== FUNÇÕES ORIGINAIS DO SISTEMA ====================
-        
-        // 📊 BUSCAR DADOS AO VIVO DA PLANILHA
+        // 📊 BUSCAR DADOS DA PLANILHA
         async function fetchLiveData() {
             try {
                 console.log('🔄 Buscando dados da planilha...');
@@ -586,10 +659,6 @@
                 
                 if (!csvData || csvData.trim().length === 0) {
                     throw new Error('Planilha vazia');
-                }
-                
-                if (csvData.includes('autocrat demo job')) {
-                    throw new Error('Planilha não compartilhada');
                 }
                 
                 const items = parseCSVData(csvData);
@@ -911,11 +980,15 @@
             
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md fade-in`;
+            notification.setAttribute('role', 'alert');
             notification.innerHTML = `
                 <div class="flex items-center gap-3">
                     <span class="flex-1">${message}</span>
                     <button onclick="this.parentElement.parentElement.remove()" 
-                            class="text-white hover:text-gray-200 font-bold text-xl leading-none">×</button>
+                            class="text-white hover:text-gray-200 font-bold text-xl leading-none"
+                            aria-label="Fechar notificação">
+                        ×
+                    </button>
                 </div>
             `;
             document.body.appendChild(notification);
@@ -962,7 +1035,7 @@
             updateDynamicComponents();
         }
 
-        // ==================== NOVAS FUNCIONALIDADES ====================
+        // ==================== FUNCIONALIDADES AVANÇADAS ====================
 
         // 📅 MÓDULO: LEMBRETES
         function loadReminders() {
@@ -1050,11 +1123,13 @@
                 dateInput.value = tomorrow.toISOString().split('T')[0];
             }
             
-            document.getElementById('reminderModal').style.display = 'block';
+            document.getElementById('reminderModal').style.display = 'flex';
+            document.getElementById('reminderModal').setAttribute('aria-hidden', 'false');
         }
 
         function closeReminderModal() {
             document.getElementById('reminderModal').style.display = 'none';
+            document.getElementById('reminderModal').setAttribute('aria-hidden', 'true');
             document.getElementById('reminderForm').reset();
         }
 
@@ -1121,41 +1196,53 @@
             const container = document.getElementById('qrCodeContainer');
             container.innerHTML = '';
             
-            // Gerar QR Code
-            QRCode.toCanvas(container, qrData, {
-                width: 200,
-                margin: 2,
-                color: {
-                    dark: '#a00b08',
-                    light: '#ffffff'
-                }
-            }, function(error) {
-                if (error) {
-                    console.error('❌ Erro ao gerar QR Code:', error);
-                    showNotification('❌ Erro ao gerar QR Code', 'error');
-                    return;
+            // Gerar QR Code com fallback
+            try {
+                // Verificar se a biblioteca QRCode está disponível
+                if (typeof QRCode === 'undefined') {
+                    throw new Error('Biblioteca QRCode não carregada');
                 }
                 
-                // Atualizar informações do produto
-                document.getElementById('qrProductInfo').innerHTML = `
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="font-bold text-lg">${product.nome}</div>
-                        <div class="text-gray-600">Código: <span class="font-mono">${product.codigo}</span></div>
-                        <div class="text-gray-600">Estoque: ${product.quantidade} unidades</div>
-                        <div class="text-gray-600">Local: ${product.plataforma}</div>
-                    </div>
-                `;
-                
-                // Salvar produto atual
-                state.currentQRProduct = product;
-                
-                // Abrir modal
-                document.getElementById('qrModal').style.display = 'block';
-            });
+                QRCode.toCanvas(container, qrData, {
+                    width: 200,
+                    margin: 2,
+                    color: {
+                        dark: '#a00b08',
+                        light: '#ffffff'
+                    }
+                }, function(error) {
+                    if (error) {
+                        console.error('❌ Erro ao gerar QR Code:', error);
+                        showNotification('❌ Erro ao gerar QR Code', 'error');
+                        return;
+                    }
+                    
+                    // Atualizar informações do produto
+                    document.getElementById('qrProductInfo').innerHTML = `
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="font-bold text-lg">${product.nome}</div>
+                            <div class="text-gray-600">Código: <span class="font-mono">${product.codigo}</span></div>
+                            <div class="text-gray-600">Estoque: ${product.quantidade} unidades</div>
+                            <div class="text-gray-600">Local: ${product.plataforma}</div>
+                        </div>
+                    `;
+                    
+                    // Salvar produto atual
+                    state.currentQRProduct = product;
+                    
+                    // Abrir modal
+                    document.getElementById('qrModal').style.display = 'flex';
+                    document.getElementById('qrModal').setAttribute('aria-hidden', 'false');
+                });
+            } catch (error) {
+                console.error('Erro ao gerar QR Code:', error);
+                showNotification('⚠️ Funcionalidade QR Code não disponível', 'warning');
+            }
         }
 
         function closeQRModal() {
             document.getElementById('qrModal').style.display = 'none';
+            document.getElementById('qrModal').setAttribute('aria-hidden', 'true');
             state.currentQRProduct = null;
         }
 
@@ -1166,6 +1253,7 @@
             const product = state.currentQRProduct;
             
             printWindow.document.write(`
+                <!DOCTYPE html>
                 <html>
                 <head>
                     <title>QR Code - ${product.nome}</title>
@@ -1174,6 +1262,9 @@
                         h1 { color: #a00b08; }
                         .info { margin: 20px 0; }
                         .footer { margin-top: 30px; font-size: 12px; color: #666; }
+                        @media print {
+                            body { margin: 0; padding: 10px; }
+                        }
                     </style>
                 </head>
                 <body>
@@ -1193,8 +1284,8 @@
                         <p>Sistema de Estoque - Super Bruno Atacado</p>
                     </div>
                     
-                    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
                     <script>
+                        // QR Code básico sem biblioteca externa
                         const data = ${JSON.stringify({
                             codigo: product.codigo,
                             nome: product.nome,
@@ -1202,14 +1293,22 @@
                             timestamp: new Date().toISOString()
                         })};
                         
-                        QRCode.toCanvas(document.getElementById('qrPrint'), JSON.stringify(data), {
-                            width: 250,
-                            margin: 2,
-                            color: { dark: '#a00b08', light: '#ffffff' }
-                        }, function() {
-                            window.print();
-                            setTimeout(() => window.close(), 1000);
-                        });
+                        // Simples representação textual para impressão
+                        const qrContainer = document.getElementById('qrPrint');
+                        qrContainer.innerHTML = \`
+                            <div style="border: 2px solid #a00b08; padding: 20px; display: inline-block; margin: 20px;">
+                                <div style="font-family: monospace; font-size: 14px;">
+                                    <strong>QR CODE</strong><br>
+                                    Produto: \${data.nome}<br>
+                                    Código: \${data.codigo}<br>
+                                    Estoque: \${data.quantidade}<br>
+                                    Data: \${new Date(data.timestamp).toLocaleDateString('pt-BR')}
+                                </div>
+                            </div>
+                        \`;
+                        
+                        window.print();
+                        setTimeout(() => window.close(), 1000);
                     </script>
                 </body>
                 </html>
@@ -1232,226 +1331,121 @@
             window.open(whatsappUrl, '_blank');
         }
 
-        // 🔍 MÓDULO: SCANNER
+        // 🔍 MÓDULO: SCANNER (implementação simplificada)
         function openScanner() {
-            document.getElementById('scannerModal').style.display = 'block';
+            showNotification('🔍 Funcionalidade de scanner em desenvolvimento', 'info');
             
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("qr-reader");
-                
-                html5QrCode.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: 250 },
-                    onScanSuccess,
-                    onScanError
-                ).catch(err => {
-                    console.error('Erro ao iniciar scanner:', err);
-                    showNotification('❌ Erro ao acessar câmera', 'error');
-                });
-            }
-        }
-
-        function onScanSuccess(decodedText) {
-            try {
-                const data = JSON.parse(decodedText);
-                
-                // Mostrar resultado
-                const resultDiv = document.getElementById('scannerResult');
-                resultDiv.classList.remove('hidden');
-                resultDiv.innerHTML = `
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <div class="flex items-center gap-2 text-green-700 mb-2">
-                            <span class="text-2xl">✅</span>
-                            <span class="font-bold">QR Code escaneado!</span>
-                        </div>
-                        <div class="text-gray-800">
-                            <p><strong>Produto:</strong> ${data.nome}</p>
-                            <p><strong>Código:</strong> ${data.codigo}</p>
-                            <p><strong>Estoque:</strong> ${data.quantidade}</p>
-                        </div>
+            // Implementação básica sem biblioteca externa
+            document.getElementById('scannerModal').style.display = 'flex';
+            document.getElementById('scannerModal').setAttribute('aria-hidden', 'false');
+            
+            // Simulação de scanner
+            const scannerResult = document.getElementById('scannerResult');
+            scannerResult.classList.remove('hidden');
+            scannerResult.innerHTML = `
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="flex items-center gap-2 text-blue-700 mb-2">
+                        <span class="text-2xl">ℹ️</span>
+                        <span class="font-bold">Scanner QR Code</span>
                     </div>
-                `;
-                
-                // Buscar produto correspondente
-                const product = state.items.find(item => item.codigo === data.codigo);
-                if (product) {
-                    // Focar no produto
-                    state.searchTerm = product.codigo;
-                    applySortingAndFiltering();
-                    
-                    // Se estiver na aba de estoque, focar no produto
-                    if (state.currentTab === 'estoque') {
-                        setTimeout(() => {
-                            updateDynamicComponents();
-                        }, 500);
-                    }
-                }
-                
-                // Fechar scanner após 3 segundos
-                setTimeout(() => {
-                    closeScanner();
-                }, 3000);
-                
-            } catch (error) {
-                document.getElementById('scannerResult').innerHTML = `
-                    <div class="bg-red-50 p-4 rounded-lg">
-                        <div class="text-red-700">
-                            ❌ QR Code inválido
-                        </div>
+                    <div class="text-gray-800">
+                        <p>Para usar o scanner, instale um aplicativo de QR Code no seu celular e aponte para os códigos gerados pelo sistema.</p>
+                        <p class="mt-2 text-sm text-gray-600">Alternativamente, você pode digitar o código do produto na barra de busca.</p>
                     </div>
-                `;
-            }
-        }
-
-        function onScanError(error) {
-            // Ignorar erros normais de scan
+                </div>
+            `;
         }
 
         function closeScanner() {
             document.getElementById('scannerModal').style.display = 'none';
-            
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop();
-            }
+            document.getElementById('scannerModal').setAttribute('aria-hidden', 'true');
+            document.getElementById('scannerResult').classList.add('hidden');
         }
 
-        // 📊 MÓDULO: DASHBOARD
+        // 📊 MÓDULO: DASHBOARD (implementação simplificada)
         function initDashboard() {
-            updateDashboardCharts();
-        }
-
-        function updateDashboardCharts() {
-            // Gráfico de localização
-            const locationData = analyzeLocationDistribution();
-            renderLocationChart(locationData);
+            const container = document.getElementById('dashboardContent');
+            if (!container) return;
             
-            // Gráfico de estoque
-            renderStockChart();
-        }
-
-        function analyzeLocationDistribution() {
-            const locations = {
-                mostruario: 0,
-                embalado: 0,
-                frente: 0,
-                cd: 0,
-                montagem: 0,
-                assistencia: 0,
-                outros: 0
-            };
-            
-            state.items.forEach(item => {
-                const obs = (item.observacoes || '').toLowerCase();
-                let found = false;
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-bold text-lg mb-4">📊 Estatísticas do Estoque</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span>Total de Produtos:</span>
+                                <span class="font-bold">${state.stats.total}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Em Estoque:</span>
+                                <span class="font-bold text-green-600">${state.stats.inStock}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Estoque Baixo:</span>
+                                <span class="font-bold text-yellow-600">${state.stats.lowStock}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Esgotados:</span>
+                                <span class="font-bold text-red-600">${state.stats.outOfStock}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-bold text-lg mb-4">📅 Lembretes Ativos</h3>
+                        <div class="space-y-3">
+                            ${state.reminders.slice(0, 5).map(reminder => `
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <div>
+                                        <span class="font-medium">${reminder.title}</span>
+                                        <div class="text-sm text-gray-600">${reminder.productName || 'Sem produto'}</div>
+                                    </div>
+                                    <span class="text-sm ${reminder.overdue ? 'text-red-600' : 'text-gray-500'}">
+                                        ${new Date(reminder.date).toLocaleDateString('pt-BR')}
+                                    </span>
+                                </div>
+                            `).join('')}
+                            ${state.reminders.length === 0 ? '<p class="text-gray-500 text-center py-4">Nenhum lembrete</p>' : ''}
+                        </div>
+                    </div>
+                </div>
                 
-                if (obs.includes('mostruario') || obs.includes('mostruário')) {
-                    locations.mostruario++;
-                    found = true;
-                }
-                if (obs.includes('embalado') || obs.includes('caixa')) {
-                    locations.embalado++;
-                    found = true;
-                }
-                if (obs.includes('frente') || obs.includes('loja')) {
-                    locations.frente++;
-                    found = true;
-                }
-                if (obs.includes('separado') || obs.includes('cd')) {
-                    locations.cd++;
-                    found = true;
-                }
-                if (obs.includes('montagem') || obs.includes('montar')) {
-                    locations.montagem++;
-                    found = true;
-                }
-                if (obs.includes('assistencia') || obs.includes('assistência')) {
-                    locations.assistencia++;
-                    found = true;
-                }
-                
-                if (!found) locations.outros++;
-            });
-            
-            return locations;
-        }
-
-        function renderLocationChart(data) {
-            const ctx = document.getElementById('locationChart');
-            if (!ctx) return;
-            
-            if (state.charts && state.charts.locationChart) {
-                state.charts.locationChart.destroy();
-            }
-            
-            state.charts = state.charts || {};
-            state.charts.locationChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Mostruário', 'Embalado', 'Frente Loja', 'CD', 'Montagem', 'Assistência', 'Outros'],
-                    datasets: [{
-                        data: [
-                            data.mostruario,
-                            data.embalado,
-                            data.frente,
-                            data.cd,
-                            data.montagem,
-                            data.assistencia,
-                            data.outros
-                        ],
-                        backgroundColor: [
-                            '#f4cf08', '#2ecc71', '#3498db',
-                            '#9b59b6', '#34495e', '#e74c3c',
-                            '#95a5a6'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderStockChart() {
-            const ctx = document.getElementById('stockChart');
-            if (!ctx) return;
-            
-            if (state.charts && state.charts.stockChart) {
-                state.charts.stockChart.destroy();
-            }
-            
-            state.charts = state.charts || {};
-            state.charts.stockChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Em estoque', 'Baixo estoque', 'Esgotado'],
-                    datasets: [{
-                        label: 'Quantidade de Produtos',
-                        data: [
-                            state.stats.inStock,
-                            state.stats.lowStock,
-                            state.stats.outOfStock
-                        ],
-                        backgroundColor: [
-                            '#2ecc71',
-                            '#f4cf08',
-                            '#e74c3c'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
+                <div class="mt-6 bg-white p-6 rounded-lg shadow">
+                    <h3 class="font-bold text-lg mb-4">📍 Distribuição por Localização</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div class="text-center p-4 bg-yellow-50 rounded">
+                            <div class="text-2xl font-bold">${state.items.filter(item => 
+                                item.observacoes && item.observacoes.toLowerCase().includes('mostruario')).length}</div>
+                            <div class="text-sm">Mostruário</div>
+                        </div>
+                        <div class="text-center p-4 bg-green-50 rounded">
+                            <div class="text-2xl font-bold">${state.items.filter(item => 
+                                item.observacoes && item.observacoes.toLowerCase().includes('embalado')).length}</div>
+                            <div class="text-sm">Embalado</div>
+                        </div>
+                        <div class="text-center p-4 bg-blue-50 rounded">
+                            <div class="text-2xl font-bold">${state.items.filter(item => 
+                                item.observacoes && item.observacoes.toLowerCase().includes('frente')).length}</div>
+                            <div class="text-sm">Frente</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded">
+                            <div class="text-2xl font-bold">${state.items.filter(item => 
+                                item.observacoes && item.observacoes.toLowerCase().includes('cd')).length}</div>
+                            <div class="text-sm">CD</div>
+                        </div>
+                        <div class="text-center p-4 bg-gray-50 rounded">
+                            <div class="text-2xl font-bold">${state.items.filter(item => 
+                                item.observacoes && item.observacoes.toLowerCase().includes('montagem')).length}</div>
+                            <div class="text-sm">Montagem</div>
+                        </div>
+                        <div class="text-center p-4 bg-red-50 rounded">
+                            <div class="text-2xl font-bold">${state.items.filter(item => 
+                                item.observacoes && item.observacoes.toLowerCase().includes('assistencia')).length}</div>
+                            <div class="text-sm">Assistência</div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // 📱 WHATSAPP ALERTAS
@@ -1463,13 +1457,13 @@
                 return;
             }
             
-            let message = `⚠️ *ALERTA DE ESTOQUE BAIXO*\\n\\n`;
-            message += `*${lowStockProducts.length} produtos com estoque baixo:*\\n\\n`;
+            let message = `⚠️ *ALERTA DE ESTOQUE BAIXO*\n\n`;
+            message += `*${lowStockProducts.length} produtos com estoque baixo:*\n\n`;
             
             lowStockProducts.forEach((product, index) => {
-                message += `${index + 1}. ${product.nome}\\n`;
-                message += `   Código: ${product.codigo}\\n`;
-                message += `   Estoque: ${product.quantidade} unidades\\n\\n`;
+                message += `${index + 1}. ${product.nome}\n`;
+                message += `   Código: ${product.codigo}\n`;
+                message += `   Estoque: ${product.quantidade} unidades\n\n`;
             });
             
             message += `_Enviado via Sistema de Estoque - Super Bruno_`;
@@ -1487,7 +1481,7 @@
             updateSystemStatus();
             
             if (state.currentTab === 'dashboard') {
-                updateDashboardCharts();
+                initDashboard();
             }
         }
 
@@ -1558,7 +1552,8 @@
                                 ${item.nome}
                             </div>
                             <button onclick="generateQRCode(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                                    class="text-xs text-blue-600 hover:text-blue-800 mt-1">
+                                    class="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                    aria-label="Gerar QR Code para ${item.nome}">
                                 🔲 Gerar QR Code
                             </button>
                         </td>
@@ -1621,18 +1616,26 @@
             
             container.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Calendário -->
+                    <!-- Calendário simplificado -->
                     <div class="bg-white p-4 rounded-lg shadow">
-                        <div id="calendar"></div>
+                        <h3 class="font-bold text-lg mb-4">📅 Calendário</h3>
+                        <div class="text-center py-8">
+                            <div class="text-4xl mb-2">📅</div>
+                            <p class="text-gray-600">Clique no botão abaixo para adicionar um novo lembrete</p>
+                            <button onclick="openReminderModal()" 
+                                    class="btn-primary px-6 py-3 rounded-lg mt-4">
+                                + Novo Lembrete
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Lista de Lembretes -->
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
-                            <h3 class="font-bold text-lg">📅 Lembretes</h3>
+                            <h3 class="font-bold text-lg">📋 Lembretes</h3>
                             <button onclick="openReminderModal()" 
                                     class="btn-primary px-4 py-2 rounded-lg">
-                                + Novo Lembrete
+                                + Novo
                             </button>
                         </div>
                         
@@ -1675,27 +1678,6 @@
                     </div>
                 </div>
             `;
-            
-            // Inicializar calendário
-            if (document.getElementById('calendar')) {
-                const calendarEl = document.getElementById('calendar');
-                if (calendarEl) {
-                    state.calendar = new FullCalendar.Calendar(calendarEl, {
-                        initialView: 'dayGridMonth',
-                        locale: 'pt-br',
-                        events: state.reminders.map(reminder => ({
-                            title: reminder.title,
-                            start: reminder.date,
-                            backgroundColor: reminder.status === 'pendente' ? '#e74c3c' : 
-                                           reminder.status === 'andamento' ? '#f4cf08' : '#2ecc71'
-                        })),
-                        dateClick: function(info) {
-                            openReminderModal(info.dateStr);
-                        }
-                    });
-                    state.calendar.render();
-                }
-            }
         }
 
         function updateKanbanDisplay() {
@@ -1775,7 +1757,9 @@
                 </div>
                 
                 <div class="mt-6 text-center">
-                    <button onclick="openReminderModal()" class="btn-primary px-6 py-3 rounded-lg">
+                    <button onclick="openReminderModal()" 
+                            class="btn-primary px-6 py-3 rounded-lg"
+                            aria-label="Adicionar nova tarefa ao Kanban">
                         📝 Nova Tarefa
                     </button>
                 </div>
@@ -1800,37 +1784,466 @@
                     updateKanbanDisplay();
                 } else if (tabName === 'estoque') {
                     const searchInput = document.getElementById('searchInput');
-                    if (searchInput) searchInput.focus();
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.setAttribute('aria-label', 'Buscar produtos por código, nome ou localização');
+                    }
                 }
             }, 100);
+        }
+
+        // 🎨 RENDERIZAÇÃO PRINCIPAL
+        function render() {
+            if (state.loading && state.items.length === 0) return;
+            
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <!-- HEADER -->
+                <header class="brand-gradient shadow-lg no-print" role="banner">
+                    <div class="container mx-auto px-4 py-4">
+                        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div class="flex items-center gap-4">
+                                <div class="brand-gradient rounded-xl p-3 text-white font-bold text-xl shadow-md" 
+                                     aria-label="Logo Super Bruno">
+                                    <span class="text-white">SUPER</span>
+                                    <span class="text-yellow-300 ml-1">BRUNO</span>
+                                </div>
+                                <div>
+                                    <h1 class="text-white text-xl md:text-2xl font-bold">Mapa de Estoque Inteligente</h1>
+                                    <p class="text-yellow-200 text-sm flex items-center gap-2">
+                                        ${state.connectionError ? 
+                                            '<span class="pulse">⚠️ Modo Offline</span>' : 
+                                            '<span>✅ Sistema Online</span>'}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="openScanner()" 
+                                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium"
+                                        aria-label="Abrir scanner de QR Code">
+                                    🔍 Scanner
+                                </button>
+                                <button onclick="shareStockAlert()" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+                                        aria-label="Compartilhar alertas de estoque">
+                                    📱 Alertas
+                                </button>
+                                <button onclick="toggleAutoRefresh()" 
+                                        class="${state.autoRefresh ? 'btn-secondary' : 'bg-gray-500 text-white'} px-4 py-2 rounded-lg font-medium"
+                                        aria-label="${state.autoRefresh ? 'Desativar' : 'Ativar'} atualização automática">
+                                    ${state.autoRefresh ? '🔄 Auto' : '⏸️ Manual'}
+                                </button>
+                                <button onclick="syncWithSheet()" 
+                                        class="btn-primary px-4 py-2 rounded-lg font-medium"
+                                        aria-label="Sincronizar com planilha">
+                                    🔄 Sincronizar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- ABAS PRINCIPAIS -->
+                <div class="container mx-auto px-4">
+                    <div class="flex overflow-x-auto border-b border-gray-200 mt-4 no-print" role="tablist">
+                        <button class="tab-button ${state.currentTab === 'estoque' ? 'active' : ''}" 
+                                onclick="switchTab('estoque')"
+                                role="tab"
+                                aria-selected="${state.currentTab === 'estoque'}"
+                                aria-controls="estoqueContent">
+                            📦 Estoque (${state.stats.total})
+                        </button>
+                        <button class="tab-button ${state.currentTab === 'dashboard' ? 'active' : ''}" 
+                                onclick="switchTab('dashboard')"
+                                role="tab"
+                                aria-selected="${state.currentTab === 'dashboard'}"
+                                aria-controls="dashboardContent">
+                            📊 Dashboard
+                        </button>
+                        <button class="tab-button ${state.currentTab === 'lembretes' ? 'active' : ''}" 
+                                onclick="switchTab('lembretes')"
+                                role="tab"
+                                aria-selected="${state.currentTab === 'lembretes'}"
+                                aria-controls="remindersContent">
+                            📅 Lembretes ${state.reminders.length > 0 ? `(${state.reminders.length})` : ''}
+                        </button>
+                        <button class="tab-button ${state.currentTab === 'kanban' ? 'active' : ''}" 
+                                onclick="switchTab('kanban')"
+                                role="tab"
+                                aria-selected="${state.currentTab === 'kanban'}"
+                                aria-controls="kanbanContent">
+                            🎨 Kanban
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CONTEÚDO DAS ABAS -->
+                <main class="container mx-auto px-2 md:px-4 py-4 md:py-6" role="main">
+                    <!-- Conteúdo será carregado dinamicamente -->
+                    <div id="tabContent">
+                        ${getTabContent()}
+                    </div>
+                </main>
+
+                <!-- FOOTER -->
+                <footer class="mt-8 pb-6 text-center text-gray-500 text-sm no-print" role="contentinfo">
+                    <div class="container mx-auto px-4">
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                            <div class="flex items-center gap-2">
+                                ${state.connectionError ? 
+                                    '<span class="text-orange-600">⚠️ Modo Offline</span>' :
+                                    '<span class="text-green-600">✅ Sistema Online</span>'}
+                            </div>
+                            <div class="hidden md:block text-gray-300">|</div>
+                            <div>
+                                🔄 ${state.autoRefresh ? 'Auto (30s)' : 'Manual'}
+                            </div>
+                            ${state.lastUpdate ? `
+                                <div class="hidden md:block text-gray-300">|</div>
+                                <div class="text-gray-600">
+                                    🕒 Última sinc: ${getTimeSinceUpdate()}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="mt-4 text-xs text-gray-400">
+                            Sistema desenvolvido para Super Bruno Atacado © ${new Date().getFullYear()}
+                        </div>
+                    </div>
+                </footer>
+            `;
+            
+            // Inicializar conteúdo da aba atual
+            setTimeout(() => {
+                if (state.currentTab === 'dashboard') {
+                    initDashboard();
+                } else if (state.currentTab === 'lembretes') {
+                    updateRemindersDisplay();
+                } else if (state.currentTab === 'kanban') {
+                    updateKanbanDisplay();
+                } else if (state.currentTab === 'estoque') {
+                    // Renderizar conteúdo do estoque
+                    const tabContent = document.getElementById('tabContent');
+                    tabContent.innerHTML = getEstoqueContent();
+                    
+                    // Aplicar filtros e ordenação
+                    applySortingAndFiltering();
+                    updateDynamicComponents();
+                }
+            }, 50);
+        }
+
+        function getTabContent() {
+            switch(state.currentTab) {
+                case 'dashboard':
+                    return '<div id="dashboardContent"></div>';
+                case 'lembretes':
+                    return '<div id="remindersContent"></div>';
+                case 'kanban':
+                    return '<div id="kanbanContent"></div>';
+                case 'estoque':
+                default:
+                    return getEstoqueContent();
+            }
+        }
+
+        function getEstoqueContent() {
+            return `
+                <div class="tab-content active" id="estoqueContent">
+                    <!-- ESTATÍSTICAS -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="stat-card bg-white rounded-lg p-4 shadow">
+                            <div class="text-gray-500 text-sm font-medium">Total</div>
+                            <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
+                            <div class="text-xs text-gray-400">produtos</div>
+                        </div>
+                        <div class="stat-card bg-white rounded-lg p-4 shadow">
+                            <div class="text-gray-500 text-sm font-medium">Em Estoque</div>
+                            <div class="text-2xl font-bold text-green-600">${state.stats.inStock}</div>
+                            <div class="text-xs text-gray-400">disponíveis</div>
+                        </div>
+                        <div class="stat-card bg-white rounded-lg p-4 shadow">
+                            <div class="text-gray-500 text-sm font-medium">Esgotados</div>
+                            <div class="text-2xl font-bold text-orange-600">${state.stats.outOfStock}</div>
+                            <div class="text-xs text-gray-400">sem estoque</div>
+                        </div>
+                        <div class="stat-card bg-white rounded-lg p-4 shadow">
+                            <div class="text-gray-500 text-sm font-medium">Estoque Baixo</div>
+                            <div class="text-2xl font-bold text-yellow-600">${state.stats.lowStock}</div>
+                            <div class="text-xs text-gray-400">≤ 3 unidades</div>
+                        </div>
+                    </div>
+
+                    <!-- BUSCA E FILTROS -->
+                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
+                        <div class="relative mb-4">
+                            <input type="text" 
+                                   id="searchInput"
+                                   placeholder="🔍 Buscar por código, nome, plataforma ou localização..."
+                                   value="${state.searchTerm}"
+                                   oninput="handleSearchInput(event)"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                   aria-label="Buscar produtos">
+                            
+                            ${state.searchTerm ? `
+                                <button onclick="clearSearch()" 
+                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center"
+                                        aria-label="Limpar busca">
+                                    ×
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <!-- FILTROS RÁPIDOS -->
+                        <div class="space-y-3">
+                            <div>
+                                <div class="text-sm font-medium text-gray-700 mb-2">📍 Localização:</div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="setLocationFilter('all')" 
+                                            class="filter-badge ${state.locationFilter === 'all' ? 'active' : ''}"
+                                            aria-label="Mostrar todos os locais">
+                                        Todas
+                                    </button>
+                                    <button onclick="setLocationFilter('mostruario')" 
+                                            class="filter-badge ${state.locationFilter === 'mostruario' ? 'active' : ''}"
+                                            aria-label="Filtrar por mostruário">
+                                        🎨 Mostruário
+                                    </button>
+                                    <button onclick="setLocationFilter('embalado')" 
+                                            class="filter-badge ${state.locationFilter === 'embalado' ? 'active' : ''}"
+                                            aria-label="Filtrar por embalado">
+                                        📦 Embalado
+                                    </button>
+                                    <button onclick="setLocationFilter('frente')" 
+                                            class="filter-badge ${state.locationFilter === 'frente' ? 'active' : ''}"
+                                            aria-label="Filtrar por frente de loja">
+                                        🏪 Frente de Loja
+                                    </button>
+                                    <button onclick="setLocationFilter('cd')" 
+                                            class="filter-badge ${state.locationFilter === 'cd' ? 'active' : ''}"
+                                            aria-label="Filtrar por centro de distribuição">
+                                        🏭 CD
+                                    </button>
+                                    <button onclick="setLocationFilter('montagem')" 
+                                            class="filter-badge ${state.locationFilter === 'montagem' ? 'active' : ''}"
+                                            aria-label="Filtrar por montagem">
+                                        🔧 Montagem
+                                    </button>
+                                    <button onclick="setLocationFilter('assistencia')" 
+                                            class="filter-badge ${state.locationFilter === 'assistencia' ? 'active' : ''}"
+                                            aria-label="Filtrar por assistência técnica">
+                                        🔨 Assistência
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="text-sm font-medium text-gray-700 mb-2">📊 Estoque:</div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="setStockFilter('all')" 
+                                            class="filter-badge ${state.stockFilter === 'all' ? 'active' : ''}"
+                                            aria-label="Mostrar todos os níveis de estoque">
+                                        Todos
+                                    </button>
+                                    <button onclick="setStockFilter('in')" 
+                                            class="filter-badge ${state.stockFilter === 'in' ? 'active' : ''}"
+                                            aria-label="Filtrar por produtos em estoque">
+                                        ✅ Disponível
+                                    </button>
+                                    <button onclick="setStockFilter('low')" 
+                                            class="filter-badge ${state.stockFilter === 'low' ? 'active' : ''}"
+                                            aria-label="Filtrar por estoque baixo">
+                                        ⚠️ Baixo (≤3)
+                                    </button>
+                                    <button onclick="setStockFilter('out')" 
+                                            class="filter-badge ${state.stockFilter === 'out' ? 'active' : ''}"
+                                            aria-label="Filtrar por produtos esgotados">
+                                        ❌ Esgotado
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                            <div class="text-gray-600">
+                                📊 Mostrando <span class="font-bold text-red-600">${state.filteredItems.length}</span> de <span class="font-bold">${state.items.length}</span> produtos
+                            </div>
+                            <div class="text-gray-500">
+                                🕒 ${getTimeSinceUpdate()}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TABELA DE PRODUTOS -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden fade-in">
+                        <div class="overflow-x-auto">
+                            <table class="w-full print-full-width" aria-label="Lista de produtos em estoque">
+                                <thead>
+                                    <tr class="bg-gradient-to-r from-red-700 to-red-900 text-white">
+                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">
+                                            Código
+                                        </th>
+                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">
+                                            Nome do Produto
+                                        </th>
+                                        <th class="px-3 py-3 md:px-4 md:py-3 text-center">
+                                            Qtd
+                                        </th>
+                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left mobile-hidden">
+                                            Plataforma
+                                        </th>
+                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">
+                                            Localização
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${state.filteredItems.length === 0 ? `
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-12 text-center">
+                                                <div class="text-gray-400 text-4xl mb-3">📦</div>
+                                                <div class="text-gray-600 font-medium mb-1">
+                                                    ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
+                                                        'Nenhum produto encontrado' : 
+                                                        'Nenhum produto cadastrado'}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ` : ''}
+                                    
+                                    ${state.filteredItems.map((item, index) => `
+                                        <tr class="hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                            <td class="px-3 py-3 md:px-4 md:py-4">
+                                                <div class="font-mono font-bold text-red-700 text-sm md:text-base">
+                                                    ${item.codigo}
+                                                </div>
+                                            </td>
+                                            <td class="px-3 py-3 md:px-4 md:py-4">
+                                                <div class="font-medium text-gray-900 text-sm md:text-base">
+                                                    ${item.nome}
+                                                </div>
+                                                <button onclick="generateQRCode(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
+                                                        class="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                                        aria-label="Gerar QR Code para ${item.nome}">
+                                                    🔲 Gerar QR Code
+                                                </button>
+                                            </td>
+                                            <td class="px-3 py-3 md:px-4 md:py-4 text-center">
+                                                <span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold
+                                                    ${item.quantidade === 0 ? 'bg-red-100 text-red-700' : 
+                                                      item.quantidade <= 3 ? 'bg-yellow-100 text-yellow-700' : 
+                                                      'bg-green-100 text-green-700'}">
+                                                    ${item.quantidade}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-3 md:px-4 md:py-4 mobile-hidden">
+                                                <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
+                                                    ${item.plataforma}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-3 md:px-4 md:py-4">
+                                                <div class="flex flex-wrap gap-1">
+                                                    ${formatObservacoes(item.observacoes)}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- LEGENDA DE LOCALIZAÇÃO -->
+                    <div class="mt-6 bg-white rounded-lg p-5 shadow no-print">
+                        <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                            🎨 Legenda de Localização
+                        </h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="status-tag status-mostruario">Mostruário</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="status-tag status-embalado">Embalado</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="status-tag status-frentedeloja">Frente de Loja</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="status-tag status-separadocd">Separado p/CD</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="status-tag status-montagem">Montagem</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="status-tag status-assistencia">Assistência</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // 🚀 INICIALIZAÇÃO
         async function initApp() {
             console.log('🚀 Iniciando sistema...');
             
-            // Carregar dados básicos primeiro
-            await loadBackup();
-            loadReminders();
-            loadKanbanTasks();
-            
-            // Tentar sincronizar
-            await syncWithSheet();
-            
-            // Iniciar auto-refresh se ativado
-            if (state.autoRefresh) {
-                state.syncInterval = setInterval(() => {
-                    syncWithSheet(true);
-                }, CONFIG.AUTO_REFRESH_INTERVAL);
+            try {
+                // Carregar dados básicos primeiro
+                await loadBackup();
+                loadReminders();
+                loadKanbanTasks();
+                
+                // Tentar sincronizar
+                await syncWithSheet();
+                
+                // Iniciar auto-refresh se ativado
+                if (state.autoRefresh) {
+                    state.syncInterval = setInterval(() => {
+                        syncWithSheet(true);
+                    }, CONFIG.AUTO_REFRESH_INTERVAL);
+                }
+                
+                console.log('✅ Sistema pronto!');
+            } catch (error) {
+                console.error('❌ Erro na inicialização:', error);
+                showNotification('⚠️ Erro ao carregar o sistema. Recarregue a página.', 'error');
             }
-            
-            console.log('✅ Sistema pronto!');
         }
 
         // 📱 INICIALIZAR QUANDO A PÁGINA CARREGAR
         document.addEventListener('DOMContentLoaded', function() {
-            initApp();
+            // Carregar bibliotecas dinamicamente com fallback
+            loadExternalLibraries();
+            
+            // Iniciar aplicação após um pequeno delay
+            setTimeout(initApp, 100);
         });
+
+        function loadExternalLibraries() {
+            // Carregar bibliotecas somente se necessárias
+            const scripts = [];
+            
+            // QRCode library (opcional)
+            scripts.push({
+                src: 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+                onError: () => console.warn('QRCode library não carregada')
+            });
+            
+            // SortableJS (opcional)
+            scripts.push({
+                src: 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js',
+                onError: () => console.warn('SortableJS não carregada')
+            });
+            
+            // Carregar scripts em paralelo
+            scripts.forEach(script => {
+                const scriptEl = document.createElement('script');
+                scriptEl.src = script.src;
+                scriptEl.onerror = script.onError;
+                scriptEl.async = true;
+                document.head.appendChild(scriptEl);
+            });
+        }
 
         // ⌨️ ATALHOS DE TECLADO
         document.addEventListener('keydown', (e) => {
@@ -1838,7 +2251,10 @@
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();
                 const searchInput = document.getElementById('searchInput');
-                if (searchInput) searchInput.focus();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
             }
             
             // Ctrl/Cmd + R para atualizar
@@ -1852,6 +2268,23 @@
                 closeQRModal();
                 closeScanner();
                 closeReminderModal();
+            }
+            
+            // Tab 1-4 para alternar abas
+            if (e.altKey && e.key >= '1' && e.key <= '4') {
+                e.preventDefault();
+                const tabs = ['estoque', 'dashboard', 'lembretes', 'kanban'];
+                const tabIndex = parseInt(e.key) - 1;
+                if (tabs[tabIndex]) {
+                    switchTab(tabs[tabIndex]);
+                }
+            }
+        });
+
+        // 🔄 RECARREGAR AO VOLTAR PARA A ABA
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && state.autoRefresh) {
+                syncWithSheet(true);
             }
         });
 
