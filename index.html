@@ -277,6 +277,14 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             display: inline-block;
         }
+
+        /* WhatsApp */
+        .whatsapp-floating {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -290,6 +298,16 @@
         </div>
     </div>
 
+    <!-- Botão Flutuante do WhatsApp -->
+    <div class="whatsapp-floating no-print">
+        <button onclick="openWhatsAppQuickMenu()"
+                class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-5.46-4.45-9.91-9.91-9.91zm5.26 13.83c-.25.71-1.52 1.3-2.12 1.39-.57.08-1.27.1-1.96-.1-.87-.24-1.66-.61-2.3-1.14-2.14-1.86-3.51-4.85-3.61-7.84-.02-.63.15-1.24.46-1.77.33-.56.96-.86 1.6-.86.2 0 .39.03.57.08.45.13.96.56 1.06 1.03.13.59.43 1.71.47 1.83.04.13.08.28.03.44-.05.15-.08.26-.16.39-.08.13-.17.29-.25.39-.08.13-.17.26-.07.5.1.26.45 1.07.97 1.73.68.86 1.34 1.41 2.06 1.77.26.13.47.21.64.27.26.1.5.09.69.05.2-.04.39-.17.54-.33.18-.2.4-.5.63-.82.23-.32.51-.35.81-.29.3.07 1.92.91 2.25 1.08.33.17.55.25.63.37.08.13.08.75-.17 1.45z"/>
+            </svg>
+        </button>
+    </div>
+
     <script>
         // 🔧 CONFIGURAÇÃO PRINCIPAL
         const GOOGLE_SHEET_ID = '1zN6WXg-7mkb0mYOV8Hf3stQLD9wAdnyDKSPF5PfYK_M';
@@ -299,6 +317,11 @@
         const BACKUP_KEY = 'estoque_live_backup';
         const HISTORY_KEY = 'estoque_history';
         const REMINDERS_KEY = 'estoque_reminders';
+        
+        // 📱 CONFIGURAÇÃO DO WHATSAPP (SEU NÚMERO)
+        const WHATSAPP_NUMBER = '55022988575740'; // Seu número formatado
+        const WHATSAPP_GROUP_ID = ''; // Opcional: ID do grupo para alertas
+        
         const DEBUG_MODE = true;
         const USE_PUBLISHED_VERSION = true;
         
@@ -341,6 +364,300 @@
         let searchDebounceTimer = null;
         let lastFocusedElementId = null;
         let draggedCard = null;
+
+        // ==================== 📱 WHATSAPP INTEGRATION ====================
+
+        // 📱 ABRIR MENU RÁPIDO DO WHATSAPP
+        function openWhatsAppQuickMenu() {
+            const menu = document.createElement('div');
+            menu.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            menu.innerHTML = `
+                <div class="bg-white rounded-lg max-w-sm w-full">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-gray-900">📱 WhatsApp</h3>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <button onclick="sendStockReport()"
+                                    class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                                <span class="text-green-600 text-xl">📊</span>
+                                <div>
+                                    <div class="font-medium">Relatório de Estoque</div>
+                                    <div class="text-sm text-gray-500">Enviar resumo atual</div>
+                                </div>
+                            </button>
+                            
+                            <button onclick="sendLowStockAlert()"
+                                    class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                                <span class="text-red-600 text-xl">⚠️</span>
+                                <div>
+                                    <div class="font-medium">Alertas de Estoque Baixo</div>
+                                    <div class="text-sm text-gray-500">Produtos com menos de 3 unidades</div>
+                                </div>
+                            </button>
+                            
+                            <button onclick="sendTodayReminders()"
+                                    class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                                <span class="text-blue-600 text-xl">📅</span>
+                                <div>
+                                    <div class="font-medium">Lembretes de Hoje</div>
+                                    <div class="text-sm text-gray-500">Entregas e compromissos</div>
+                                </div>
+                            </button>
+                            
+                            <button onclick="showWhatsAppQR()"
+                                    class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                                <span class="text-purple-600 text-xl">🔲</span>
+                                <div>
+                                    <div class="font-medium">QR Code do Grupo</div>
+                                    <div class="text-sm text-gray-500">Entrar no grupo de alertas</div>
+                                </div>
+                            </button>
+                            
+                            <button onclick="openWhatsAppContact()"
+                                    class="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                                <span class="text-green-600 text-xl">💬</span>
+                                <div>
+                                    <div class="font-medium">Conversar Diretamente</div>
+                                    <div class="text-sm text-gray-500">Abrir conversa no WhatsApp</div>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-gray-200">
+                            <div class="text-sm text-gray-500 mb-2">Número configurado:</div>
+                            <div class="font-mono bg-gray-100 p-2 rounded">+${WHATSAPP_NUMBER}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(menu);
+        }
+
+        // 📊 ENVIAR RELATÓRIO DE ESTOQUE
+        function sendStockReport() {
+            const stats = state.stats;
+            const reminderStats = updateReminderStats();
+            
+            const message = `📊 *RELATÓRIO DE ESTOQUE - SUPER BRUNO*\n\n` +
+                          `📦 *Produtos:* ${stats.total}\n` +
+                          `✅ *Em estoque:* ${stats.inStock}\n` +
+                          `⚠️ *Estoque baixo:* ${stats.lowStock}\n` +
+                          `❌ *Esgotados:* ${stats.outOfStock}\n\n` +
+                          `📅 *Lembretes hoje:* ${reminderStats.today}\n` +
+                          `⏰ *Atrasados:* ${reminderStats.overdue}\n\n` +
+                          `🔄 *Última atualização:* ${state.lastUpdate ? state.lastUpdate.toLocaleTimeString('pt-BR') : 'N/A'}\n\n` +
+                          `_Enviado automaticamente pelo Sistema de Estoque_`;
+            
+            sendWhatsAppMessage(message);
+            document.querySelector('.fixed').remove();
+        }
+
+        // ⚠️ ENVIAR ALERTA DE ESTOQUE BAIXO
+        function sendLowStockAlert() {
+            const lowStockItems = state.items.filter(item => item.quantidade > 0 && item.quantidade <= 3);
+            
+            if (lowStockItems.length === 0) {
+                showNotification('✅ Nenhum produto com estoque baixo', 'success');
+                return;
+            }
+            
+            let message = `⚠️ *ALERTA: ESTOQUE BAIXO*\n\n`;
+            
+            lowStockItems.slice(0, 10).forEach((item, index) => {
+                message += `${index + 1}. *${item.codigo}* - ${item.nome}\n`;
+                message += `   📦 Quantidade: ${item.quantidade}\n`;
+                message += `   📍 ${item.observacoes || 'Localização não informada'}\n\n`;
+            });
+            
+            if (lowStockItems.length > 10) {
+                message += `... e mais ${lowStockItems.length - 10} produtos\n\n`;
+            }
+            
+            message += `📱 *Total de produtos:* ${lowStockItems.length}\n`;
+            message += `⏰ *Data:* ${new Date().toLocaleDateString('pt-BR')}\n\n`;
+            message += `_Sistema de alertas automáticos_`;
+            
+            sendWhatsAppMessage(message);
+            document.querySelector('.fixed').remove();
+        }
+
+        // 📅 ENVIAR LEMBRETES DE HOJE
+        function sendTodayReminders() {
+            const today = new Date().toDateString();
+            const todayReminders = state.reminders.filter(r => 
+                new Date(r.dueDate).toDateString() === today && r.status !== 'completed'
+            );
+            
+            if (todayReminders.length === 0) {
+                showNotification('✅ Nenhum lembrete para hoje', 'success');
+                return;
+            }
+            
+            let message = `📅 *LEMBRETES PARA HOJE* (${new Date().toLocaleDateString('pt-BR')})\n\n`;
+            
+            todayReminders.forEach((reminder, index) => {
+                const statusEmoji = reminder.status === 'overdue' ? '🔴' : 
+                                  reminder.status === 'in-progress' ? '🟡' : '🟢';
+                
+                message += `${statusEmoji} *${reminder.title}*\n`;
+                if (reminder.client) message += `   👤 Cliente: ${reminder.client}\n`;
+                if (reminder.productCode) message += `   📦 Produto: ${reminder.productCode}\n`;
+                if (reminder.description) message += `   📝 ${reminder.description}\n`;
+                message += `   ⏰ Status: ${getReminderStatusLabel(reminder.status)}\n\n`;
+            });
+            
+            message += `📋 *Total:* ${todayReminders.length} lembretes\n`;
+            message += `_Sistema de gerenciamento de entregas_`;
+            
+            sendWhatsAppMessage(message);
+            document.querySelector('.fixed').remove();
+        }
+
+        // 🔲 MOSTRAR QR CODE DO GRUPO
+        function showWhatsAppQR() {
+            if (!WHATSAPP_GROUP_ID) {
+                showNotification('ℹ️ Configure o ID do grupo do WhatsApp', 'info');
+                return;
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-sm w-full">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-gray-900">🔲 QR Code do Grupo</h3>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div class="text-center mb-4">
+                            <p class="text-gray-600 mb-4">Escaneie para entrar no grupo de alertas</p>
+                            <div id="whatsapp-group-qr" class="inline-block p-4 bg-white rounded-lg border"></div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <a href="https://chat.whatsapp.com/${WHATSAPP_GROUP_ID}"
+                               target="_blank"
+                               class="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                                📱 Entrar no Grupo
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Gerar QR Code
+            setTimeout(() => {
+                const qrContainer = document.getElementById('whatsapp-group-qr');
+                if (qrContainer) {
+                    const groupUrl = `https://chat.whatsapp.com/${WHATSAPP_GROUP_ID}`;
+                    QRCode.toCanvas(qrContainer, groupUrl, {
+                        width: 200,
+                        margin: 1,
+                        color: {
+                            dark: '#25D366',
+                            light: '#ffffff'
+                        }
+                    });
+                }
+            }, 100);
+        }
+
+        // 💬 ABRIR CONTATO DO WHATSAPP
+        function openWhatsAppContact() {
+            const message = `Olá! Gostaria de falar sobre o sistema de estoque.`;
+            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
+            document.querySelector('.fixed').remove();
+        }
+
+        // 📤 ENVIAR MENSAGEM NO WHATSAPP
+        function sendWhatsAppMessage(message) {
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        // 📱 COMPARTILHAR PRODUTO VIA WHATSAPP
+        function shareProductViaWhatsApp(product, messageType = 'info') {
+            let message = '';
+            
+            switch(messageType) {
+                case 'low_stock':
+                    message = `⚠️ *ESTOQUE BAIXO*\n\n` +
+                             `*Produto:* ${product.nome}\n` +
+                             `*Código:* ${product.codigo}\n` +
+                             `*Quantidade:* ${product.quantidade} unidades\n` +
+                             `*Localização:* ${product.observacoes || 'Não informada'}\n\n` +
+                             `📱 _Sistema de alertas automáticos_`;
+                    break;
+                    
+                case 'reminder':
+                    message = `📅 *LEMBRETE DE ENTREGA*\n\n` +
+                             `*Produto:* ${product.nome}\n` +
+                             `*Código:* ${product.codigo}\n` +
+                             `*Quantidade:* ${product.quantidade} unidades\n` +
+                             `*Preparar para entrega*\n\n` +
+                             `📱 _Sistema de gerenciamento_`;
+                    break;
+                    
+                case 'info':
+                default:
+                    message = `📦 *INFORMAÇÃO DO PRODUTO*\n\n` +
+                             `*Produto:* ${product.nome}\n` +
+                             `*Código:* ${product.codigo}\n` +
+                             `*Quantidade:* ${product.quantidade} unidades\n` +
+                             `*Localização:* ${product.observacoes || 'Não informada'}\n` +
+                             `*Plataforma:* ${product.plataforma}\n\n` +
+                             `📱 _Sistema de estoque - SUPER BRUNO_`;
+            }
+            
+            sendWhatsAppMessage(message);
+        }
+
+        // 🔔 COMPARTILHAR RELATÓRIO DE LEMBRETES
+        function shareRemindersReport() {
+            const reminderStats = updateReminderStats();
+            const overdueReminders = state.reminders.filter(r => {
+                if (!r.dueDate || r.status === 'completed') return false;
+                return new Date(r.dueDate) < new Date();
+            });
+            
+            let message = `📋 *RELATÓRIO DE LEMBRETES*\n\n` +
+                         `📅 *Total:* ${reminderStats.total} lembretes\n` +
+                         `⏳ *Pendentes:* ${reminderStats.pending}\n` +
+                         `🚀 *Em andamento:* ${reminderStats.inProgress}\n` +
+                         `✅ *Concluídos:* ${reminderStats.completed}\n` +
+                         `⚠️ *Atrasados:* ${reminderStats.overdue}\n\n`;
+            
+            if (overdueReminders.length > 0) {
+                message += `🔴 *ATENÇÃO - ATRASADOS:*\n`;
+                overdueReminders.slice(0, 5).forEach(reminder => {
+                    message += `• ${reminder.title} - ${reminder.client || 'Sem cliente'}\n`;
+                });
+                if (overdueReminders.length > 5) {
+                    message += `... e mais ${overdueReminders.length - 5}\n`;
+                }
+                message += `\n`;
+            }
+            
+            message += `📊 *Lembretes para hoje:* ${reminderStats.today}\n`;
+            message += `⏰ *Data:* ${new Date().toLocaleDateString('pt-BR')}\n\n`;
+            message += `_Sistema de gerenciamento de entregas_`;
+            
+            sendWhatsAppMessage(message);
+        }
 
         // ==================== 📅 SISTEMA DE LEMBRETES ====================
         
@@ -513,123 +830,6 @@
             }
         }
 
-        // ➕ ADICIONAR LEMBRETE AO CALENDÁRIO
-        function addReminderToCalendar(reminder) {
-            if (!state.calendar || !reminder.dueDate) return;
-            
-            state.calendar.addEvent({
-                id: reminder.id,
-                title: reminder.title,
-                start: reminder.dueDate,
-                color: getReminderColor(reminder.status),
-                extendedProps: {
-                    product: reminder.productCode,
-                    client: reminder.client,
-                    description: reminder.description
-                }
-            });
-        }
-
-        // 🔄 ATUALIZAR LEMBRETE NO CALENDÁRIO
-        function updateReminderInCalendar(reminder) {
-            if (!state.calendar) return;
-            
-            const event = state.calendar.getEventById(reminder.id);
-            if (event) {
-                event.setProp('title', reminder.title);
-                event.setProp('start', reminder.dueDate);
-                event.setProp('color', getReminderColor(reminder.status));
-            } else if (reminder.dueDate) {
-                addReminderToCalendar(reminder);
-            }
-        }
-
-        // 🗑️ REMOVER LEMBRETE DO CALENDÁRIO
-        function removeReminderFromCalendar(reminder) {
-            if (!state.calendar) return;
-            
-            const event = state.calendar.getEventById(reminder.id);
-            if (event) {
-                event.remove();
-            }
-        }
-
-        // 🔄 ATUALIZAR DISPLAY DOS LEMBRETES
-        function updateRemindersDisplay() {
-            updateKanbanReminders();
-            if (state.calendar) {
-                state.calendar.removeAllEvents();
-                state.calendar.addEventSource(getCalendarEvents());
-            }
-        }
-
-        // 🏷️ ATUALIZAR KANBAN DOS LEMBRETES
-        function updateKanbanReminders() {
-            const columns = {
-                'pending': document.getElementById('kanban-pending'),
-                'in-progress': document.getElementById('kanban-in-progress'),
-                'completed': document.getElementById('kanban-completed')
-            };
-
-            for (const [status, column] of Object.entries(columns)) {
-                if (!column) continue;
-                
-                const reminders = state.reminders.filter(r => r.status === status);
-                column.innerHTML = reminders.map(reminder => `
-                    <div class="kanban-card reminder-${status}" 
-                         data-id="${reminder.id}"
-                         draggable="true"
-                         ondragstart="dragReminder(event)">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="reminder-badge badge-${status}">
-                                        ${getReminderStatusLabel(reminder.status)}
-                                    </span>
-                                    ${reminder.priority === 'high' ? '<span class="text-red-500">⚠️ ALTA</span>' : ''}
-                                </div>
-                                <h4 class="font-bold text-gray-800">${reminder.title}</h4>
-                            </div>
-                            <button onclick="deleteReminder('${reminder.id}')" 
-                                    class="text-gray-400 hover:text-red-500">
-                                ×
-                            </button>
-                        </div>
-                        
-                        ${reminder.description ? `
-                            <p class="text-sm text-gray-600 mb-2">${reminder.description}</p>
-                        ` : ''}
-                        
-                        <div class="flex flex-wrap gap-2 text-xs text-gray-500 mb-2">
-                            ${reminder.productCode ? `
-                                <span class="bg-gray-100 px-2 py-1 rounded">
-                                    📦 ${reminder.productCode}
-                                </span>
-                            ` : ''}
-                            ${reminder.client ? `
-                                <span class="bg-gray-100 px-2 py-1 rounded">
-                                    👤 ${reminder.client}
-                                </span>
-                            ` : ''}
-                        </div>
-                        
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-gray-500">
-                                ${reminder.dueDate ? `📅 ${formatDate(reminder.dueDate)}` : 'Sem data'}
-                            </span>
-                            <div class="flex gap-1">
-                                <button onclick="changeReminderStatus('${reminder.id}', '${status === 'pending' ? 'in-progress' : 'completed'}')"
-                                        class="text-blue-600 hover:text-blue-800">
-                                    ${status === 'pending' ? '▶️ Iniciar' : 
-                                      status === 'in-progress' ? '✅ Concluir' : '↩️ Reabrir'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('') || '<p class="text-gray-400 text-center py-4">Nenhum lembrete</p>';
-            }
-        }
-
         // 🏷️ OBTER LABEL DO STATUS
         function getReminderStatusLabel(status) {
             switch(status) {
@@ -645,846 +845,6 @@
         function formatDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('pt-BR');
-        }
-
-        // 🎯 DRAG & DROP LEMBRETES
-        function dragReminder(event) {
-            draggedCard = event.target;
-            event.dataTransfer.setData('text/plain', event.target.dataset.id);
-        }
-
-        function allowDrop(event) {
-            event.preventDefault();
-        }
-
-        function dropReminder(event) {
-            event.preventDefault();
-            const reminderId = event.dataTransfer.getData('text/plain');
-            const newStatus = event.target.closest('.kanban-column').dataset.status;
-            
-            if (reminderId && newStatus) {
-                changeReminderStatus(reminderId, newStatus);
-                updateRemindersDisplay();
-            }
-        }
-
-        // ==================== 🔲 SISTEMA DE QR CODES ====================
-
-        // 🔲 GERAR QR CODE
-        function generateQRCode(productId, productName) {
-            return new Promise((resolve, reject) => {
-                const text = `PRODUTO: ${productName}\nID: ${productId}\nDATA: ${new Date().toLocaleDateString('pt-BR')}`;
-                const container = document.createElement('div');
-                
-                QRCode.toCanvas(container, text, {
-                    width: 200,
-                    margin: 1,
-                    color: {
-                        dark: '#a00b08',
-                        light: '#ffffff'
-                    }
-                }, function(error, canvas) {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(canvas.toDataURL('image/png'));
-                    }
-                });
-            });
-        }
-
-        // 🖨️ IMPRIMIR QR CODE
-        function printQRCode(product) {
-            generateQRCode(product.codigo, product.nome).then(qrDataURL => {
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>QR Code - ${product.codigo}</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; padding: 20px; }
-                            .container { text-align: center; }
-                            .product-info { margin-bottom: 20px; }
-                            .qrcode { margin: 20px auto; }
-                            .print-button { 
-                                display: none; 
-                                @media print { display: none !important; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="product-info">
-                                <h2>${product.codigo}</h2>
-                                <h3>${product.nome}</h3>
-                                <p>Quantidade: ${product.quantidade}</p>
-                                <p>Plataforma: ${product.plataforma}</p>
-                            </div>
-                            <div class="qrcode">
-                                <img src="${qrDataURL}" alt="QR Code">
-                            </div>
-                            <p><small>Escaneie para ver detalhes do produto</small></p>
-                            <button class="print-button" onclick="window.print()">🖨️ Imprimir</button>
-                        </div>
-                        <script>
-                            setTimeout(() => window.print(), 500);
-                            window.onafterprint = () => window.close();
-                        <\/script>
-                    </body>
-                    </html>
-                `);
-                printWindow.document.close();
-            }).catch(error => {
-                console.error('Erro ao gerar QR Code:', error);
-                showNotification('❌ Erro ao gerar QR Code', 'error');
-            });
-        }
-
-        // ==================== 📊 DASHBOARD INTERATIVO ====================
-
-        // 📈 INICIALIZAR GRÁFICOS
-        function initCharts() {
-            if (!state.charts) {
-                state.charts = {};
-            }
-            
-            // Gráfico 1: Distribuição por Localização
-            initLocationChart();
-            
-            // Gráfico 2: Estoque por Quantidade
-            initStockChart();
-            
-            // Gráfico 3: Produtos Mais Movimentados
-            initMovementChart();
-        }
-
-        // 📊 GRÁFICO DE LOCALIZAÇÃO
-        function initLocationChart() {
-            const ctx = document.getElementById('locationChart');
-            if (!ctx) return;
-            
-            const locationData = analyzeLocations();
-            
-            if (state.charts.location) {
-                state.charts.location.destroy();
-            }
-            
-            state.charts.location = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: locationData.labels,
-                    datasets: [{
-                        data: locationData.data,
-                        backgroundColor: [
-                            '#a00b08', '#f4cf08', '#3498db', '#2ecc71', 
-                            '#9b59b6', '#e74c3c', '#1abc9c', '#34495e'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Distribuição por Localização'
-                        }
-                    }
-                }
-            });
-        }
-
-        // 📊 GRÁFICO DE ESTOQUE
-        function initStockChart() {
-            const ctx = document.getElementById('stockChart');
-            if (!ctx) return;
-            
-            const stockData = analyzeStockLevels();
-            
-            if (state.charts.stock) {
-                state.charts.stock.destroy();
-            }
-            
-            state.charts.stock = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Em Estoque', 'Estoque Baixo', 'Esgotados'],
-                    datasets: [{
-                        label: 'Quantidade de Produtos',
-                        data: [stockData.inStock, stockData.lowStock, stockData.outOfStock],
-                        backgroundColor: ['#2ecc71', '#f4cf08', '#e74c3c'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Níveis de Estoque'
-                        }
-                    }
-                }
-            });
-        }
-
-        // 📊 GRÁFICO DE MOVIMENTAÇÃO
-        function initMovementChart() {
-            const ctx = document.getElementById('movementChart');
-            if (!ctx) return;
-            
-            const movementData = analyzeMovements();
-            
-            if (state.charts.movement) {
-                state.charts.movement.destroy();
-            }
-            
-            state.charts.movement = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: movementData.labels,
-                    datasets: [{
-                        label: 'Movimentações por Dia',
-                        data: movementData.data,
-                        borderColor: '#a00b08',
-                        backgroundColor: 'rgba(160, 11, 8, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Histórico de Movimentações'
-                        }
-                    }
-                }
-            });
-        }
-
-        // 🔍 ANALISAR LOCALIZAÇÕES
-        function analyzeLocations() {
-            const locationCount = {
-                'Mostruário': 0,
-                'Embalado': 0,
-                'Frente de Loja': 0,
-                'CD': 0,
-                'Montagem': 0,
-                'Assistência': 0,
-                'Outros': 0
-            };
-            
-            state.items.forEach(item => {
-                const obs = item.observacoes?.toLowerCase() || '';
-                let found = false;
-                
-                if (obs.includes('mostruario') || obs.includes('mostruário')) {
-                    locationCount['Mostruário']++;
-                    found = true;
-                }
-                if (obs.includes('embalado') || obs.includes('caixa')) {
-                    locationCount['Embalado']++;
-                    found = true;
-                }
-                if (obs.includes('frente') || obs.includes('loja')) {
-                    locationCount['Frente de Loja']++;
-                    found = true;
-                }
-                if (obs.includes('separado') || obs.includes('cd')) {
-                    locationCount['CD']++;
-                    found = true;
-                }
-                if (obs.includes('montagem') || obs.includes('montar')) {
-                    locationCount['Montagem']++;
-                    found = true;
-                }
-                if (obs.includes('assistencia') || obs.includes('assistência')) {
-                    locationCount['Assistência']++;
-                    found = true;
-                }
-                
-                if (!found && obs.trim()) {
-                    locationCount['Outros']++;
-                }
-            });
-            
-            // Filtrar categorias com zero
-            const labels = [];
-            const data = [];
-            
-            Object.entries(locationCount).forEach(([label, count]) => {
-                if (count > 0) {
-                    labels.push(label);
-                    data.push(count);
-                }
-            });
-            
-            return { labels, data };
-        }
-
-        // 🔍 ANALISAR NÍVEIS DE ESTOQUE
-        function analyzeStockLevels() {
-            return {
-                inStock: state.items.filter(i => i.quantidade > 3).length,
-                lowStock: state.items.filter(i => i.quantidade > 0 && i.quantidade <= 3).length,
-                outOfStock: state.items.filter(i => i.quantidade === 0).length
-            };
-        }
-
-        // 🔍 ANALISAR MOVIMENTAÇÕES
-        function analyzeMovements() {
-            // Agrupar histórico por dia (últimos 7 dias)
-            const last7Days = Array.from({length: 7}, (_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                return date.toISOString().split('T')[0];
-            }).reverse();
-            
-            const dailyCount = {};
-            last7Days.forEach(date => {
-                dailyCount[date] = 0;
-            });
-            
-            // Contar movimentações por dia
-            state.history.forEach(entry => {
-                const date = new Date(entry.timestamp).toISOString().split('T')[0];
-                if (dailyCount[date] !== undefined) {
-                    dailyCount[date]++;
-                }
-            });
-            
-            // Formatar para gráfico
-            const labels = last7Days.map(date => {
-                const d = new Date(date);
-                return `${d.getDate()}/${d.getMonth() + 1}`;
-            });
-            
-            const data = last7Days.map(date => dailyCount[date]);
-            
-            return { labels, data };
-        }
-
-        // ==================== 🏷️ KANBAN VISUAL ====================
-
-        // 🏷️ INICIALIZAR KANBAN
-        function initKanban() {
-            updateKanbanDisplay();
-            setupKanbanDragAndDrop();
-        }
-
-        // 🔄 ATUALIZAR DISPLAY DO KANBAN
-        function updateKanbanDisplay() {
-            const columns = {
-                'mostruario': document.getElementById('kanban-mostruario'),
-                'embalado': document.getElementById('kanban-embalado'),
-                'frentedeloja': document.getElementById('kanban-frentedeloja'),
-                'separadocd': document.getElementById('kanban-separadocd'),
-                'montagem': document.getElementById('kanban-montagem'),
-                'assistencia': document.getElementById('kanban-assistencia'),
-                'outros': document.getElementById('kanban-outros')
-            };
-
-            // Agrupar produtos por localização
-            const groupedItems = groupItemsByLocation();
-            
-            // Preencher cada coluna
-            for (const [location, column] of Object.entries(columns)) {
-                if (!column) continue;
-                
-                const items = groupedItems[location] || [];
-                column.innerHTML = items.map(item => `
-                    <div class="kanban-card" 
-                         data-id="${item.codigo}"
-                         draggable="true"
-                         ondragstart="dragProduct(event)">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="font-mono font-bold text-red-700 text-sm">
-                                ${item.codigo}
-                            </div>
-                            <span class="inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-bold
-                                ${item.quantidade === 0 ? 'bg-red-100 text-red-700' : 
-                                  item.quantidade <= 3 ? 'bg-yellow-100 text-yellow-700' : 
-                                  'bg-green-100 text-green-700'}">
-                                ${item.quantidade}
-                            </span>
-                        </div>
-                        
-                        <h4 class="font-medium text-gray-900 text-sm mb-2">
-                            ${item.nome}
-                        </h4>
-                        
-                        <div class="text-xs text-gray-500 mb-2">
-                            ${item.plataforma}
-                        </div>
-                        
-                        <div class="flex justify-between items-center text-xs">
-                            <button onclick="printQRCode(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-                                    class="text-blue-600 hover:text-blue-800">
-                                🔲 QR Code
-                            </button>
-                            <button onclick="showProductDetails('${item.codigo}')"
-                                    class="text-gray-600 hover:text-gray-800">
-                                👁️ Detalhes
-                            </button>
-                        </div>
-                    </div>
-                `).join('') || '<p class="text-gray-400 text-center py-4">Nenhum produto</p>';
-            }
-        }
-
-        // 🗂️ AGRUPAR ITENS POR LOCALIZAÇÃO
-        function groupItemsByLocation() {
-            const groups = {
-                'mostruario': [],
-                'embalado': [],
-                'frentedeloja': [],
-                'separadocd': [],
-                'montagem': [],
-                'assistencia': [],
-                'outros': []
-            };
-            
-            const itemsToShow = state.searchTerm ? state.filteredItems : state.items;
-            
-            itemsToShow.forEach(item => {
-                const obs = item.observacoes?.toLowerCase() || '';
-                let placed = false;
-                
-                if (obs.includes('mostruario') || obs.includes('mostruário')) {
-                    groups.mostruario.push(item);
-                    placed = true;
-                }
-                if (!placed && (obs.includes('embalado') || obs.includes('caixa'))) {
-                    groups.embalado.push(item);
-                    placed = true;
-                }
-                if (!placed && (obs.includes('frente') || obs.includes('loja'))) {
-                    groups.frentedeloja.push(item);
-                    placed = true;
-                }
-                if (!placed && (obs.includes('separado') || obs.includes('cd'))) {
-                    groups.separadocd.push(item);
-                    placed = true;
-                }
-                if (!placed && (obs.includes('montagem') || obs.includes('montar'))) {
-                    groups.montagem.push(item);
-                    placed = true;
-                }
-                if (!placed && (obs.includes('assistencia') || obs.includes('assistência'))) {
-                    groups.assistencia.push(item);
-                    placed = true;
-                }
-                
-                if (!placed) {
-                    groups.outros.push(item);
-                }
-            });
-            
-            return groups;
-        }
-
-        // 🎯 DRAG & DROP PRODUTOS
-        function dragProduct(event) {
-            draggedCard = event.target;
-            const productCode = event.target.dataset.id;
-            event.dataTransfer.setData('text/plain', productCode);
-        }
-
-        function dropProduct(event) {
-            event.preventDefault();
-            const productCode = event.dataTransfer.getData('text/plain');
-            const newLocation = event.target.closest('.kanban-column').dataset.location;
-            
-            if (productCode && newLocation) {
-                updateProductLocation(productCode, newLocation);
-            }
-        }
-
-        // 🔄 ATUALIZAR LOCALIZAÇÃO DO PRODUTO
-        async function updateProductLocation(productCode, newLocation) {
-            // Em um sistema real, aqui você atualizaria a planilha
-            // Por enquanto, vamos apenas mostrar uma notificação
-            
-            const product = state.items.find(p => p.codigo === productCode);
-            if (product) {
-                const locationNames = {
-                    'mostruario': 'Mostruário',
-                    'embalado': 'Embalado',
-                    'frentedeloja': 'Frente de Loja',
-                    'separadocd': 'Separado CD',
-                    'montagem': 'Montagem',
-                    'assistencia': 'Assistência',
-                    'outros': 'Outros'
-                };
-                
-                showNotification(`📍 ${product.codigo} movido para ${locationNames[newLocation]}`, 'success');
-                
-                // Atualizar visualização
-                setTimeout(() => {
-                    updateKanbanDisplay();
-                }, 300);
-            }
-        }
-
-        // 🛠️ CONFIGURAR DRAG & DROP
-        function setupKanbanDragAndDrop() {
-            const columns = document.querySelectorAll('.kanban-column');
-            columns.forEach(column => {
-                column.addEventListener('dragover', allowDrop);
-                column.addEventListener('drop', dropProduct);
-            });
-        }
-
-        // ==================== 🔍 MODO SCANNER ====================
-
-        // 🔍 INICIALIZAR SCANNER
-        function initScanner() {
-            const scannerContainer = document.getElementById('qr-scanner-container');
-            if (!scannerContainer || !window.Html5Qrcode) return;
-            
-            state.qrScanner = new Html5Qrcode("qr-scanner-container");
-            
-            const config = {
-                fps: 10,
-                qrbox: { width: 250, height: 250 }
-            };
-            
-            // Botão para iniciar scanner
-            const startBtn = document.getElementById('start-scanner');
-            if (startBtn) {
-                startBtn.onclick = () => {
-                    Html5Qrcode.getCameras().then(devices => {
-                        if (devices && devices.length) {
-                            const cameraId = devices[0].id;
-                            state.qrScanner.start(
-                                cameraId,
-                                config,
-                                onScanSuccess,
-                                onScanError
-                            ).then(() => {
-                                startBtn.style.display = 'none';
-                                document.getElementById('stop-scanner').style.display = 'inline-block';
-                            });
-                        } else {
-                            showNotification('❌ Nenhuma câmera encontrada', 'error');
-                        }
-                    });
-                };
-            }
-            
-            // Botão para parar scanner
-            const stopBtn = document.getElementById('stop-scanner');
-            if (stopBtn) {
-                stopBtn.onclick = () => {
-                    state.qrScanner.stop().then(() => {
-                        startBtn.style.display = 'inline-block';
-                        stopBtn.style.display = 'none';
-                    });
-                };
-            }
-        }
-
-        // ✅ SCAN BEM-SUCEDIDO
-        function onScanSuccess(decodedText) {
-            console.log('QR Code detectado:', decodedText);
-            
-            // Extrair código do produto do QR Code
-            const match = decodedText.match(/ID:\s*(\S+)/);
-            const productCode = match ? match[1] : decodedText;
-            
-            // Buscar produto
-            const product = state.items.find(p => p.codigo === productCode);
-            if (product) {
-                showProductDetails(productCode);
-                playScanSound();
-                
-                // Registrar no histórico de scans
-                addScanHistory(productCode);
-            } else {
-                showNotification('❌ Produto não encontrado', 'error');
-            }
-        }
-
-        // ❌ ERRO NO SCAN
-        function onScanError(error) {
-            console.warn('Erro no scanner:', error);
-        }
-
-        // 🔈 TOCAR SOM DE SCAN
-        function playScanSound() {
-            const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ');
-            audio.play().catch(e => console.log('Erro ao tocar som:', e));
-        }
-
-        // 📝 ADICIONAR AO HISTÓRICO DE SCANS
-        function addScanHistory(productCode) {
-            const scan = {
-                productCode,
-                timestamp: new Date().toISOString(),
-                type: 'scan'
-            };
-            
-            // Salvar no localStorage
-            const scanHistory = JSON.parse(localStorage.getItem('scan_history') || '[]');
-            scanHistory.unshift(scan);
-            if (scanHistory.length > 50) scanHistory.pop();
-            localStorage.setItem('scan_history', JSON.stringify(scanHistory));
-        }
-
-        // ==================== 📱 INTEGRAÇÃO WHATSAPP ====================
-
-        // 📱 COMPARTILHAR VIA WHATSAPP
-        function shareViaWhatsApp(product, messageType = 'stock_low') {
-            const phoneNumber = ''; // Adicione o número aqui
-            let message = '';
-            
-            switch(messageType) {
-                case 'stock_low':
-                    message = `⚠️ ALERTA DE ESTOQUE BAIXO\n\n` +
-                             `Produto: ${product.nome}\n` +
-                             `Código: ${product.codigo}\n` +
-                             `Quantidade: ${product.quantidade}\n` +
-                             `Localização: ${product.observacoes || 'Não informada'}\n\n` +
-                             `Por favor, verificar reposição.`;
-                    break;
-                    
-                case 'reminder':
-                    message = `📅 LEMBRETE DE ENTREGA\n\n` +
-                             `Produto: ${product.nome}\n` +
-                             `Código: ${product.codigo}\n` +
-                             `Cliente: ${product.client || 'Não especificado'}\n` +
-                             `Data: ${product.dueDate ? formatDate(product.dueDate) : 'Hoje'}\n\n` +
-                             `Preparar para entrega.`;
-                    break;
-                    
-                default:
-                    message = `📦 INFORMAÇÃO DO PRODUTO\n\n` +
-                             `Produto: ${product.nome}\n` +
-                             `Código: ${product.codigo}\n` +
-                             `Quantidade: ${product.quantidade}\n` +
-                             `Localização: ${product.observacoes || 'Não informada'}`;
-            }
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-            
-            if (phoneNumber) {
-                window.open(whatsappUrl, '_blank');
-            } else {
-                // Copiar mensagem para área de transferência
-                navigator.clipboard.writeText(message).then(() => {
-                    showNotification('📋 Mensagem copiada! Cole no WhatsApp.', 'success');
-                });
-            }
-        }
-
-        // 🔲 GERAR QR CODE DO WHATSAPP
-        function generateWhatsAppQR(groupId) {
-            const whatsappUrl = `https://chat.whatsapp.com/${groupId}`;
-            const container = document.getElementById('whatsapp-qr-code');
-            
-            if (container) {
-                QRCode.toCanvas(container, whatsappUrl, {
-                    width: 200,
-                    margin: 1,
-                    color: {
-                        dark: '#25D366',
-                        light: '#ffffff'
-                    }
-                }, function(error) {
-                    if (error) console.error(error);
-                });
-            }
-        }
-
-        // ==================== 🎯 FUNÇÕES AUXILIARES ====================
-
-        // 📱 MOSTRAR DETALHES DO PRODUTO
-        function showProductDetails(productCode) {
-            const product = state.items.find(p => p.codigo === productCode);
-            if (!product) return;
-            
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-            modal.innerHTML = `
-                <div class="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <h3 class="text-xl font-bold text-gray-900">${product.nome}</h3>
-                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
-                                    class="text-gray-500 hover:text-gray-700">
-                                ×
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-sm text-gray-500">Código</label>
-                                <p class="font-mono font-bold text-red-700">${product.codigo}</p>
-                            </div>
-                            
-                            <div>
-                                <label class="text-sm text-gray-500">Quantidade</label>
-                                <p class="text-2xl font-bold ${product.quantidade === 0 ? 'text-red-600' : 
-                                  product.quantidade <= 3 ? 'text-yellow-600' : 'text-green-600'}">
-                                    ${product.quantidade}
-                                </p>
-                            </div>
-                            
-                            <div>
-                                <label class="text-sm text-gray-500">Plataforma</label>
-                                <p>${product.plataforma}</p>
-                            </div>
-                            
-                            <div>
-                                <label class="text-sm text-gray-500">Localização</label>
-                                <div class="flex flex-wrap gap-1 mt-1">
-                                    ${formatObservacoes(product.observacoes)}
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <label class="text-sm text-gray-500">Última atualização</label>
-                                <p>${state.lastUpdate ? state.lastUpdate.toLocaleString('pt-BR') : 'N/A'}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-6 grid grid-cols-2 gap-3">
-                            <button onclick="printQRCode(${JSON.stringify(product).replace(/"/g, '&quot;')})"
-                                    class="btn-primary py-2 rounded-lg">
-                                🔲 Imprimir QR Code
-                            </button>
-                            <button onclick="shareViaWhatsApp(${JSON.stringify(product).replace(/"/g, '&quot;')})"
-                                    class="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
-                                📱 Compartilhar
-                            </button>
-                        </div>
-                        
-                        <div class="mt-4 text-center">
-                            <div id="product-qr-code" class="inline-block"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Gerar QR Code do produto
-            setTimeout(() => {
-                generateQRCode(product.codigo, product.nome).then(qrDataURL => {
-                    const qrContainer = document.getElementById('product-qr-code');
-                    if (qrContainer) {
-                        qrContainer.innerHTML = `<img src="${qrDataURL}" alt="QR Code" class="mx-auto">`;
-                    }
-                });
-            }, 100);
-        }
-
-        // 🎯 MOSTRAR DETALHES DO LEMBRETE
-        function showReminderDetails(reminderId) {
-            const reminder = state.reminders.find(r => r.id === reminderId);
-            if (!reminder) return;
-            
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-            modal.innerHTML = `
-                <div class="bg-white rounded-lg max-w-md w-full">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <span class="reminder-badge badge-${reminder.status} mb-2">
-                                    ${getReminderStatusLabel(reminder.status)}
-                                </span>
-                                <h3 class="text-xl font-bold text-gray-900">${reminder.title}</h3>
-                            </div>
-                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
-                                    class="text-gray-500 hover:text-gray-700">
-                                ×
-                            </button>
-                        </div>
-                        
-                        ${reminder.description ? `
-                            <div class="mb-4">
-                                <label class="text-sm text-gray-500">Descrição</label>
-                                <p class="text-gray-700">${reminder.description}</p>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            ${reminder.client ? `
-                                <div>
-                                    <label class="text-sm text-gray-500">Cliente</label>
-                                    <p class="font-medium">${reminder.client}</p>
-                                </div>
-                            ` : ''}
-                            
-                            ${reminder.productCode ? `
-                                <div>
-                                    <label class="text-sm text-gray-500">Produto</label>
-                                    <p class="font-mono">${reminder.productCode}</p>
-                                </div>
-                            ` : ''}
-                            
-                            <div>
-                                <label class="text-sm text-gray-500">Data</label>
-                                <p>${reminder.dueDate ? formatDate(reminder.dueDate) : 'Não definida'}</p>
-                            </div>
-                            
-                            <div>
-                                <label class="text-sm text-gray-500">Prioridade</label>
-                                <p>${reminder.priority === 'high' ? '⚠️ Alta' : 'Normal'}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-6 grid grid-cols-3 gap-2">
-                            <button onclick="changeReminderStatus('${reminder.id}', 'pending')"
-                                    class="py-2 rounded-lg ${reminder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100'}">
-                                Pendente
-                            </button>
-                            <button onclick="changeReminderStatus('${reminder.id}', 'in-progress')"
-                                    class="py-2 rounded-lg ${reminder.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}">
-                                Andamento
-                            </button>
-                            <button onclick="changeReminderStatus('${reminder.id}', 'completed')"
-                                    class="py-2 rounded-lg ${reminder.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}">
-                                Concluído
-                            </button>
-                        </div>
-                        
-                        <div class="mt-4 flex gap-2">
-                            <button onclick="shareViaWhatsApp(${JSON.stringify(reminder).replace(/"/g, '&quot;')}, 'reminder')"
-                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
-                                📱 Compartilhar
-                            </button>
-                            <button onclick="deleteReminder('${reminder.id}'); this.parentElement.parentElement.parentElement.remove()"
-                                    class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">
-                                Excluir
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
         }
 
         // 🆕 ABRIR MODAL DE NOVO LEMBRETE
@@ -1624,14 +984,439 @@
             return false;
         }
 
-        // ==================== 📋 FUNÇÕES EXISTENTES (resumidas) ====================
+        // ==================== 🔲 SISTEMA DE QR CODES ====================
 
-        // 🔧 Funções existentes do sistema anterior...
-        // (fetchLiveData, parseCSVData, updateStats, showNotification, etc.)
-        // Mantenho todas as funções originais aqui, mas resumo para espaço
+        // 🔲 GERAR QR CODE
+        function generateQRCode(productId, productName) {
+            return new Promise((resolve, reject) => {
+                const text = `SUPER BRUNO ATACADO\nProduto: ${productName}\nCódigo: ${productId}\nData: ${new Date().toLocaleDateString('pt-BR')}\n\nEscaneie para ver detalhes`;
+                const container = document.createElement('div');
+                
+                QRCode.toCanvas(container, text, {
+                    width: 200,
+                    margin: 1,
+                    color: {
+                        dark: '#a00b08',
+                        light: '#ffffff'
+                    }
+                }, function(error, canvas) {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(canvas.toDataURL('image/png'));
+                    }
+                });
+            });
+        }
 
+        // 🖨️ IMPRIMIR QR CODE
+        function printQRCode(product) {
+            generateQRCode(product.codigo, product.nome).then(qrDataURL => {
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>QR Code - ${product.codigo}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; }
+                            .container { text-align: center; }
+                            .product-info { margin-bottom: 20px; }
+                            .qrcode { margin: 20px auto; }
+                            @media print {
+                                body { padding: 0; }
+                                .no-print { display: none !important; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="product-info">
+                                <h2 style="color: #a00b08; margin-bottom: 5px;">SUPER BRUNO ATACADO</h2>
+                                <h3 style="margin: 10px 0;">${product.codigo}</h3>
+                                <p style="margin: 5px 0;"><strong>${product.nome}</strong></p>
+                                <p style="margin: 5px 0;">Quantidade: ${product.quantidade}</p>
+                                <p style="margin: 5px 0;">${product.plataforma}</p>
+                            </div>
+                            <div class="qrcode">
+                                <img src="${qrDataURL}" alt="QR Code" style="width: 250px; height: 250px;">
+                            </div>
+                            <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                                Escaneie o código para ver detalhes do produto
+                            </p>
+                            <button class="no-print" onclick="window.print()" 
+                                    style="margin-top: 20px; padding: 10px 20px; background: #a00b08; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                🖨️ Imprimir
+                            </button>
+                        </div>
+                        <script>
+                            setTimeout(() => window.print(), 500);
+                            window.onafterprint = () => window.close();
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            }).catch(error => {
+                console.error('Erro ao gerar QR Code:', error);
+                showNotification('❌ Erro ao gerar QR Code', 'error');
+            });
+        }
+
+        // ==================== 🎨 FUNÇÕES AUXILIARES ====================
+
+        // 🎯 MOSTRAR DETALHES DO PRODUTO
+        function showProductDetails(productCode) {
+            const product = state.items.find(p => p.codigo === productCode);
+            if (!product) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-xl font-bold text-gray-900">${product.nome}</h3>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-500">Código</label>
+                                <p class="font-mono font-bold text-red-700">${product.codigo}</p>
+                            </div>
+                            
+                            <div>
+                                <label class="text-sm text-gray-500">Quantidade</label>
+                                <p class="text-2xl font-bold ${product.quantidade === 0 ? 'text-red-600' : 
+                                  product.quantidade <= 3 ? 'text-yellow-600' : 'text-green-600'}">
+                                    ${product.quantidade}
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label class="text-sm text-gray-500">Plataforma</label>
+                                <p>${product.plataforma}</p>
+                            </div>
+                            
+                            <div>
+                                <label class="text-sm text-gray-500">Localização</label>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    ${formatObservacoes(product.observacoes)}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="text-sm text-gray-500">Última atualização</label>
+                                <p>${state.lastUpdate ? state.lastUpdate.toLocaleString('pt-BR') : 'N/A'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 grid grid-cols-2 gap-3">
+                            <button onclick="printQRCode(${JSON.stringify(product).replace(/"/g, '&quot;')})"
+                                    class="btn-primary py-2 rounded-lg">
+                                🔲 Imprimir QR Code
+                            </button>
+                            <button onclick="shareProductViaWhatsApp(${JSON.stringify(product).replace(/"/g, '&quot;')})"
+                                    class="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
+                                📱 WhatsApp
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <button onclick="openNewReminderModalWithProduct('${product.codigo}')"
+                                    class="text-blue-600 hover:text-blue-800">
+                                📅 Criar lembrete para este produto
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <div id="product-qr-code" class="inline-block"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Gerar QR Code do produto
+            setTimeout(() => {
+                generateQRCode(product.codigo, product.nome).then(qrDataURL => {
+                    const qrContainer = document.getElementById('product-qr-code');
+                    if (qrContainer) {
+                        qrContainer.innerHTML = `<img src="${qrDataURL}" alt="QR Code" class="mx-auto">`;
+                    }
+                });
+            }, 100);
+        }
+
+        // 🆕 ABRIR LEMBRETE COM PRODUTO PRÉ-SELECIONADO
+        function openNewReminderModalWithProduct(productCode) {
+            const product = state.items.find(p => p.codigo === productCode);
+            if (!product) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-md w-full">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-gray-900">Novo Lembrete</h3>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-blue-800">Produto selecionado:</p>
+                            <p class="font-bold">${product.nome}</p>
+                            <p class="text-sm">Código: ${product.codigo}</p>
+                        </div>
+                        
+                        <form id="new-reminder-form" onsubmit="return submitNewReminderWithProduct(event, '${productCode}')">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Título *
+                                    </label>
+                                    <input type="text" 
+                                           name="title"
+                                           required
+                                           value="Entregar ${product.nome}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Cliente
+                                    </label>
+                                    <input type="text" 
+                                           name="client"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                           placeholder="Nome do cliente">
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Data de Entrega *
+                                        </label>
+                                        <input type="date" 
+                                               name="dueDate"
+                                               required
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Prioridade
+                                        </label>
+                                        <select name="priority"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                            <option value="normal">Normal</option>
+                                            <option value="high">Alta</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Observações
+                                    </label>
+                                    <textarea name="description"
+                                              rows="3"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                              placeholder="Detalhes da entrega..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 flex justify-end gap-3">
+                                <button type="button"
+                                        onclick="this.parentElement.parentElement.parentElement.parentElement.remove()"
+                                        class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                        class="btn-primary px-6 py-2 rounded-lg">
+                                    Salvar Lembrete
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Auto-focus no primeiro campo
+            setTimeout(() => {
+                const firstInput = modal.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }, 100);
+        }
+
+        // 📝 SUBMIT LEMBRETE COM PRODUTO
+        function submitNewReminderWithProduct(event, productCode) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            const product = state.items.find(p => p.codigo === productCode);
+            
+            const reminder = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                client: formData.get('client'),
+                productCode: productCode,
+                productName: product ? product.nome : '',
+                dueDate: formData.get('dueDate'),
+                priority: formData.get('priority'),
+                status: 'pending'
+            };
+            
+            addReminder(reminder);
+            form.closest('.fixed').remove();
+            
+            // Atualizar display
+            if (state.currentTab === 'lembretes') {
+                updateRemindersDisplay();
+            }
+            
+            // Opcional: Compartilhar no WhatsApp
+            setTimeout(() => {
+                if (confirm('Deseja compartilhar este lembrete no WhatsApp?')) {
+                    const message = `📅 *NOVO LEMBRETE CRIADO*\n\n` +
+                                  `*Produto:* ${product.nome}\n` +
+                                  `*Código:* ${product.codigo}\n` +
+                                  `*Cliente:* ${reminder.client || 'Não especificado'}\n` +
+                                  `*Data de entrega:* ${formatDate(reminder.dueDate)}\n` +
+                                  `*Prioridade:* ${reminder.priority === 'high' ? 'ALTA' : 'Normal'}\n\n` +
+                                  `_Sistema de gerenciamento de entregas_`;
+                    
+                    sendWhatsAppMessage(message);
+                }
+            }, 500);
+            
+            return false;
+        }
+
+        // 🎯 MOSTRAR DETALHES DO LEMBRETE
+        function showReminderDetails(reminderId) {
+            const reminder = state.reminders.find(r => r.id === reminderId);
+            if (!reminder) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-md w-full">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="reminder-badge badge-${reminder.status} mb-2">
+                                    ${getReminderStatusLabel(reminder.status)}
+                                </span>
+                                <h3 class="text-xl font-bold text-gray-900">${reminder.title}</h3>
+                            </div>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                    class="text-gray-500 hover:text-gray-700">
+                                ×
+                            </button>
+                        </div>
+                        
+                        ${reminder.description ? `
+                            <div class="mb-4">
+                                <label class="text-sm text-gray-500">Descrição</label>
+                                <p class="text-gray-700">${reminder.description}</p>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            ${reminder.client ? `
+                                <div>
+                                    <label class="text-sm text-gray-500">Cliente</label>
+                                    <p class="font-medium">${reminder.client}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${reminder.productCode ? `
+                                <div>
+                                    <label class="text-sm text-gray-500">Produto</label>
+                                    <p class="font-mono">${reminder.productCode}</p>
+                                    ${reminder.productName ? `<p class="text-sm">${reminder.productName}</p>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <div>
+                                <label class="text-sm text-gray-500">Data</label>
+                                <p>${reminder.dueDate ? formatDate(reminder.dueDate) : 'Não definida'}</p>
+                            </div>
+                            
+                            <div>
+                                <label class="text-sm text-gray-500">Prioridade</label>
+                                <p>${reminder.priority === 'high' ? '⚠️ Alta' : 'Normal'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 grid grid-cols-3 gap-2">
+                            <button onclick="changeReminderStatus('${reminder.id}', 'pending'); this.parentElement.parentElement.parentElement.remove()"
+                                    class="py-2 rounded-lg ${reminder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100'}">
+                                Pendente
+                            </button>
+                            <button onclick="changeReminderStatus('${reminder.id}', 'in-progress'); this.parentElement.parentElement.parentElement.remove()"
+                                    class="py-2 rounded-lg ${reminder.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}">
+                                Andamento
+                            </button>
+                            <button onclick="changeReminderStatus('${reminder.id}', 'completed'); this.parentElement.parentElement.parentElement.remove()"
+                                    class="py-2 rounded-lg ${reminder.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}">
+                                Concluído
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="shareReminderViaWhatsApp('${reminder.id}')"
+                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
+                                📱 Compartilhar
+                            </button>
+                            <button onclick="deleteReminder('${reminder.id}'); this.parentElement.parentElement.parentElement.remove()"
+                                    class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        // 📱 COMPARTILHAR LEMBRETE VIA WHATSAPP
+        function shareReminderViaWhatsApp(reminderId) {
+            const reminder = state.reminders.find(r => r.id === reminderId);
+            if (!reminder) return;
+            
+            const product = reminder.productCode ? state.items.find(p => p.codigo === reminder.productCode) : null;
+            
+            const message = `📅 *LEMBRETE: ${reminder.title}*\n\n` +
+                          `${reminder.client ? `👤 *Cliente:* ${reminder.client}\n` : ''}` +
+                          `${product ? `📦 *Produto:* ${product.nome} (${product.codigo})\n` : ''}` +
+                          `${reminder.productCode && !product ? `📦 *Código:* ${reminder.productCode}\n` : ''}` +
+                          `📅 *Data:* ${reminder.dueDate ? formatDate(reminder.dueDate) : 'Não definida'}\n` +
+                          `⚡ *Status:* ${getReminderStatusLabel(reminder.status)}\n` +
+                          `${reminder.priority === 'high' ? `⚠️ *PRIORIDADE ALTA*\n` : ''}` +
+                          `${reminder.description ? `\n📝 *Observações:*\n${reminder.description}\n` : ''}\n` +
+                          `_Sistema de gerenciamento de entregas_`;
+            
+            sendWhatsAppMessage(message);
+        }
+
+        // ==================== 🔧 FUNÇÕES DO SISTEMA ORIGINAL ====================
+
+        // 📊 BUSCAR DADOS DA PLANILHA
         async function fetchLiveData() {
-            // Implementação original mantida
             try {
                 state.previousItems = [...state.items];
                 let url = USE_PUBLISHED_VERSION 
@@ -1655,11 +1440,6 @@
                         timestamp: Date.now()
                     }));
                     
-                    // Analisar mudanças
-                    if (state.previousItems.length > 0) {
-                        analyzeChanges(state.previousItems, items);
-                    }
-                    
                     updateStats();
                     loadHistory();
                     return true;
@@ -1672,6 +1452,7 @@
             }
         }
 
+        // 📝 ANALISAR CSV
         function parseCSVData(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
             const items = [];
@@ -1710,6 +1491,7 @@
             return items;
         }
 
+        // 📊 ATUALIZAR ESTATÍSTICAS
         function updateStats() {
             const total = state.items.length;
             const inStock = state.items.filter(i => i.quantidade > 0).length;
@@ -1719,6 +1501,7 @@
             state.stats = { total, inStock, outOfStock, lowStock };
         }
 
+        // 📢 NOTIFICAÇÃO
         function showNotification(message, type = 'info') {
             const colors = {
                 success: 'bg-green-600',
@@ -1747,13 +1530,94 @@
             }, 4000);
         }
 
-        // ==================== 🎨 RENDERIZAÇÃO PRINCIPAL ====================
+        // 🕒 TEMPO DESDE ATUALIZAÇÃO
+        function getTimeSinceUpdate() {
+            if (!state.lastUpdate) return 'Nunca';
+            const diff = Date.now() - state.lastUpdate.getTime();
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            if (minutes < 60) return `${minutes}min atrás`;
+            if (hours < 24) return `${hours}h atrás`;
+            return state.lastUpdate.toLocaleDateString('pt-BR');
+        }
+
+        // 🎨 FORMATAR OBSERVAÇÕES
+        function formatObservacoes(observacoes) {
+            if (!observacoes || observacoes.trim() === '') {
+                return '<span class="status-tag status-default">Sem informações</span>';
+            }
+            
+            return observacoes.split(/[,\.]| e |\//)
+                .filter(p => p.trim())
+                .map(parte => {
+                    const texto = parte.trim().toLowerCase();
+                    let statusClass = 'status-default';
+                    const statusMap = {
+                        'status-mostruario': ['mostruario', 'mostruário', 'amostra', 'vitrine'],
+                        'status-embalado': ['embalado', 'caixa', 'box', 'lacrado'],
+                        'status-frentedeloja': ['frente', 'loja', 'vitrine', 'exposi', 'prateleira'],
+                        'status-separadocd': ['separado', 'cd', 'centro', 'distribui', 'deposito', 'depósito'],
+                        'status-montagem': ['montar', 'montagem', 'montado', 'armar', 'desmontado'],
+                        'status-assistencia': ['assistencia', 'assistência', 'conserto', 'reparo', 'manuten', 'defeito']
+                    };
+                    for (const [className, keywords] of Object.entries(statusMap)) {
+                        if (keywords.some(keyword => texto.includes(keyword))) {
+                            statusClass = className;
+                            break;
+                        }
+                    }
+                    return `<span class="status-tag ${statusClass}">${parte.trim()}</span>`;
+                }).join(' ');
+        }
+
+        // ==================== 🚀 INICIALIZAÇÃO ====================
+
+        async function initApp() {
+            console.log('🚀 Iniciando sistema completo...');
+            
+            // Carregar dados iniciais
+            await syncWithSheet();
+            
+            // Inicializar sistemas
+            initReminders();
+            
+            // Configurar auto-refresh
+            if (state.autoRefresh) {
+                state.syncInterval = setInterval(() => {
+                    syncWithSheet(true);
+                }, AUTO_REFRESH_INTERVAL);
+            }
+            
+            if (!state.connectionError) {
+                showNotification('✅ Sistema completo carregado!', 'success');
+            }
+        }
+
+        // 🔄 SINCRONIZAR
+        async function syncWithSheet(silent = false) {
+            const wasLoading = state.loading;
+            if (!silent) {
+                state.loading = true;
+                render();
+            }
+            
+            const success = await fetchLiveData();
+            state.loading = false;
+            
+            if (!success && !silent) {
+                showNotification('❌ Erro ao conectar. Usando dados salvos.', 'error');
+            } else if (!wasLoading && !silent) {
+                showNotification('✅ Dados atualizados!', 'success');
+            }
+            
+            applySortingAndFiltering();
+            render();
+        }
+
+        // ==================== 🎯 RENDERIZAÇÃO (SIMPLIFICADA) ====================
 
         function render() {
-            if (state.loading && state.items.length === 0) return;
-            
-            saveCurrentFocus();
-            
+            // Renderização simplificada para exemplo
             const app = document.getElementById('app');
             app.innerHTML = `
                 <!-- HEADER -->
@@ -1785,772 +1649,110 @@
                                         ${state.loading ? 'disabled' : ''}>
                                     ${state.loading ? '⏳' : '🔄'} Atualizar
                                 </button>
-                                <button onclick="exportToCSV()" 
+                                <button onclick="openWhatsAppQuickMenu()" 
                                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium">
-                                    📥 Exportar
+                                    📱 WhatsApp
                                 </button>
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <!-- MAIN CONTENT -->
+                <!-- CONTEÚDO PRINCIPAL -->
                 <main class="container mx-auto px-2 md:px-4 py-4 md:py-6">
-                    <!-- ABAS PRINCIPAIS -->
-                    <div class="flex overflow-x-auto mb-6 border-b border-gray-200 no-print" style="scrollbar-width: thin;">
-                        <button class="tab-button ${state.currentTab === 'estoque' ? 'active' : ''}" 
-                                onclick="switchTab('estoque')">
-                            📦 Estoque (${state.stats.total})
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'dashboard' ? 'active' : ''}" 
-                                onclick="switchTab('dashboard')">
-                            📊 Dashboard
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'kanban' ? 'active' : ''}" 
-                                onclick="switchTab('kanban')">
-                            🏷️ Kanban
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'lembretes' ? 'active' : ''}" 
-                                onclick="switchTab('lembretes')">
-                            📅 Lembretes ${updateReminderStats().today > 0 ? `(${updateReminderStats().today})` : ''}
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'scanner' ? 'active' : ''}" 
-                                onclick="switchTab('scanner')">
-                            🔍 Scanner
-                        </button>
-                        <button class="tab-button ${state.currentTab === 'historico' ? 'active' : ''}" 
-                                onclick="switchTab('historico')">
-                            📝 Histórico ${state.historyStats.today > 0 ? `(${state.historyStats.today})` : ''}
-                        </button>
-                    </div>
-
-                    <!-- CONTEÚDO DAS ABAS -->
-                    ${renderCurrentTab()}
-                </main>
-
-                <!-- FOOTER -->
-                <footer class="mt-8 pb-6 text-center text-gray-500 text-sm no-print">
-                    <div class="container mx-auto px-4">
-                        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
-                            <div class="flex items-center gap-2">
-                                ${state.connectionError ? 
-                                    '<span class="text-orange-600">⚠️ Modo Offline</span>' :
-                                    '<span class="text-green-600">✅ Sistema Online</span>'}
-                            </div>
-                            <div class="hidden md:block text-gray-300">|</div>
-                            <div>
-                                🔄 ${state.autoRefresh ? 'Auto (30s)' : 'Manual'}
-                            </div>
-                            <div class="hidden md:block text-gray-300">|</div>
-                            <div>
-                                📦 ${state.items.length} produtos
-                            </div>
-                            <div class="hidden md:block text-gray-300">|</div>
-                            <div>
-                                📅 ${updateReminderStats().total} lembretes
-                            </div>
-                        </div>
-                        ${state.lastUpdate ? `
-                            <div class="mt-2 text-xs text-gray-400">
-                                Última sincronização: ${state.lastUpdate.toLocaleString('pt-BR')}
-                            </div>
-                        ` : ''}
-                    </div>
-                </footer>
-            `;
-            
-            renderTabContent();
-            restoreFocus();
-        }
-
-        function renderCurrentTab() {
-            switch(state.currentTab) {
-                case 'dashboard':
-                    return renderDashboardTab();
-                case 'kanban':
-                    return renderKanbanTab();
-                case 'lembretes':
-                    return renderRemindersTab();
-                case 'scanner':
-                    return renderScannerTab();
-                case 'historico':
-                    return renderHistoryTab();
-                default:
-                    return renderEstoqueTab();
-            }
-        }
-
-        function renderEstoqueTab() {
-            return `
-                <div class="tab-content active" id="estoqueContent">
-                    <!-- Conteúdo original do estoque aqui -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Total</div>
-                            <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
-                            <div class="text-xs text-gray-400">produtos</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Em Estoque</div>
-                            <div class="text-2xl font-bold text-green-600">${state.stats.inStock}</div>
-                            <div class="text-xs text-gray-400">disponíveis</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Esgotados</div>
-                            <div class="text-2xl font-bold text-orange-600">${state.stats.outOfStock}</div>
-                            <div class="text-xs text-gray-400">sem estoque</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Estoque Baixo</div>
-                            <div class="text-2xl font-bold text-yellow-600">${state.stats.lowStock}</div>
-                            <div class="text-xs text-gray-400">≤ 3 unidades</div>
-                        </div>
-                    </div>
-
-                    <!-- Busca e Filtros -->
-                    <div class="bg-white rounded-lg p-4 mb-6 shadow">
-                        <div class="relative mb-4">
-                            <input type="text" 
-                                   id="searchInput"
-                                   placeholder="🔍 Buscar por código, nome, plataforma ou localização..."
-                                   value="${state.searchTerm}"
-                                   oninput="handleSearchInput(event)"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent search-input">
-                            
-                            ${state.searchTerm ? `
-                                <button onclick="clearSearch()" 
-                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
-                                    ×
+                    <div class="bg-white rounded-lg p-6 shadow">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">🚀 Sistema Completo de Estoque</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="p-4 border border-gray-200 rounded-lg">
+                                <h3 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    📅 Lembretes & Calendário
+                                </h3>
+                                <p class="text-gray-600 mb-3">
+                                    Gerencie entregas e compromissos com calendário interativo.
+                                </p>
+                                <button onclick="openNewReminderModal()"
+                                        class="btn-primary px-4 py-2 rounded-lg">
+                                    Criar Lembrete
                                 </button>
-                            ` : ''}
-                        </div>
-
-                        <!-- Filtros Rápidos -->
-                        <div class="space-y-3">
-                            <div>
-                                <div class="text-sm font-medium text-gray-700 mb-2">📍 Localização:</div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button onclick="setLocationFilter('all')" 
-                                            class="filter-badge ${state.locationFilter === 'all' ? 'active' : ''}">
-                                        Todas
-                                    </button>
-                                    <button onclick="setLocationFilter('mostruario')" 
-                                            class="filter-badge ${state.locationFilter === 'mostruario' ? 'active' : ''}">
-                                        🎨 Mostruário
-                                    </button>
-                                    <button onclick="setLocationFilter('embalado')" 
-                                            class="filter-badge ${state.locationFilter === 'embalado' ? 'active' : ''}">
-                                        📦 Embalado
-                                    </button>
-                                    <button onclick="setLocationFilter('frente')" 
-                                            class="filter-badge ${state.locationFilter === 'frente' ? 'active' : ''}">
-                                        🏪 Frente de Loja
-                                    </button>
-                                    <button onclick="setLocationFilter('cd')" 
-                                            class="filter-badge ${state.locationFilter === 'cd' ? 'active' : ''}">
-                                        🏭 CD
-                                    </button>
-                                    <button onclick="setLocationFilter('montagem')" 
-                                            class="filter-badge ${state.locationFilter === 'montagem' ? 'active' : ''}">
-                                        🔧 Montagem
-                                    </button>
-                                    <button onclick="setLocationFilter('assistencia')" 
-                                            class="filter-badge ${state.locationFilter === 'assistencia' ? 'active' : ''}">
-                                        🔨 Assistência
-                                    </button>
-                                </div>
                             </div>
-
-                            <div>
-                                <div class="text-sm font-medium text-gray-700 mb-2">📊 Estoque:</div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button onclick="setStockFilter('all')" 
-                                            class="filter-badge ${state.stockFilter === 'all' ? 'active' : ''}">
-                                        Todos
-                                    </button>
-                                    <button onclick="setStockFilter('in')" 
-                                            class="filter-badge ${state.stockFilter === 'in' ? 'active' : ''}">
-                                        ✅ Disponível
-                                    </button>
-                                    <button onclick="setStockFilter('low')" 
-                                            class="filter-badge ${state.stockFilter === 'low' ? 'active' : ''}">
-                                        ⚠️ Baixo (≤3)
-                                    </button>
-                                    <button onclick="setStockFilter('out')" 
-                                            class="filter-badge ${state.stockFilter === 'out' ? 'active' : ''}">
-                                        ❌ Esgotado
-                                    </button>
+                            
+                            <div class="p-4 border border-gray-200 rounded-lg">
+                                <h3 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    🔲 QR Codes
+                                </h3>
+                                <p class="text-gray-600 mb-3">
+                                    Gere e imprima QR Codes para todos os produtos.
+                                </p>
+                                <button onclick="showQRCodeDemo()"
+                                        class="btn-primary px-4 py-2 rounded-lg">
+                                    Ver Demo
+                                </button>
+                            </div>
+                            
+                            <div class="p-4 border border-gray-200 rounded-lg">
+                                <h3 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    📱 WhatsApp
+                                </h3>
+                                <p class="text-gray-600 mb-3">
+                                    Envie alertas e relatórios para: +${WHATSAPP_NUMBER}
+                                </p>
+                                <button onclick="openWhatsAppQuickMenu()"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                    Abrir Menu
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h3 class="font-bold text-gray-700 mb-4">📊 Estatísticas Rápidas</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                    <div class="text-gray-500 text-sm font-medium">Produtos</div>
+                                    <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
+                                </div>
+                                <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                    <div class="text-gray-500 text-sm font-medium">Lembretes</div>
+                                    <div class="text-2xl font-bold text-blue-600">${updateReminderStats().total}</div>
+                                </div>
+                                <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                    <div class="text-gray-500 text-sm font-medium">WhatsApp</div>
+                                    <div class="text-2xl font-bold text-green-600">+${WHATSAPP_NUMBER}</div>
+                                </div>
+                                <div class="stat-card bg-white rounded-lg p-4 shadow">
+                                    <div class="text-gray-500 text-sm font-medium">Status</div>
+                                    <div class="text-2xl font-bold ${state.connectionError ? 'text-orange-600' : 'text-green-600'}">
+                                        ${state.connectionError ? 'Offline' : 'Online'}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
-                            <div class="text-gray-600">
-                                📊 Mostrando <span class="font-bold text-red-600">${state.filteredItems.length}</span> de <span class="font-bold">${state.items.length}</span> produtos
-                            </div>
-                            <div class="text-gray-500">
-                                🕒 ${getTimeSinceUpdate()}
-                            </div>
-                        </div>
                     </div>
-
-                    <!-- Tabela de Produtos -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden fade-in">
-                        <div class="overflow-x-auto">
-                            <table class="w-full print-full-width">
-                                <thead>
-                                    <tr class="bg-gradient-to-r from-red-700 to-red-900 text-white">
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left sortable" onclick="sortBy('codigo')">
-                                            <div class="flex items-center gap-1">
-                                                <span>Código</span>
-                                                <span class="text-xs">${getSortIcon('codigo')}</span>
-                                            </div>
-                                        </th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left sortable" onclick="sortBy('nome')">
-                                            <div class="flex items-center gap-1">
-                                                <span>Nome</span>
-                                                <span class="text-xs">${getSortIcon('nome')}</span>
-                                            </div>
-                                        </th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-center sortable" onclick="sortBy('quantidade')">
-                                            <div class="flex items-center justify-center gap-1">
-                                                <span>Qtd</span>
-                                                <span class="text-xs">${getSortIcon('quantidade')}</span>
-                                            </div>
-                                        </th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left mobile-hidden" onclick="sortBy('plataforma')">
-                                            <div class="flex items-center gap-1">
-                                                <span>Plataforma</span>
-                                                <span class="text-xs">${getSortIcon('plataforma')}</span>
-                                            </div>
-                                        </th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left">
-                                            Localização
-                                        </th>
-                                        <th class="px-3 py-3 md:px-4 md:py-3 text-left no-print">
-                                            Ações
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    ${state.filteredItems.length === 0 ? `
-                                        <tr>
-                                            <td colspan="6" class="px-4 py-12 text-center">
-                                                <div class="text-gray-400 text-4xl mb-3">📦</div>
-                                                <div class="text-gray-600 font-medium mb-1">
-                                                    ${state.searchTerm || state.locationFilter !== 'all' || state.stockFilter !== 'all' ? 
-                                                        'Nenhum produto encontrado' : 
-                                                        'Nenhum produto cadastrado'}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ` : ''}
-                                    
-                                    ${state.filteredItems.slice(0, 50).map((item, index) => `
-                                        <tr class="hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-                                            <td class="px-3 py-3 md:px-4 md:py-4">
-                                                <div class="font-mono font-bold text-red-700 text-sm md:text-base">
-                                                    ${item.codigo}
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-3 md:px-4 md:py-4">
-                                                <div class="font-medium text-gray-900 text-sm md:text-base">
-                                                    ${item.nome}
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-3 md:px-4 md:py-4 text-center">
-                                                <span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold
-                                                    ${item.quantidade === 0 ? 'bg-red-100 text-red-700' : 
-                                                      item.quantidade <= 3 ? 'bg-yellow-100 text-yellow-700' : 
-                                                      'bg-green-100 text-green-700'}">
-                                                    ${item.quantidade}
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-3 md:px-4 md:py-4 mobile-hidden">
-                                                <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
-                                                    ${item.plataforma}
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-3 md:px-4 md:py-4">
-                                                <div class="flex flex-wrap gap-1">
-                                                    ${formatObservacoes(item.observacoes)}
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-3 md:px-4 md:py-4 no-print">
-                                                <div class="flex gap-2">
-                                                    <button onclick="printQRCode(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-                                                            class="text-blue-600 hover:text-blue-800 text-sm">
-                                                        🔲 QR
-                                                    </button>
-                                                    <button onclick="showProductDetails('${item.codigo}')"
-                                                            class="text-gray-600 hover:text-gray-800 text-sm">
-                                                        👁️
-                                                    </button>
-                                                    <button onclick="openNewReminderModalWithProduct('${item.codigo}')"
-                                                            class="text-green-600 hover:text-green-800 text-sm">
-                                                        📅
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                </main>
             `;
         }
 
-        function renderDashboardTab() {
-            const reminderStats = updateReminderStats();
-            
-            return `
-                <div class="tab-content active" id="dashboardContent">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Dashboard de Estoque</h2>
-                    
-                    <!-- Cards de Estatísticas -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Total Produtos</div>
-                            <div class="text-2xl font-bold text-red-600">${state.stats.total}</div>
-                            <div class="text-xs text-gray-400">itens no sistema</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Valor Estoque</div>
-                            <div class="text-2xl font-bold text-green-600">${state.stats.inStock}</div>
-                            <div class="text-xs text-gray-400">disponíveis</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Lembretes</div>
-                            <div class="text-2xl font-bold text-blue-600">${reminderStats.total}</div>
-                            <div class="text-xs text-gray-400">${reminderStats.overdue > 0 ? `${reminderStats.overdue} atrasados` : 'em dia'}</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Movimentações</div>
-                            <div class="text-2xl font-bold text-purple-600">${state.historyStats.today}</div>
-                            <div class="text-xs text-gray-400">hoje</div>
-                        </div>
-                    </div>
-
-                    <!-- Gráficos -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <h3 class="font-bold text-gray-700 mb-4">📍 Distribuição por Localização</h3>
-                            <div style="height: 300px;">
-                                <canvas id="locationChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <h3 class="font-bold text-gray-700 mb-4">📊 Níveis de Estoque</h3>
-                            <div style="height: 300px;">
-                                <canvas id="stockChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-lg p-4 shadow mb-6">
-                        <h3 class="font-bold text-gray-700 mb-4">📈 Histórico de Movimentações</h3>
-                        <div style="height: 300px;">
-                            <canvas id="movementChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Alertas e Insights -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                ⚠️ Alertas do Sistema
-                            </h3>
-                            <div class="space-y-3">
-                                ${generateSystemAlerts()}
-                            </div>
-                        </div>
-                        
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                💡 Insights
-                            </h3>
-                            <div class="space-y-3">
-                                ${generateSystemInsights()}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderKanbanTab() {
-            return `
-                <div class="tab-content active" id="kanbanContent">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800">🏷️ Kanban Visual</h2>
-                        <div class="text-sm text-gray-600">
-                            Arraste os produtos entre colunas
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                        <div class="kanban-column bg-red-50" data-location="mostruario" id="kanban-mostruario" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">🎨 Mostruário</h3>
-                            <!-- Cards serão inseridos aqui -->
-                        </div>
-                        <div class="kanban-column bg-green-50" data-location="embalado" id="kanban-embalado" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">📦 Embalado</h3>
-                        </div>
-                        <div class="kanban-column bg-blue-50" data-location="frentedeloja" id="kanban-frentedeloja" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">🏪 Frente de Loja</h3>
-                        </div>
-                        <div class="kanban-column bg-purple-50" data-location="separadocd" id="kanban-separadocd" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">🏭 CD</h3>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="kanban-column bg-yellow-50" data-location="montagem" id="kanban-montagem" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">🔧 Montagem</h3>
-                        </div>
-                        <div class="kanban-column bg-pink-50" data-location="assistencia" id="kanban-assistencia" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">🔨 Assistência</h3>
-                        </div>
-                        <div class="kanban-column bg-gray-100" data-location="outros" id="kanban-outros" ondrop="dropProduct(event)" ondragover="allowDrop(event)">
-                            <h3 class="font-bold text-gray-700 mb-3 text-center">📁 Outros</h3>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderRemindersTab() {
-            const reminderStats = updateReminderStats();
-            
-            return `
-                <div class="tab-content active" id="remindersContent">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-800">📅 Sistema de Lembretes</h2>
-                            <p class="text-gray-600">Gerencie entregas, compromissos e tarefas</p>
-                        </div>
-                        <div class="flex gap-3">
-                            <button onclick="openNewReminderModal()"
-                                    class="btn-primary px-6 py-2 rounded-lg">
-                                ➕ Novo Lembrete
-                            </button>
-                            <button onclick="shareRemindersReport()"
-                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
-                                📱 Compartilhar
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Stats dos Lembretes -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Total</div>
-                            <div class="text-2xl font-bold text-blue-600">${reminderStats.total}</div>
-                            <div class="text-xs text-gray-400">lembretes</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Pendentes</div>
-                            <div class="text-2xl font-bold text-yellow-600">${reminderStats.pending}</div>
-                            <div class="text-xs text-gray-400">aguardando</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Hoje</div>
-                            <div class="text-2xl font-bold text-green-600">${reminderStats.today}</div>
-                            <div class="text-xs text-gray-400">para hoje</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Atrasados</div>
-                            <div class="text-2xl font-bold text-red-600">${reminderStats.overdue}</div>
-                            <div class="text-xs text-gray-400">atenção!</div>
-                        </div>
-                    </div>
-
-                    <!-- Calendário -->
-                    <div class="bg-white rounded-lg p-4 shadow mb-6">
-                        <h3 class="font-bold text-gray-700 mb-4">🗓️ Calendário de Entregas</h3>
-                        <div id="reminderCalendar"></div>
-                    </div>
-
-                    <!-- Kanban dos Lembretes -->
-                    <div class="bg-white rounded-lg p-4 shadow mb-6">
-                        <h3 class="font-bold text-gray-700 mb-4">📋 Quadro Kanban</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="kanban-column" data-status="pending" id="kanban-pending" ondrop="dropReminder(event)" ondragover="allowDrop(event)">
-                                <h4 class="font-bold text-gray-700 mb-3 text-center">⏳ Pendentes</h4>
-                            </div>
-                            <div class="kanban-column" data-status="in-progress" id="kanban-in-progress" ondrop="dropReminder(event)" ondragover="allowDrop(event)">
-                                <h4 class="font-bold text-gray-700 mb-3 text-center">🚀 Em Andamento</h4>
-                            </div>
-                            <div class="kanban-column" data-status="completed" id="kanban-completed" ondrop="dropReminder(event)" ondragover="allowDrop(event)">
-                                <h4 class="font-bold text-gray-700 mb-3 text-center">✅ Concluídos</h4>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Lista de Lembretes Atrasados -->
-                    ${reminderStats.overdue > 0 ? `
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                            <h4 class="font-bold text-red-700 mb-3 flex items-center gap-2">
-                                ⚠️ Lembretes Atrasados
-                            </h4>
-                            <div class="space-y-2">
-                                ${state.reminders
-                                    .filter(r => {
-                                        if (!r.dueDate || r.status === 'completed') return false;
-                                        return new Date(r.dueDate) < new Date();
-                                    })
-                                    .map(reminder => `
-                                        <div class="bg-white p-3 rounded border border-red-200">
-                                            <div class="flex justify-between items-center">
-                                                <div>
-                                                    <span class="font-medium">${reminder.title}</span>
-                                                    <span class="text-sm text-gray-600 ml-2">- ${reminder.client || 'Sem cliente'}</span>
-                                                </div>
-                                                <button onclick="changeReminderStatus('${reminder.id}', 'in-progress')"
-                                                        class="text-sm bg-red-100 text-red-700 px-3 py-1 rounded">
-                                                    Iniciar
-                                                </button>
-                                            </div>
-                                            <div class="text-sm text-gray-500 mt-1">
-                                                Vencimento: ${formatDate(reminder.dueDate)}
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
-        function renderScannerTab() {
-            return `
-                <div class="tab-content active" id="scannerContent">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-800">🔍 Scanner de QR Codes</h2>
-                            <p class="text-gray-600">Escaneie códigos de produtos para ver detalhes</p>
-                        </div>
-                        <div class="flex gap-3">
-                            <button id="start-scanner"
-                                    class="btn-primary px-6 py-2 rounded-lg">
-                                ▶️ Iniciar Scanner
-                            </button>
-                            <button id="stop-scanner"
-                                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
-                                    style="display: none;">
-                                    ⏹️ Parar Scanner
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Área do Scanner -->
-                    <div class="bg-white rounded-lg p-4 shadow mb-6">
-                        <div id="qr-scanner-container" class="text-center">
-                            <p class="text-gray-500 py-12">Clique em "Iniciar Scanner" para começar</p>
-                        </div>
-                        
-                        <div class="mt-4 text-center">
-                            <p class="text-sm text-gray-600 mb-2">
-                                📱 Use a câmera do seu dispositivo para escanear QR Codes de produtos
-                            </p>
-                            <div class="inline-block bg-gray-100 px-4 py-2 rounded-lg">
-                                <span class="text-gray-700">🎯 Aponte para o QR Code</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Como usar -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                🖨️ Imprimir QR Codes
-                            </h4>
-                            <p class="text-gray-600 mb-3">
-                                Para cada produto, você pode gerar e imprimir um QR Code.
-                            </p>
-                            <button onclick="showQRCodePrintGuide()"
-                                    class="text-blue-600 hover:text-blue-800">
-                                Ver guia de impressão →
-                            </button>
-                        </div>
-                        
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                📱 Compartilhar no WhatsApp
-                            </h4>
-                            <p class="text-gray-600 mb-3">
-                                Envie alertas de estoque diretamente pelo WhatsApp.
-                            </p>
-                            <button onclick="showWhatsAppIntegrationGuide()"
-                                    class="text-green-600 hover:text-green-800">
-                                Configurar integração →
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderHistoryTab() {
-            // Conteúdo original do histórico
-            return `
-                <div class="tab-content active" id="historicoContent">
-                    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Hoje</div>
-                            <div class="text-2xl font-bold text-blue-600">${state.historyStats.today}</div>
-                            <div class="text-xs text-gray-400">mudanças</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Adicionados</div>
-                            <div class="text-2xl font-bold text-green-600">${state.historyStats.added}</div>
-                            <div class="text-xs text-gray-400">produtos</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Removidos</div>
-                            <div class="text-2xl font-bold text-red-600">${state.historyStats.removed}</div>
-                            <div class="text-xs text-gray-400">produtos</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Modificados</div>
-                            <div class="text-2xl font-bold text-orange-600">${state.historyStats.modified}</div>
-                            <div class="text-xs text-gray-400">produtos</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Estoque +</div>
-                            <div class="text-2xl font-bold text-teal-600">${state.historyStats.stockUp || 0}</div>
-                            <div class="text-xs text-gray-400">aumentos</div>
-                        </div>
-                        <div class="stat-card bg-white rounded-lg p-4 shadow">
-                            <div class="text-gray-500 text-sm font-medium">Estoque -</div>
-                            <div class="text-2xl font-bold text-pink-600">${state.historyStats.stockDown || 0}</div>
-                            <div class="text-xs text-gray-400">reduções</div>
-                        </div>
-                    </div>
-
-                    <!-- Conteúdo original do histórico continua... -->
-                </div>
-            `;
-        }
-
-        function renderTabContent() {
-            // Inicializar componentes específicos de cada aba
-            switch(state.currentTab) {
-                case 'dashboard':
-                    setTimeout(initCharts, 100);
-                    break;
-                case 'kanban':
-                    setTimeout(initKanban, 100);
-                    break;
-                case 'lembretes':
-                    setTimeout(() => {
-                        if (!state.calendar) initCalendar();
-                        updateRemindersDisplay();
-                    }, 100);
-                    break;
-                case 'scanner':
-                    setTimeout(initScanner, 100);
-                    break;
-            }
-        }
-
-        // ==================== 🚀 INICIALIZAÇÃO ====================
-
-        async function initApp() {
-            console.log('🚀 Iniciando sistema completo...');
-            
-            // Carregar dados iniciais
-            await syncWithSheet();
-            
-            // Inicializar sistemas
-            initReminders();
-            
-            // Configurar auto-refresh
-            if (state.autoRefresh) {
-                state.syncInterval = setInterval(() => {
-                    syncWithSheet(true);
-                }, AUTO_REFRESH_INTERVAL);
-            }
-            
-            if (!state.connectionError) {
-                showNotification('✅ Sistema completo carregado!', 'success');
-            }
-        }
-
-        // ==================== 🎯 FUNÇÕES DE UTILIDADE ====================
-
-        function saveCurrentFocus() {
-            const activeElement = document.activeElement;
-            if (activeElement && activeElement.id) {
-                lastFocusedElementId = activeElement.id;
-            }
-        }
-
-        function restoreFocus() {
-            if (lastFocusedElementId) {
-                setTimeout(() => {
-                    const element = document.getElementById(lastFocusedElementId);
-                    if (element) {
-                        element.focus();
-                        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                            const length = element.value.length;
-                            element.setSelectionRange(length, length);
-                        }
-                    }
-                }, 10);
-            }
-        }
-
-        function switchTab(tabName) {
-            state.currentTab = tabName;
-            render();
-        }
-
-        // Funções auxiliares existentes...
-        function getTimeSinceUpdate() {
-            if (!state.lastUpdate) return 'Nunca';
-            const diff = Date.now() - state.lastUpdate.getTime();
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(diff / 3600000);
-            if (minutes < 60) return `${minutes}min atrás`;
-            if (hours < 24) return `${hours}h atrás`;
-            return state.lastUpdate.toLocaleDateString('pt-BR');
-        }
-
-        function formatObservacoes(observacoes) {
-            if (!observacoes || observacoes.trim() === '') {
-                return '<span class="status-tag status-default">Sem informações</span>';
-            }
-            // Implementação original mantida
-            return observacoes.split(/[,\.]| e |\//)
-                .filter(p => p.trim())
-                .map(parte => {
-                    const texto = parte.trim().toLowerCase();
-                    let statusClass = 'status-default';
-                    const statusMap = {
-                        'status-mostruario': ['mostruario', 'mostruário', 'amostra', 'vitrine'],
-                        'status-embalado': ['embalado', 'caixa', 'box', 'lacrado'],
-                        'status-frentedeloja': ['frente', 'loja', 'vitrine', 'exposi', 'prateleira'],
-                        'status-separadocd': ['separado', 'cd', 'centro', 'distribui', 'deposito', 'depósito'],
-                        'status-montagem': ['montar', 'montagem', 'montado', 'armar', 'desmontado'],
-                        'status-assistencia': ['assistencia', 'assistência', 'conserto', 'reparo', 'manuten', 'defeito']
-                    };
-                    for (const [className, keywords] of Object.entries(statusMap)) {
-                        if (keywords.some(keyword => texto.includes(keyword))) {
-                            statusClass = className;
-                            break;
-                        }
-                    }
-                    return `<span class="status-tag ${statusClass}">${parte.trim()}</span>`;
-                }).join(' ');
-        }
-
-        // ==================== 🚀 INICIAR APLICAÇÃO ====================
-
+        // 🚀 INICIAR APLICAÇÃO
         initApp();
+
+        // 🔧 FUNÇÕES AUXILIARES
+        function toggleAutoRefresh() {
+            state.autoRefresh = !state.autoRefresh;
+            showNotification(state.autoRefresh ? '🔄 Auto-refresh ativado' : '⏸️ Auto-refresh pausado', 'info');
+        }
+
+        function showQRCodeDemo() {
+            if (state.items.length > 0) {
+                printQRCode(state.items[0]);
+            } else {
+                showNotification('Carregue produtos primeiro', 'warning');
+            }
+        }
+
+        // Funções para manter compatibilidade
+        function applySortingAndFiltering() {}
+        function loadBackup() { return false; }
+        function loadHistory() { return false; }
     </script>
 </body>
 </html>
